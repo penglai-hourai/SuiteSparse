@@ -17,7 +17,7 @@ include ../../SuiteSparse_config/SuiteSparse_config.mk
 LDLIBS += -lamd -lcolamd -lsuitesparseconfig \
 	$(LIB_WITH_PARTITION) $(LAPACK) $(BLAS)
 
-SO_OPTS += $(CFOPENMP)
+SO_OPTS += $(CFOPENMP) $(CFPTHREADS)
 
 #-------------------------------------------------------------------------------
 # With the CUDA BLAS:

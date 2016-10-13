@@ -98,6 +98,7 @@ SUITESPARSE_VERSION = 4.5.3
     # with gcc, enable OpenMP directives via -fopenmp
     # This is not supported on Darwin, so this string is cleared, below.
     CFOPENMP ?= -fopenmp
+	CFPTHREADS ?= -pthread
 
     #---------------------------------------------------------------------------
     # compiler
@@ -224,6 +225,7 @@ SUITESPARSE_VERSION = 4.5.3
         CUDA_INC      = -I$(CUDA_INC_PATH)
         NVCC          = $(CUDA_PATH)/bin/nvcc
         NVCCFLAGS     = -Xcompiler -fPIC -O3 \
+						-D_FORCE_INLINES \
                             -gencode=arch=compute_20,code=sm_20 \
                             -gencode=arch=compute_30,code=sm_30 \
                             -gencode=arch=compute_35,code=sm_35 \
@@ -393,7 +395,7 @@ SUITESPARSE_VERSION = 4.5.3
 # finalize the CF compiler flags
 #===============================================================================
 
-    CF += $(CFOPENMP)
+    CF += $(CFOPENMP) $(CFPTHREADS)
 
 #===============================================================================
 # internal configuration
@@ -575,6 +577,7 @@ config:
 	@echo 'CUDA compiler:            NVCC=           ' '$(NVCC)'
 	@echo 'CUDA root directory:      CUDA_PATH=      ' '$(CUDA_PATH)'
 	@echo 'OpenMP flags:             CFOPENMP=       ' '$(CFOPENMP)'
+	@echo 'Pthreads flags:           CFPTHREADS=     ' '$(CFPTHREADS)'
 	@echo 'C/C++ compiler flags:     CF=             ' '$(CF)'
 	@echo 'LD flags:                 LDFLAGS=        ' '$(LDFLAGS)'
 	@echo 'Fortran compiler:         F77=            ' '$(F77)'
