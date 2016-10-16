@@ -83,38 +83,58 @@
 #endif
 #endif
 
-
-/* ========================================================================== */
-/* === t_cholmod_super_numeric ============================================== */
-/* ========================================================================== */
-
-/* This function returns FALSE only if integer overflow occurs in the BLAS.
- * It returns TRUE otherwise whether or not the matrix is positive definite. */
-
-static int TEMPLATE (cholmod_super_numeric)
-(
-    /* ---- input ---- */
-    cholmod_sparse *A,  /* matrix to factorize */
-    cholmod_sparse *F,  /* F = A' or A(:,f)' */
-    double beta [2],    /* beta*I is added to diagonal of matrix to factorize */
-    /* ---- in/out --- */
-    cholmod_factor *L,  /* factorization */
-    /* -- workspace -- */
-    cholmod_dense *Cwork,       /* size (L->maxcsize)-by-1 */
-    /* --------------- */
-    cholmod_common *Common
-    )
+typedef struct
 {
-    double one [2], zero [2], tstart ;
-    double *Lx, *Ax, *Fx, *Az, *Fz, *C ;
-    Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
-        *Lpos, *Fp, *Fi, *Fnz, *Ap, *Ai, *Anz, *Iwork, *Next_save, *Lpos_save,
-        *Previous;
-    Int nsuper, n, j, i, k, s, p, pend, k1, k2, nscol, psi, psx, psend, nsrow,
-        pj, d, kd1, kd2, info, ndcol, ndrow, pdi, pdx, pdend, pdi1, pdi2, pdx1,
-        ndrow1, ndrow2, px, dancestor, sparent, dnext, nsrow2, ndrow3, pk, pf,
-        pfend, stype, Apacked, Fpacked, q, imap, repeat_supernode, nscol2, ss,
-        tail, nscol_new = 0;
+    cholmod_sparse *A;
+    cholmod_sparse *F;
+    double *zero;
+    double *one;
+    double *beta;
+    cholmod_factor *L;
+    cholmod_dense *Cwork;
+    cholmod_common *Common;
+#ifdef GPU_BLAS
+    int useGPU;
+    cholmod_gpu_pointers *gpu_p;
+#endif
+    Int s;
+    Int nscol_new;
+    Int info;
+    Int repeat_supernode;
+} TEMPLATE (cholmod_numeric_args);
+
+static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
+{
+    TEMPLATE (cholmod_numeric_args) *thread_args;
+
+    cholmod_sparse *A, *F;
+    double *zero, *one, *beta;
+    cholmod_factor *L;
+    cholmod_dense *Cwork;
+    cholmod_common *Common;
+
+    Int repeat_supernode;
+
+    Int *Ap, *Ai, *Anz, *Az, Apacked, stype;
+    Int *Fp, *Fi, *Fnz, *Fz, Fpacked;
+    Int *Ls, n;
+    Int *Super, *Lpi, *Lpx, nsuper;
+    double *Ax, *Fx, *Lx;
+    double *C;
+
+    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous;
+    Int *Map, *Head;
+
+    Int s, ss, sparent;
+    Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
+    Int pf, pfend;
+    Int d, dnext, dancestor;
+    Int kd1, kd2, pdi, pdend, ndcol, pdi1, pdi2, ndrow, ndrow1, ndrow2, pdx, pdx1;
+    Int i, j, k, imap, tail;
+
+    Int info = 0;
+
+    double tstart;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -126,50 +146,29 @@ static int TEMPLATE (cholmod_super_numeric)
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
     int iHostBuff, iDevBuff, useGPU, GPUavailable ;
-    cholmod_gpu_pointers *gpu_p, gpu_pointer_struct ;
-    gpu_p = &gpu_pointer_struct ;
+    cholmod_gpu_pointers *gpu_p ;
 #endif
 
-    /* ---------------------------------------------------------------------- */
-    /* guard against integer overflow in the BLAS */
-    /* ---------------------------------------------------------------------- */
+    thread_args = void_args;
 
-    /* If integer overflow occurs in the BLAS, Common->status is set to
-     * CHOLMOD_TOO_LARGE, and the contents of Lx are undefined. */
-    Common->blas_ok = TRUE ;
+    A = thread_args->A;
+    F = thread_args->F;
+    zero = thread_args->zero;
+    one = thread_args->one;
+    beta = thread_args->beta;
+    L = thread_args->L;
+    Cwork = thread_args->Cwork;
+    Common = thread_args->Common;
+#ifdef GPU_BLAS
+    useGPU = thread_args->useGPU;
+    gpu_p = thread_args->gpu_p;
+#endif
+    s = thread_args->s;
+    nscol_new = thread_args->nscol_new;
+    repeat_supernode = thread_args->repeat_supernode;
 
-    /* ---------------------------------------------------------------------- */
-    /* get inputs */
-    /* ---------------------------------------------------------------------- */
-
-    nsuper = L->nsuper ;
-    n = L->n ;
-
-    C = Cwork->x ;      /* workspace of size L->maxcsize */
-
-    one [0] =  1.0 ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
-    one [1] =  0. ;
-    zero [0] = 0. ;     /* BETA for *syrk, *herk, and *gemm */
-    zero [1] = 0. ;
-
-    /* Iwork must be of size 2n + 5*nsuper, allocated in the caller,
-     * cholmod_super_numeric.  The memory cannot be allocated here because the
-     * cholmod_super_numeric initializes SuperMap, and cholmod_allocate_work
-     * does not preserve existing workspace if the space needs to be increase
-     * in size. */
-
-    /* allocate integer workspace */
-    Iwork = Common->Iwork ;
-    SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
-    Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
-    Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
-    Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
-    Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
-    Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
-
-    Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
-    Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
+    n = L->n;
+    nsuper = L->nsuper;
 
     Ls = L->s ;
     Lpi = L->pi ;
@@ -179,44 +178,14 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Lx = L->x ;
 
-#ifdef GPU_BLAS
-    /* local copy of useGPU */
-    if ( (Common->useGPU == 1) && L->useGPU)
-    {
-        /* Initialize the GPU.  If not found, don't use it. */
-        useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
-            (C, L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], gpu_p) ;
-    }
-    else
-    {
-        useGPU = 0;
-    }
-    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
-#endif
-
-#ifndef NTIMER
-    /* clear GPU / CPU statistics */
-    Common->CHOLMOD_CPU_GEMM_CALLS  = 0 ;
-    Common->CHOLMOD_CPU_SYRK_CALLS  = 0 ;
-    Common->CHOLMOD_CPU_TRSM_CALLS  = 0 ;
-    Common->CHOLMOD_CPU_POTRF_CALLS = 0 ;
-    Common->CHOLMOD_GPU_GEMM_CALLS  = 0 ;
-    Common->CHOLMOD_GPU_SYRK_CALLS  = 0 ;
-    Common->CHOLMOD_GPU_TRSM_CALLS  = 0 ;
-    Common->CHOLMOD_GPU_POTRF_CALLS = 0 ;
-    Common->CHOLMOD_CPU_GEMM_TIME   = 0 ;
-    Common->CHOLMOD_CPU_SYRK_TIME   = 0 ;
-    Common->CHOLMOD_CPU_TRSM_TIME   = 0 ;
-    Common->CHOLMOD_CPU_POTRF_TIME  = 0 ;
-    Common->CHOLMOD_GPU_GEMM_TIME   = 0 ;
-    Common->CHOLMOD_GPU_SYRK_TIME   = 0 ;
-    Common->CHOLMOD_GPU_TRSM_TIME   = 0 ;
-    Common->CHOLMOD_GPU_POTRF_TIME  = 0 ;
-    Common->CHOLMOD_ASSEMBLE_TIME   = 0 ;
-    Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
-#endif
-
     stype = A->stype ;
+
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
+    Apacked = A->packed ;
 
     if (stype != 0)
     {
@@ -238,47 +207,20 @@ static int TEMPLATE (cholmod_super_numeric)
         Fpacked = F->packed ;
     }
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
-    Apacked = A->packed ;
+    C = Cwork->x ;      /* workspace of size L->maxcsize */
 
-    /* clear the Map so that changes in the pattern of A can be detected */
+    /* allocate integer workspace */
+    Iwork = Common->Iwork ;
+    SuperMap    = Iwork ;                                   /* size n (i/i/l) */
+    RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
+    Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
+    Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
+    Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
+    Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
-    if ( n > 128 ) schedule (static)
-
-    for (i = 0 ; i < n ; i++)
-    {
-        Map [i] = EMPTY ;
-    }
-
-    /* If the matrix is not positive definite, the supernode s containing the
-     * first zero or negative diagonal entry of L is repeated (but factorized
-     * only up to just before the problematic diagonal entry). The purpose is
-     * to provide MATLAB with [R,p]=chol(A); columns 1 to p-1 of L=R' are
-     * required, where L(p,p) is the problematic diagonal entry.  The
-     * repeat_supernode flag tells us whether this is the repeated supernode.
-     * Once supernode s is repeated, the factorization is terminated. */
-    repeat_supernode = FALSE ;
-
-#ifdef GPU_BLAS
-    if ( useGPU )
-    {
-        /* Case of GPU, zero all supernodes at one time for better performance*/
-        TEMPLATE2 (CHOLMOD (gpu_clear_memory))(Lx, L->xsize,
-            CHOLMOD_OMP_NUM_THREADS);
-    }
-#endif
-
-    /* ---------------------------------------------------------------------- */
-    /* supernodal numerical factorization */
-    /* ---------------------------------------------------------------------- */
-
-    for (s = 0 ; s < nsuper ; s++)
-    {
+    Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
+    Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
 
         /* ------------------------------------------------------------------ */
         /* get the size of supernode s */
@@ -766,7 +708,6 @@ static int TEMPLATE (cholmod_super_numeric)
                     {
                         ASSERT (RelativeMap [i] == Map [Ls [pdi1 + i]]) ;
                         ASSERT (RelativeMap [i] >= j && RelativeMap[i] < nsrow);
-                        /* Lx [px + RelativeMap [i]] -= C [i + pj] ; */
                         q = px + RelativeMap [i] ;
                         L_ASSEMBLESUB (Lx,q, C, i+ndrow2*j) ;
                     }
@@ -949,12 +890,12 @@ static int TEMPLATE (cholmod_super_numeric)
                  * zero.  Also, info will be 1 if integer overflow occured in
                  * the BLAS. */
                 Head [s] = EMPTY ;
-#ifdef GPU_BLAS
-                if ( useGPU ) {
-                    CHOLMOD (gpu_end) (Common) ;
-                }
-#endif
-                return (Common->status >= CHOLMOD_OK) ;
+
+                thread_args->s = s;
+                thread_args->nscol_new = nscol_new;
+                thread_args->info = info;
+                thread_args->repeat_supernode = repeat_supernode;
+                return void_args;
             }
             else
             {
@@ -964,7 +905,12 @@ static int TEMPLATE (cholmod_super_numeric)
                 repeat_supernode = TRUE ;
                 s-- ;
                 nscol_new = info - 1 ;
-                continue ;
+
+                thread_args->s = s;
+                thread_args->nscol_new = nscol_new;
+                thread_args->info = info;
+                thread_args->repeat_supernode = repeat_supernode;
+                return void_args;
             }
         }
 
@@ -1055,6 +1001,219 @@ static int TEMPLATE (cholmod_super_numeric)
             /* matrix is not positive definite; finished clean-up for supernode
              * containing negative diagonal */
 
+                thread_args->s = s;
+                thread_args->nscol_new = nscol_new;
+                thread_args->info = info;
+                thread_args->repeat_supernode = repeat_supernode;
+                return void_args;
+        }
+
+    thread_args->s = s;
+    thread_args->nscol_new = nscol_new;
+    thread_args->info = info;
+    thread_args->repeat_supernode = repeat_supernode;
+    return void_args;
+}
+
+/* ========================================================================== */
+/* === t_cholmod_super_numeric ============================================== */
+/* ========================================================================== */
+
+/* This function returns FALSE only if integer overflow occurs in the BLAS.
+ * It returns TRUE otherwise whether or not the matrix is positive definite. */
+
+static int TEMPLATE (cholmod_super_numeric)
+(
+    /* ---- input ---- */
+    cholmod_sparse *A,  /* matrix to factorize */
+    cholmod_sparse *F,  /* F = A' or A(:,f)' */
+    double beta [2],    /* beta*I is added to diagonal of matrix to factorize */
+    /* ---- in/out --- */
+    cholmod_factor *L,  /* factorization */
+    /* -- workspace -- */
+    cholmod_dense *Cwork,       /* size (L->maxcsize)-by-1 */
+    /* --------------- */
+    cholmod_common *Common
+    )
+{
+    pthread_t threads[1];
+    TEMPLATE (cholmod_numeric_args) thread_args[1];
+
+    double one [2], zero [2];
+    double *Lx, *C;
+    Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
+        *Lpos, *Iwork, *Next_save, *Lpos_save,
+        *Previous;
+    Int i, nsuper, n, s, nscol_new = 0, info, repeat_supernode;
+
+    /* ---------------------------------------------------------------------- */
+    /* declarations for the GPU */
+    /* ---------------------------------------------------------------------- */
+
+    /* these variables are not used if the GPU module is not installed */
+
+#ifdef GPU_BLAS
+    int useGPU;
+    cholmod_gpu_pointers gpu_p[1];
+#endif
+
+    /* ---------------------------------------------------------------------- */
+    /* guard against integer overflow in the BLAS */
+    /* ---------------------------------------------------------------------- */
+
+    /* If integer overflow occurs in the BLAS, Common->status is set to
+     * CHOLMOD_TOO_LARGE, and the contents of Lx are undefined. */
+    Common->blas_ok = TRUE ;
+
+    /* ---------------------------------------------------------------------- */
+    /* get inputs */
+    /* ---------------------------------------------------------------------- */
+
+    nsuper = L->nsuper ;
+    n = L->n ;
+
+    C = Cwork->x ;      /* workspace of size L->maxcsize */
+
+    one [0] =  1.0 ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
+    one [1] =  0. ;
+    zero [0] = 0. ;     /* BETA for *syrk, *herk, and *gemm */
+    zero [1] = 0. ;
+
+    /* Iwork must be of size 2n + 5*nsuper, allocated in the caller,
+     * cholmod_super_numeric.  The memory cannot be allocated here because the
+     * cholmod_super_numeric initializes SuperMap, and cholmod_allocate_work
+     * does not preserve existing workspace if the space needs to be increase
+     * in size. */
+
+    /* allocate integer workspace */
+    Iwork = Common->Iwork ;
+    SuperMap    = Iwork ;                                   /* size n (i/i/l) */
+    RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
+    Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
+    Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
+    Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
+    Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
+
+    Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
+    Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
+
+    Ls = L->s ;
+    Lpi = L->pi ;
+    Lpx = L->px ;
+
+    Super = L->super ;
+
+    Lx = L->x ;
+
+#ifdef GPU_BLAS
+    /* local copy of useGPU */
+    if ( (Common->useGPU == 1) && L->useGPU)
+    {
+        /* Initialize the GPU.  If not found, don't use it. */
+        useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
+            (C, L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], gpu_p) ;
+    }
+    else
+    {
+        useGPU = 0;
+    }
+    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
+#endif
+
+#ifndef NTIMER
+    /* clear GPU / CPU statistics */
+    Common->CHOLMOD_CPU_GEMM_CALLS  = 0 ;
+    Common->CHOLMOD_CPU_SYRK_CALLS  = 0 ;
+    Common->CHOLMOD_CPU_TRSM_CALLS  = 0 ;
+    Common->CHOLMOD_CPU_POTRF_CALLS = 0 ;
+    Common->CHOLMOD_GPU_GEMM_CALLS  = 0 ;
+    Common->CHOLMOD_GPU_SYRK_CALLS  = 0 ;
+    Common->CHOLMOD_GPU_TRSM_CALLS  = 0 ;
+    Common->CHOLMOD_GPU_POTRF_CALLS = 0 ;
+    Common->CHOLMOD_CPU_GEMM_TIME   = 0 ;
+    Common->CHOLMOD_CPU_SYRK_TIME   = 0 ;
+    Common->CHOLMOD_CPU_TRSM_TIME   = 0 ;
+    Common->CHOLMOD_CPU_POTRF_TIME  = 0 ;
+    Common->CHOLMOD_GPU_GEMM_TIME   = 0 ;
+    Common->CHOLMOD_GPU_SYRK_TIME   = 0 ;
+    Common->CHOLMOD_GPU_TRSM_TIME   = 0 ;
+    Common->CHOLMOD_GPU_POTRF_TIME  = 0 ;
+    Common->CHOLMOD_ASSEMBLE_TIME   = 0 ;
+    Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
+#endif
+
+    /* clear the Map so that changes in the pattern of A can be detected */
+
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
+    if ( n > 128 ) schedule (static)
+
+    for (i = 0 ; i < n ; i++)
+    {
+        Map [i] = EMPTY ;
+    }
+
+    /* If the matrix is not positive definite, the supernode s containing the
+     * first zero or negative diagonal entry of L is repeated (but factorized
+     * only up to just before the problematic diagonal entry). The purpose is
+     * to provide MATLAB with [R,p]=chol(A); columns 1 to p-1 of L=R' are
+     * required, where L(p,p) is the problematic diagonal entry.  The
+     * repeat_supernode flag tells us whether this is the repeated supernode.
+     * Once supernode s is repeated, the factorization is terminated. */
+    repeat_supernode = FALSE ;
+
+#ifdef GPU_BLAS
+    if ( useGPU )
+    {
+        /* Case of GPU, zero all supernodes at one time for better performance*/
+        TEMPLATE2 (CHOLMOD (gpu_clear_memory))(Lx, L->xsize,
+            CHOLMOD_OMP_NUM_THREADS);
+    }
+#endif
+
+    /* ---------------------------------------------------------------------- */
+    /* supernodal numerical factorization */
+    /* ---------------------------------------------------------------------- */
+
+    for (s = 0 ; s < nsuper ; s++)
+    {
+        thread_args[0].A = A;
+        thread_args[0].F = F;
+        thread_args[0].zero = zero;
+        thread_args[0].one = one;
+        thread_args[0].beta = beta;
+        thread_args[0].L = L;
+        thread_args[0].Cwork = Cwork;
+        thread_args[0].Common = Common;
+#ifdef GPU_BLAS
+        thread_args[0].useGPU = useGPU;
+        thread_args[0].gpu_p = gpu_p;
+#endif
+        thread_args[0].s = s;
+        thread_args[0].nscol_new = nscol_new;
+        thread_args[0].repeat_supernode = repeat_supernode;
+
+        pthread_create(&threads[0], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[0]);
+        pthread_join(threads[0], NULL);
+
+        s = thread_args[0].s;
+        nscol_new = thread_args[0].nscol_new;
+        info = thread_args[0].info;
+        repeat_supernode = thread_args[0].repeat_supernode;
+
+        if (info != 0 && (info == 1 || Common->quick_return_if_not_posdef))
+        {
+            printf ("return 0\n");
+#ifdef GPU_BLAS
+                if ( useGPU ) {
+                    CHOLMOD (gpu_end) (Common) ;
+                }
+#endif
+            return (Common->status >= CHOLMOD_OK) ;
+        }
+        if (info == 0 && repeat_supernode == TRUE)
+        {
+            printf ("return 1\n");
 #ifdef GPU_BLAS
             if ( useGPU )
             {
