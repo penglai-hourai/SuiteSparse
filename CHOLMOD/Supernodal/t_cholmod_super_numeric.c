@@ -123,7 +123,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     double *Ax, *Fx, *Lx;
     double *C;
 
-    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *front_col;
+    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col;
     Int *Map, *Head;
 
     Int s, ss, sparent;
@@ -219,7 +219,8 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
     Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
-    front_col   = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
     Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
@@ -989,7 +990,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         }
 
         Head [s] = EMPTY ;  /* link list for supernode s no longer needed */
-        front_col[s] = Lpi[s+1];
 
         /* clear the Map (debugging only, to detect changes in pattern of A) */
         DEBUG (for (k = 0 ; k < nsrow ; k++) Map [Ls [psi + k]] = EMPTY) ;
@@ -1003,6 +1003,13 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
                 *(thread_args->to_return_p) = TRUE;
                 return void_args;
+        }
+        else
+        {
+            front_col[s] = Lpi[s+1];
+            sparent = SuperMap [Ls [psi + nscol]] ;
+            if (sparent != EMPTY)
+                pending[sparent]--;
         }
 
     return void_args;
@@ -1038,8 +1045,8 @@ static int TEMPLATE (cholmod_super_numeric)
     double *Lx, *C;
     Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
-        *Previous, *front_col;
-    Int i, nsuper, n, s, t;
+        *Previous, *pending, *front_col;
+    Int i, nsuper, n, s, sparent, t;
 
     pthread_mutex_init(&main_mutex, NULL);
     pthread_mutex_init(&thread_mutex, NULL);
@@ -1092,7 +1099,8 @@ static int TEMPLATE (cholmod_super_numeric)
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
     Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
-    front_col   = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
     Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
@@ -1106,7 +1114,15 @@ static int TEMPLATE (cholmod_super_numeric)
     Lx = L->x ;
 
     for (s = 0; s < nsuper; s++)
-        front_col[s] = -1;
+        pending[s] = 0;
+    for (s = 0; s < nsuper; s++)
+    {
+        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
+        if (sparent > s && sparent < nsuper)
+            pending[sparent]++;
+    }
+    for (s = 0; s < nsuper; s++)
+        front_col[s] = Lpi[s];
 
     threads = CHOLMOD(malloc) (nsuper, sizeof(pthread_t), Common);
     thread_args = CHOLMOD(malloc) (nsuper, sizeof(TEMPLATE (CHOLMOD (thread_args))), Common);
@@ -1182,38 +1198,34 @@ static int TEMPLATE (cholmod_super_numeric)
     while (!end_of_factorization)
     {
         end_of_factorization = TRUE;
-        for (s = 0 ; s < nsuper ; s++)
+        for (s = nsuper - 1 ; s >= 0 ; s--)
+        //for (s = 0 ; s < nsuper ; s++)
         {
             if (front_col[s] < Lpi[s+1])
             {
-                front_ready = TRUE;
-                for (t = Head[s]; t != EMPTY; t = Next[t])
-                    if (Head[t] != EMPTY)
-                        front_ready = FALSE;
-                if (front_ready)
+                end_of_factorization = FALSE;
+                if (pending[s] <= 0)
                 {
-                    end_of_factorization = FALSE;
-
-                    thread_args[s].A = A;
-                    thread_args[s].F = F;
-                    thread_args[s].zero = zero;
-                    thread_args[s].one = one;
-                    thread_args[s].beta = beta;
-                    thread_args[s].L = L;
-                    thread_args[s].Cwork = Cwork;
-                    thread_args[s].Common = Common;
+                        thread_args[s].A = A;
+                        thread_args[s].F = F;
+                        thread_args[s].zero = zero;
+                        thread_args[s].one = one;
+                        thread_args[s].beta = beta;
+                        thread_args[s].L = L;
+                        thread_args[s].Cwork = Cwork;
+                        thread_args[s].Common = Common;
 #ifdef GPU_BLAS
-                    thread_args[s].useGPU = useGPU;
-                    thread_args[s].gpu_p = gpu_p;
+                        thread_args[s].useGPU = useGPU;
+                        thread_args[s].gpu_p = gpu_p;
 #endif
-                    thread_args[s].thread_mutex_p = &thread_mutex;
-                    thread_args[s].s = s;
-                    thread_args[s].nscol_new = 0;
-                    thread_args[s].repeat_supernode = FALSE;
-                    thread_args[s].to_return_p = &to_return;;
+                        thread_args[s].thread_mutex_p = &thread_mutex;
+                        thread_args[s].s = s;
+                        thread_args[s].nscol_new = 0;
+                        thread_args[s].repeat_supernode = FALSE;
+                        thread_args[s].to_return_p = &to_return;;
 
-                    pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
-                    pthread_join(threads[s], NULL);
+                        pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
+                        pthread_join(threads[s], NULL);
                 }
             }
         }
