@@ -97,15 +97,16 @@ typedef struct
     int useGPU;
     cholmod_gpu_pointers *gpu_p;
 #endif
+    pthread_mutex_t *thread_mutex_p;
     Int s;
     Int nscol_new;
-    Int info;
     Int repeat_supernode;
-} TEMPLATE (cholmod_numeric_args);
+    int *to_return_p;
+} TEMPLATE (CHOLMOD (thread_args));
 
 static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 {
-    TEMPLATE (cholmod_numeric_args) *thread_args;
+    TEMPLATE (CHOLMOD (thread_args)) *thread_args;
 
     cholmod_sparse *A, *F;
     double *zero, *one, *beta;
@@ -122,7 +123,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     double *Ax, *Fx, *Lx;
     double *C;
 
-    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous;
+    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *front_col;
     Int *Map, *Head;
 
     Int s, ss, sparent;
@@ -218,6 +219,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
     Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
+    front_col   = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
 
     Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
@@ -891,10 +893,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                  * the BLAS. */
                 Head [s] = EMPTY ;
 
-                thread_args->s = s;
-                thread_args->nscol_new = nscol_new;
-                thread_args->info = info;
-                thread_args->repeat_supernode = repeat_supernode;
+                *(thread_args->to_return_p) = TRUE;
                 return void_args;
             }
             else
@@ -903,13 +902,13 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                  * including the column containing the problematic diagonal
                  * entry. */
                 repeat_supernode = TRUE ;
-                s-- ;
+                //s-- ;
                 nscol_new = info - 1 ;
 
                 thread_args->s = s;
                 thread_args->nscol_new = nscol_new;
-                thread_args->info = info;
                 thread_args->repeat_supernode = repeat_supernode;
+                TEMPLATE (cholmod_super_numeric_pthread) (void_args);
                 return void_args;
             }
         }
@@ -1001,17 +1000,10 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             /* matrix is not positive definite; finished clean-up for supernode
              * containing negative diagonal */
 
-                thread_args->s = s;
-                thread_args->nscol_new = nscol_new;
-                thread_args->info = info;
-                thread_args->repeat_supernode = repeat_supernode;
+                *(thread_args->to_return_p) = TRUE;
                 return void_args;
         }
 
-    thread_args->s = s;
-    thread_args->nscol_new = nscol_new;
-    thread_args->info = info;
-    thread_args->repeat_supernode = repeat_supernode;
     return void_args;
 }
 
@@ -1036,15 +1028,20 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_common *Common
     )
 {
-    pthread_t threads[1];
-    TEMPLATE (cholmod_numeric_args) thread_args[1];
+    int to_return = FALSE;
+    pthread_mutex_t main_mutex, thread_mutex;
+    pthread_t *threads;
+    TEMPLATE (CHOLMOD (thread_args)) *thread_args;
 
     double one [2], zero [2];
     double *Lx, *C;
     Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
-        *Previous;
-    Int i, nsuper, n, s, nscol_new = 0, info, repeat_supernode;
+        *Previous, *front_col;
+    Int i, nsuper, n, s;
+
+    pthread_mutex_init(&main_mutex, NULL);
+    pthread_mutex_init(&thread_mutex, NULL);
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -1094,6 +1091,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
     Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
+    front_col   = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
 
     Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
@@ -1105,6 +1103,12 @@ static int TEMPLATE (cholmod_super_numeric)
     Super = L->super ;
 
     Lx = L->x ;
+
+    for (s = 0; s < nsuper; s++)
+        front_col[s] = -1;
+
+    threads = CHOLMOD(malloc) (nsuper, sizeof(pthread_t), Common);
+    thread_args = CHOLMOD(malloc) (nsuper, sizeof(TEMPLATE (CHOLMOD (thread_args))), Common);
 
 #ifdef GPU_BLAS
     /* local copy of useGPU */
@@ -1160,7 +1164,6 @@ static int TEMPLATE (cholmod_super_numeric)
      * required, where L(p,p) is the problematic diagonal entry.  The
      * repeat_supernode flag tells us whether this is the repeated supernode.
      * Once supernode s is repeated, the factorization is terminated. */
-    repeat_supernode = FALSE ;
 
 #ifdef GPU_BLAS
     if ( useGPU )
@@ -1177,33 +1180,31 @@ static int TEMPLATE (cholmod_super_numeric)
 
     for (s = 0 ; s < nsuper ; s++)
     {
-        thread_args[0].A = A;
-        thread_args[0].F = F;
-        thread_args[0].zero = zero;
-        thread_args[0].one = one;
-        thread_args[0].beta = beta;
-        thread_args[0].L = L;
-        thread_args[0].Cwork = Cwork;
-        thread_args[0].Common = Common;
+        thread_args[s].A = A;
+        thread_args[s].F = F;
+        thread_args[s].zero = zero;
+        thread_args[s].one = one;
+        thread_args[s].beta = beta;
+        thread_args[s].L = L;
+        thread_args[s].Cwork = Cwork;
+        thread_args[s].Common = Common;
 #ifdef GPU_BLAS
-        thread_args[0].useGPU = useGPU;
-        thread_args[0].gpu_p = gpu_p;
+        thread_args[s].useGPU = useGPU;
+        thread_args[s].gpu_p = gpu_p;
 #endif
-        thread_args[0].s = s;
-        thread_args[0].nscol_new = nscol_new;
-        thread_args[0].repeat_supernode = repeat_supernode;
+        thread_args[s].thread_mutex_p = &thread_mutex;
+        thread_args[s].s = s;
+        thread_args[s].nscol_new = 0;
+        thread_args[s].repeat_supernode = FALSE;
+        thread_args[s].to_return_p = &to_return;;
 
-        pthread_create(&threads[0], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[0]);
-        pthread_join(threads[0], NULL);
+        pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
+        pthread_join(threads[s], NULL);
 
-        s = thread_args[0].s;
-        nscol_new = thread_args[0].nscol_new;
-        info = thread_args[0].info;
-        repeat_supernode = thread_args[0].repeat_supernode;
+        pthread_mutex_lock(&main_mutex);
 
-        if (info != 0 && (info == 1 || Common->quick_return_if_not_posdef))
+        if (to_return)
         {
-            printf ("return 0\n");
 #ifdef GPU_BLAS
                 if ( useGPU ) {
                     CHOLMOD (gpu_end) (Common) ;
@@ -1211,18 +1212,15 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
             return (Common->status >= CHOLMOD_OK) ;
         }
-        if (info == 0 && repeat_supernode == TRUE)
-        {
-            printf ("return 1\n");
-#ifdef GPU_BLAS
-            if ( useGPU )
-            {
-                CHOLMOD (gpu_end) (Common) ;
-            }
-#endif
-            return (Common->status >= CHOLMOD_OK) ;
-        }
+
+        pthread_mutex_unlock(&main_mutex);
     }
+
+    pthread_mutex_destroy(&main_mutex);
+    pthread_mutex_destroy(&thread_mutex);
+
+    threads = CHOLMOD(free) (nsuper, sizeof(pthread_t), threads, Common);
+    thread_args = CHOLMOD(free) (nsuper, sizeof(TEMPLATE (CHOLMOD (thread_args))), thread_args, Common);
 
     /* success; matrix is positive definite */
     L->minor = n ;
