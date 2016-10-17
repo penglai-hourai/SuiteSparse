@@ -989,6 +989,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         }
 
         Head [s] = EMPTY ;  /* link list for supernode s no longer needed */
+        front_col[s] = Lpi[s+1];
 
         /* clear the Map (debugging only, to detect changes in pattern of A) */
         DEBUG (for (k = 0 ; k < nsrow ; k++) Map [Ls [psi + k]] = EMPTY) ;
@@ -1028,7 +1029,7 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_common *Common
     )
 {
-    int to_return = FALSE;
+    int to_return = FALSE, end_of_factorization = FALSE, front_ready;
     pthread_mutex_t main_mutex, thread_mutex;
     pthread_t *threads;
     TEMPLATE (CHOLMOD (thread_args)) *thread_args;
@@ -1038,7 +1039,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
         *Previous, *front_col;
-    Int i, nsuper, n, s;
+    Int i, nsuper, n, s, t;
 
     pthread_mutex_init(&main_mutex, NULL);
     pthread_mutex_init(&thread_mutex, NULL);
@@ -1178,42 +1179,53 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-    for (s = 0 ; s < nsuper ; s++)
+    while (!end_of_factorization)
     {
-        thread_args[s].A = A;
-        thread_args[s].F = F;
-        thread_args[s].zero = zero;
-        thread_args[s].one = one;
-        thread_args[s].beta = beta;
-        thread_args[s].L = L;
-        thread_args[s].Cwork = Cwork;
-        thread_args[s].Common = Common;
+        end_of_factorization = TRUE;
+        for (s = 0 ; s < nsuper ; s++)
+        {
+            if (front_col[s] < Lpi[s+1])
+            {
+                front_ready = TRUE;
+                for (t = Head[s]; t != EMPTY; t = Next[t])
+                    if (Head[t] != EMPTY)
+                        front_ready = FALSE;
+                if (front_ready)
+                {
+                    end_of_factorization = FALSE;
+
+                    thread_args[s].A = A;
+                    thread_args[s].F = F;
+                    thread_args[s].zero = zero;
+                    thread_args[s].one = one;
+                    thread_args[s].beta = beta;
+                    thread_args[s].L = L;
+                    thread_args[s].Cwork = Cwork;
+                    thread_args[s].Common = Common;
 #ifdef GPU_BLAS
-        thread_args[s].useGPU = useGPU;
-        thread_args[s].gpu_p = gpu_p;
+                    thread_args[s].useGPU = useGPU;
+                    thread_args[s].gpu_p = gpu_p;
 #endif
-        thread_args[s].thread_mutex_p = &thread_mutex;
-        thread_args[s].s = s;
-        thread_args[s].nscol_new = 0;
-        thread_args[s].repeat_supernode = FALSE;
-        thread_args[s].to_return_p = &to_return;;
+                    thread_args[s].thread_mutex_p = &thread_mutex;
+                    thread_args[s].s = s;
+                    thread_args[s].nscol_new = 0;
+                    thread_args[s].repeat_supernode = FALSE;
+                    thread_args[s].to_return_p = &to_return;;
 
-        pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
-        pthread_join(threads[s], NULL);
-
-        pthread_mutex_lock(&main_mutex);
-
+                    pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
+                    pthread_join(threads[s], NULL);
+                }
+            }
+        }
         if (to_return)
         {
 #ifdef GPU_BLAS
-                if ( useGPU ) {
-                    CHOLMOD (gpu_end) (Common) ;
-                }
+            if ( useGPU ) {
+                CHOLMOD (gpu_end) (Common) ;
+            }
 #endif
             return (Common->status >= CHOLMOD_OK) ;
         }
-
-        pthread_mutex_unlock(&main_mutex);
     }
 
     pthread_mutex_destroy(&main_mutex);
