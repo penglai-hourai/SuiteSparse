@@ -273,8 +273,16 @@
 
 /* The number of OMP threads should typically be set to the number of cores   */
 /* per socket inthe machine being used.  This maximizes memory performance.   */
+#ifndef GPU_NUM
+#define GPU_NUM 1
+#endif
+
 #ifndef CHOLMOD_OMP_NUM_THREADS
 #define CHOLMOD_OMP_NUM_THREADS 4
+#endif
+
+#ifndef CHOLMOD_PTHREADS_NUM_THREADS
+#define CHOLMOD_PTHREADS_NUM_THREADS 1
 #endif
 
 /* Define buffering parameters for GPU processing */

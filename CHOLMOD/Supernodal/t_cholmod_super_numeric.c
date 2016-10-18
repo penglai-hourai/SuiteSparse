@@ -16,6 +16,7 @@
 /* === complex arithmetic =================================================== */
 /* ========================================================================== */
 
+#include <semaphore.h>
 #include <pthread.h>
 #include "cholmod_template.h"
 
@@ -93,10 +94,15 @@ typedef struct
     cholmod_factor *L;
     cholmod_dense *Cwork;
     cholmod_common *Common;
+    Int *Map;
+    Int *RelativeMap;
+    double *C;
 #ifdef GPU_BLAS
+    int *GPUslot_p;
     int useGPU;
     cholmod_gpu_pointers *gpu_p;
 #endif
+    sem_t *thread_semaphore_p;
     pthread_mutex_t *thread_mutex_p;
     Int s;
     Int nscol_new;
@@ -107,6 +113,9 @@ typedef struct
 static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 {
     TEMPLATE (CHOLMOD (thread_args)) *thread_args;
+
+    sem_t *thread_semaphore_p;
+    pthread_mutex_t *thread_mutex_p;
 
     cholmod_sparse *A, *F;
     double *zero, *one, *beta;
@@ -123,8 +132,8 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     double *Ax, *Fx, *Lx;
     double *C;
 
-    Int *Iwork, *SuperMap, *RelativeMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col;
-    Int *Map, *Head;
+    Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col;
+    Int *Head, *Map, *RelativeMap;
 
     Int s, ss, sparent;
     Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
@@ -147,10 +156,14 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
     int iHostBuff, iDevBuff, useGPU, GPUavailable ;
+    int *GPUslot_p;
     cholmod_gpu_pointers *gpu_p ;
 #endif
 
     thread_args = void_args;
+
+    thread_semaphore_p = thread_args->thread_semaphore_p;
+    thread_mutex_p = thread_args->thread_mutex_p;
 
     A = thread_args->A;
     F = thread_args->F;
@@ -160,7 +173,11 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     L = thread_args->L;
     Cwork = thread_args->Cwork;
     Common = thread_args->Common;
+    Map = thread_args->Map;
+    RelativeMap = thread_args->RelativeMap;
+    C = thread_args->C;
 #ifdef GPU_BLAS
+    GPUslot_p = thread_args->GPUslot_p;
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
 #endif
@@ -208,12 +225,12 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         Fpacked = F->packed ;
     }
 
-    C = Cwork->x ;      /* workspace of size L->maxcsize */
+    //C = Cwork->x ;      /* workspace of size L->maxcsize */
 
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
     SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    //RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
     Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
     Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
@@ -222,8 +239,18 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
     front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
-    Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
+    //Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
+
+    /* clear the Map so that changes in the pattern of A can be detected */
+
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
+    if ( n > 128 ) schedule (static)
+
+    for (i = 0 ; i < n ; i++)
+    {
+        Map [i] = EMPTY ;
+    }
 
         /* ------------------------------------------------------------------ */
         /* get the size of supernode s */
@@ -910,6 +937,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 thread_args->nscol_new = nscol_new;
                 thread_args->repeat_supernode = repeat_supernode;
                 TEMPLATE (cholmod_super_numeric_pthread) (void_args);
+
                 return void_args;
             }
         }
@@ -1002,15 +1030,29 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
              * containing negative diagonal */
 
                 *(thread_args->to_return_p) = TRUE;
-                return void_args;
         }
-        else
-        {
-            front_col[s] = Lpi[s+1];
-            sparent = SuperMap [Ls [psi + nscol]] ;
-            if (sparent != EMPTY)
-                pending[sparent]--;
-        }
+
+        front_col[s] = Lpi[s+1];
+        sparent = SuperMap [Ls [psi + nscol]] ;
+        if (sparent != EMPTY)
+            pending[sparent]--;
+
+        Map = CHOLMOD(free) (n, sizeof(Int), Map, Common);
+        RelativeMap = CHOLMOD(free) (n, sizeof(Int), RelativeMap, Common);
+        C = CHOLMOD(free) (n, sizeof(double), C, Common);
+
+#ifdef GPU_BLAS
+    pthread_mutex_lock(thread_mutex_p);
+    if (useGPU && GPUslot_p != NULL)
+        *GPUslot_p = TRUE;
+    pthread_mutex_unlock(thread_mutex_p);
+#endif
+
+        thread_args->Map = Map;
+        thread_args->RelativeMap = RelativeMap;
+        thread_args->C = C;
+
+    sem_post(thread_semaphore_p);
 
     return void_args;
 }
@@ -1037,17 +1079,19 @@ static int TEMPLATE (cholmod_super_numeric)
     )
 {
     int to_return = FALSE, end_of_factorization = FALSE, front_ready;
+    sem_t thread_semaphore;
     pthread_mutex_t main_mutex, thread_mutex;
     pthread_t *threads;
     TEMPLATE (CHOLMOD (thread_args)) *thread_args;
 
     double one [2], zero [2];
-    double *Lx, *C;
-    Int *Super, *Head, *Ls, *Lpi, *Lpx, *Map, *SuperMap, *RelativeMap, *Next,
+    double *Lx;
+    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
         *Previous, *pending, *front_col;
     Int i, nsuper, n, s, sparent, t;
 
+    sem_init(&thread_semaphore, 0, CHOLMOD_PTHREADS_NUM_THREADS);
     pthread_mutex_init(&main_mutex, NULL);
     pthread_mutex_init(&thread_mutex, NULL);
 
@@ -1058,8 +1102,8 @@ static int TEMPLATE (cholmod_super_numeric)
     /* these variables are not used if the GPU module is not installed */
 
 #ifdef GPU_BLAS
-    int useGPU;
-    cholmod_gpu_pointers gpu_p[1];
+    int useGPU = FALSE, useGPU_p[GPU_NUM];
+    cholmod_gpu_pointers gpu_p[GPU_NUM];
 #endif
 
     /* ---------------------------------------------------------------------- */
@@ -1077,8 +1121,6 @@ static int TEMPLATE (cholmod_super_numeric)
     nsuper = L->nsuper ;
     n = L->n ;
 
-    C = Cwork->x ;      /* workspace of size L->maxcsize */
-
     one [0] =  1.0 ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     one [1] =  0. ;
     zero [0] = 0. ;     /* BETA for *syrk, *herk, and *gemm */
@@ -1093,7 +1135,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
     SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    //RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
     Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
     Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
@@ -1101,9 +1143,6 @@ static int TEMPLATE (cholmod_super_numeric)
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
     pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
     front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
-
-    Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
-    Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
 
     Ls = L->s ;
     Lpi = L->pi ;
@@ -1122,24 +1161,25 @@ static int TEMPLATE (cholmod_super_numeric)
             pending[sparent]++;
     }
     for (s = 0; s < nsuper; s++)
-        front_col[s] = Lpi[s];
-
-    threads = CHOLMOD(malloc) (nsuper, sizeof(pthread_t), Common);
-    thread_args = CHOLMOD(malloc) (nsuper, sizeof(TEMPLATE (CHOLMOD (thread_args))), Common);
+        front_col[s] = -1;
 
 #ifdef GPU_BLAS
+    for (s = 0; s < GPU_NUM; s++)
+    {
     /* local copy of useGPU */
     if ( (Common->useGPU == 1) && L->useGPU)
     {
         /* Initialize the GPU.  If not found, don't use it. */
-        useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
-            (C, L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], gpu_p) ;
+        useGPU_p[s] = TEMPLATE2 (CHOLMOD (gpu_init))
+            (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[s]) ;
     }
     else
     {
-        useGPU = 0;
+        useGPU_p[s] = 0;
     }
     /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
+    useGPU |= useGPU_p[s];
+    }
 #endif
 
 #ifndef NTIMER
@@ -1164,16 +1204,6 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-    /* clear the Map so that changes in the pattern of A can be detected */
-
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
-    if ( n > 128 ) schedule (static)
-
-    for (i = 0 ; i < n ; i++)
-    {
-        Map [i] = EMPTY ;
-    }
-
     /* If the matrix is not positive definite, the supernode s containing the
      * first zero or negative diagonal entry of L is repeated (but factorized
      * only up to just before the problematic diagonal entry). The purpose is
@@ -1191,6 +1221,9 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
+    threads = CHOLMOD(malloc) (nsuper, sizeof(pthread_t), Common);
+    thread_args = CHOLMOD(malloc) (nsuper, sizeof(TEMPLATE (CHOLMOD (thread_args))), Common);
+
     /* ---------------------------------------------------------------------- */
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
@@ -1201,11 +1234,13 @@ static int TEMPLATE (cholmod_super_numeric)
         for (s = nsuper - 1 ; s >= 0 ; s--)
         //for (s = 0 ; s < nsuper ; s++)
         {
-            if (front_col[s] < Lpi[s+1])
+            if (front_col[s] < 0)
             {
                 end_of_factorization = FALSE;
                 if (pending[s] <= 0)
                 {
+                    sem_wait(&thread_semaphore);
+                    front_col[s] = Lpi[s];
                         thread_args[s].A = A;
                         thread_args[s].F = F;
                         thread_args[s].zero = zero;
@@ -1214,10 +1249,21 @@ static int TEMPLATE (cholmod_super_numeric)
                         thread_args[s].L = L;
                         thread_args[s].Cwork = Cwork;
                         thread_args[s].Common = Common;
+                        thread_args[s].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
+                        thread_args[s].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
+                        thread_args[s].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
 #ifdef GPU_BLAS
-                        thread_args[s].useGPU = useGPU;
+                        thread_args[s].GPUslot_p = NULL;
+                        thread_args[s].useGPU = FALSE;
+                        for (i = 0; i < GPU_NUM; i++)
+                            if (useGPU_p[i])
+                            {
+                                thread_args[s].GPUslot_p = &useGPU_p[i];
+                                thread_args[s].useGPU = TRUE;
+                            }
                         thread_args[s].gpu_p = gpu_p;
 #endif
+                        thread_args[s].thread_semaphore_p = &thread_semaphore;
                         thread_args[s].thread_mutex_p = &thread_mutex;
                         thread_args[s].s = s;
                         thread_args[s].nscol_new = 0;
@@ -1225,7 +1271,7 @@ static int TEMPLATE (cholmod_super_numeric)
                         thread_args[s].to_return_p = &to_return;;
 
                         pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
-                        pthread_join(threads[s], NULL);
+                        //pthread_join(threads[s], NULL);
                 }
             }
         }
@@ -1240,6 +1286,10 @@ static int TEMPLATE (cholmod_super_numeric)
         }
     }
 
+    for (s = 0 ; s < nsuper ; s++)
+        pthread_join(threads[s], NULL);
+
+    sem_destroy(&thread_semaphore);
     pthread_mutex_destroy(&main_mutex);
     pthread_mutex_destroy(&thread_mutex);
 

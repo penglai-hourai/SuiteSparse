@@ -74,7 +74,7 @@ void TEMPLATE2 (CHOLMOD (gpu_clear_memory))
 
 int TEMPLATE2 (CHOLMOD (gpu_init))
 (
-    void *Cwork,
+    //void *Cwork,
     cholmod_factor *L,
     cholmod_common *Common,
     Int nsuper,
@@ -93,8 +93,8 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     maxSize = L->maxcsize;
 
     /* #define PAGE_SIZE (4*1024) */
-    CHOLMOD_GPU_PRINTF (("gpu_init : %p\n",
-        (void *) ((size_t) Cwork & ~(4*1024-1)))) ;
+    //CHOLMOD_GPU_PRINTF (("gpu_init : %p\n",
+    //    (void *) ((size_t) Cwork & ~(4*1024-1)))) ;
 
     /* make sure the assumed buffer sizes are large enough */
     if ( (nls+2*n+4)*sizeof(Int) > Common->devBuffSize ) {
