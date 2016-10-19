@@ -310,6 +310,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         /* (all supernodes in a level are independent) */
         /* ------------------------------------------------------------------ */
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
         if ( useGPU )
         {
@@ -318,6 +319,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                   &ndescendants, &tail, &mapCreatedOnGpu, gpu_p ) ;
         }
 #endif
+                    pthread_mutex_unlock(thread_mutex_p);
 
         /* ------------------------------------------------------------------ */
         /* copy matrix into supernode s (lower triangular part only) */
@@ -617,6 +619,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             ASSERT (ndrow3 >= 0) ;
 
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
             if ( useGPU ) {
                 /* set up GPU to assemble new supernode */
@@ -637,7 +640,9 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 }
             }
 #endif
+                    pthread_mutex_unlock(thread_mutex_p);
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
             if ( !useGPU
                 || GPUavailable!=1
@@ -755,6 +760,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                     (CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
             }
 #endif
+                    pthread_mutex_unlock(thread_mutex_p);
 
             /* -------------------------------------------------------------- */
             /* prepare this supernode d for its next ancestor */
@@ -773,14 +779,17 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 {
                     dancestor = SuperMap [Ls [pdi2]] ;
                     ASSERT (dancestor > s && dancestor < nsuper) ;
+                    pthread_mutex_lock(thread_mutex_p);
                     /* place d in the link list of its next ancestor */
                     Next [d] = Head [dancestor] ;
                     Head [dancestor] = d ;
+                    pthread_mutex_unlock(thread_mutex_p);
                 }
             }
 
         }  /* end of descendant supernode loop */
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
         if ( useGPU ) {
             iHostBuff = (Common->ibuffer)%CHOLMOD_HOST_SUPERNODE_BUFFERS;
@@ -793,6 +802,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                   &iHostBuff, &iDevBuff, gpu_p );
         }
 #endif
+                    pthread_mutex_unlock(thread_mutex_p);
 
         PRINT1 (("\nSupernode with contributions A: repeat: "ID"\n",
                  repeat_supernode)) ;
@@ -817,6 +827,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
         nscol2 = (repeat_supernode) ? (nscol_new) : (nscol) ;
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
         if ( !useGPU
             || !supernodeUsedGPU
@@ -847,6 +858,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             Common->CHOLMOD_CPU_POTRF_TIME += SuiteSparse_time ()- tstart ;
 #endif
         }
+                    pthread_mutex_unlock(thread_mutex_p);
 
         /* ------------------------------------------------------------------ */
         /* check if the matrix is not positive definite */
@@ -957,6 +969,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
              * notation.
              */
 
+                    pthread_mutex_lock(thread_mutex_p);
 #ifdef GPU_BLAS
             if ( !useGPU
                 || !supernodeUsedGPU
@@ -987,6 +1000,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 Common->CHOLMOD_CPU_TRSM_TIME += SuiteSparse_time () - tstart ;
 #endif
             }
+                    pthread_mutex_unlock(thread_mutex_p);
 
             if (CHECK_BLAS_INT && !Common->blas_ok)
             {
@@ -1003,17 +1017,21 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 ASSERT (Ls [psi + nscol] <  Super [sparent+1]) ;
                 ASSERT (SuperMap [Ls [psi + nscol]] == sparent) ;
                 ASSERT (sparent > s && sparent < nsuper) ;
+                pthread_mutex_lock(thread_mutex_p);
                 /* place s in link list of its parent */
                 Next [s] = Head [sparent] ;
                 Head [sparent] = s ;
+                pthread_mutex_unlock(thread_mutex_p);
             }
         }
         else
         {
 #ifdef GPU_BLAS
+                    pthread_mutex_lock(thread_mutex_p);
             TEMPLATE2 ( CHOLMOD (gpu_copy_supernode) )
                 ( Common, Lx, psx, nscol, nscol2, nsrow,
                   supernodeUsedGPU, iHostBuff, gpu_p);
+                    pthread_mutex_unlock(thread_mutex_p);
 #endif
         }
 
@@ -1041,16 +1059,16 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         RelativeMap = CHOLMOD(free) (n, sizeof(Int), RelativeMap, Common);
         C = CHOLMOD(free) (n, sizeof(double), C, Common);
 
+        thread_args->Map = Map;
+        thread_args->RelativeMap = RelativeMap;
+        thread_args->C = C;
+
 #ifdef GPU_BLAS
     pthread_mutex_lock(thread_mutex_p);
     if (useGPU && GPUslot_p != NULL)
         *GPUslot_p = TRUE;
     pthread_mutex_unlock(thread_mutex_p);
 #endif
-
-        thread_args->Map = Map;
-        thread_args->RelativeMap = RelativeMap;
-        thread_args->C = C;
 
     sem_post(thread_semaphore_p);
 
@@ -1164,21 +1182,21 @@ static int TEMPLATE (cholmod_super_numeric)
         front_col[s] = -1;
 
 #ifdef GPU_BLAS
-    for (s = 0; s < GPU_NUM; s++)
+    for (i = 0; i < GPU_NUM; i++)
     {
-    /* local copy of useGPU */
-    if ( (Common->useGPU == 1) && L->useGPU)
-    {
-        /* Initialize the GPU.  If not found, don't use it. */
-        useGPU_p[s] = TEMPLATE2 (CHOLMOD (gpu_init))
-            (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[s]) ;
-    }
-    else
-    {
-        useGPU_p[s] = 0;
-    }
-    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
-    useGPU |= useGPU_p[s];
+        /* local copy of useGPU */
+        if ( (Common->useGPU == 1) && L->useGPU)
+        {
+            /* Initialize the GPU.  If not found, don't use it. */
+            useGPU_p[i] = TEMPLATE2 (CHOLMOD (gpu_init))
+                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], i, &gpu_p[i]) ;
+        }
+        else
+        {
+            useGPU_p[i] = 0;
+        }
+        /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
+        useGPU |= useGPU_p[i];
     }
 #endif
 
@@ -1241,37 +1259,39 @@ static int TEMPLATE (cholmod_super_numeric)
                 {
                     sem_wait(&thread_semaphore);
                     front_col[s] = Lpi[s];
-                        thread_args[s].A = A;
-                        thread_args[s].F = F;
-                        thread_args[s].zero = zero;
-                        thread_args[s].one = one;
-                        thread_args[s].beta = beta;
-                        thread_args[s].L = L;
-                        thread_args[s].Cwork = Cwork;
-                        thread_args[s].Common = Common;
-                        thread_args[s].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
-                        thread_args[s].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
-                        thread_args[s].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
+                    thread_args[s].A = A;
+                    thread_args[s].F = F;
+                    thread_args[s].zero = zero;
+                    thread_args[s].one = one;
+                    thread_args[s].beta = beta;
+                    thread_args[s].L = L;
+                    thread_args[s].Cwork = Cwork;
+                    thread_args[s].Common = Common;
+                    thread_args[s].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
+                    thread_args[s].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
+                    thread_args[s].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
 #ifdef GPU_BLAS
-                        thread_args[s].GPUslot_p = NULL;
-                        thread_args[s].useGPU = FALSE;
-                        for (i = 0; i < GPU_NUM; i++)
-                            if (useGPU_p[i])
-                            {
-                                thread_args[s].GPUslot_p = &useGPU_p[i];
-                                thread_args[s].useGPU = TRUE;
-                            }
-                        thread_args[s].gpu_p = gpu_p;
+                    thread_args[s].GPUslot_p = NULL;
+                    thread_args[s].useGPU = FALSE;
+                    thread_args[s].gpu_p = GPU_NUM;
+                    for (i = 0; i < GPU_NUM; i++)
+                        if (useGPU_p[i])
+                        {
+                            useGPU_p[i] = FALSE;
+                            thread_args[s].GPUslot_p = &useGPU_p[i];
+                            thread_args[s].useGPU = TRUE;
+                            thread_args[s].gpu_p = gpu_p;
+                        }
 #endif
-                        thread_args[s].thread_semaphore_p = &thread_semaphore;
-                        thread_args[s].thread_mutex_p = &thread_mutex;
-                        thread_args[s].s = s;
-                        thread_args[s].nscol_new = 0;
-                        thread_args[s].repeat_supernode = FALSE;
-                        thread_args[s].to_return_p = &to_return;;
+                    thread_args[s].thread_semaphore_p = &thread_semaphore;
+                    thread_args[s].thread_mutex_p = &thread_mutex;
+                    thread_args[s].s = s;
+                    thread_args[s].nscol_new = 0;
+                    thread_args[s].repeat_supernode = FALSE;
+                    thread_args[s].to_return_p = &to_return;;
 
-                        pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
-                        //pthread_join(threads[s], NULL);
+                    pthread_create(&threads[s], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[s]);
+                    //pthread_join(threads[s], NULL);
                 }
             }
         }

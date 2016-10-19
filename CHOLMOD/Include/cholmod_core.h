@@ -282,7 +282,7 @@
 #endif
 
 #ifndef CHOLMOD_PTHREADS_NUM_THREADS
-#define CHOLMOD_PTHREADS_NUM_THREADS 1
+#define CHOLMOD_PTHREADS_NUM_THREADS 8
 #endif
 
 /* Define buffering parameters for GPU processing */
@@ -994,7 +994,7 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     updateCKernelsComplete;
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    void *dev_mempool;    /* pointer to single allocation of device memory */
+    void *dev_mempool[GPU_NUM];    /* pointer to single allocation of device memory */
     size_t dev_mempool_size;
 
     void *host_pinned_mempool;  /* pointer to single allocation of pinned mem */

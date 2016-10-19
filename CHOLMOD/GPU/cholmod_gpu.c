@@ -199,22 +199,27 @@ int CHOLMOD(gpu_deallocate)
     cholmod_common *Common
 )
 {
+    int k;
 
 #ifdef GPU_BLAS
     cudaError_t cudaErr;
 
-    if ( Common->dev_mempool )
+    for (k = 0; k < GPU_NUM; k++)
     {
-        /* fprintf (stderr, "free dev_mempool\n") ; */
-        cudaErr = cudaFree (Common->dev_mempool);
-        /* fprintf (stderr, "free dev_mempool done\n") ; */
-        if ( cudaErr )
+        if ( Common->dev_mempool[k] )
         {
-            ERROR ( CHOLMOD_GPU_PROBLEM,
-                    "GPU error when freeing device memory.");
+            cudaSetDevice(k);
+            /* fprintf (stderr, "free dev_mempool\n") ; */
+            cudaErr = cudaFree (Common->dev_mempool[k]);
+            /* fprintf (stderr, "free dev_mempool done\n") ; */
+            if ( cudaErr )
+            {
+                ERROR ( CHOLMOD_GPU_PROBLEM,
+                        "GPU error when freeing device memory.");
+            }
         }
+        Common->dev_mempool[k] = NULL;
     }
-    Common->dev_mempool = NULL;
     Common->dev_mempool_size = 0;
 
     if ( Common->host_pinned_mempool )
@@ -457,7 +462,8 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
         (size_t)CHOLMOD_DEVICE_SUPERNODE_BUFFERS;
     Common->devBuffSize -= Common->devBuffSize%0x20000;
 
-    cudaErr = cudaMalloc ( &(Common->dev_mempool), requestedDeviceMemory );
+    for (k = 0; k < GPU_NUM; k++)
+        cudaErr = cudaMalloc ( &(Common->dev_mempool[k]), requestedDeviceMemory );
     /*
     CHOLMOD_HANDLE_CUDA_ERROR (cudaErr,"device memory allocation failure\n");
     */
