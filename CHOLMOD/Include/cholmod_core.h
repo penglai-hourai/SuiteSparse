@@ -278,7 +278,7 @@
 #endif
 
 #ifndef CHOLMOD_PTHREADS_NUM_THREADS
-#define CHOLMOD_PTHREADS_NUM_THREADS 8
+#define CHOLMOD_PTHREADS_NUM_THREADS 1
 #endif
 
 /* Define buffering parameters for GPU processing */

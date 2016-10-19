@@ -1050,6 +1050,13 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 *(thread_args->to_return_p) = TRUE;
         }
 
+#ifdef GPU_BLAS
+    pthread_mutex_lock(thread_mutex_p);
+    if (useGPU && GPUslot_p != NULL)
+        *GPUslot_p = TRUE;
+    pthread_mutex_unlock(thread_mutex_p);
+#endif
+
         front_col[s] = Lpi[s+1];
         sparent = SuperMap [Ls [psi + nscol]] ;
         if (sparent != EMPTY)
@@ -1062,13 +1069,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         thread_args->Map = Map;
         thread_args->RelativeMap = RelativeMap;
         thread_args->C = C;
-
-#ifdef GPU_BLAS
-    pthread_mutex_lock(thread_mutex_p);
-    if (useGPU && GPUslot_p != NULL)
-        *GPUslot_p = TRUE;
-    pthread_mutex_unlock(thread_mutex_p);
-#endif
 
     sem_post(thread_semaphore_p);
 
