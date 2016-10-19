@@ -80,7 +80,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     Int nsuper,
     Int n,
     Int nls,
-    int device,
     cholmod_gpu_pointers *gpu_p
 )
 {
@@ -94,8 +93,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     maxSize = L->maxcsize;
 
     /* #define PAGE_SIZE (4*1024) */
-    //CHOLMOD_GPU_PRINTF (("gpu_init : %p\n",
-    //    (void *) ((size_t) Cwork & ~(4*1024-1)))) ;
+    /*
+    CHOLMOD_GPU_PRINTF (("gpu_init : %p\n",
+        (void *) ((size_t) Cwork & ~(4*1024-1)))) ;
+        */
 
     /* make sure the assumed buffer sizes are large enough */
     if ( (nls+2*n+4)*sizeof(Int) > Common->devBuffSize ) {
@@ -112,13 +113,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     /* divvy up the memory in dev_mempool */
-    gpu_p->device = device;
-    gpu_p->d_Lx[0] = Common->dev_mempool[device];
-    gpu_p->d_Lx[1] = Common->dev_mempool[device] + Common->devBuffSize;
-    gpu_p->d_C = Common->dev_mempool[device] + 2*Common->devBuffSize;
-    gpu_p->d_A[0] = Common->dev_mempool[device] + 3*Common->devBuffSize;
-    gpu_p->d_A[1] = Common->dev_mempool[device] + 4*Common->devBuffSize;
-    gpu_p->d_Ls = Common->dev_mempool[device] + 5*Common->devBuffSize;
+    gpu_p->d_Lx[0] = Common->dev_mempool;
+    gpu_p->d_Lx[1] = Common->dev_mempool + Common->devBuffSize;
+    gpu_p->d_C = Common->dev_mempool + 2*Common->devBuffSize;
+    gpu_p->d_A[0] = Common->dev_mempool + 3*Common->devBuffSize;
+    gpu_p->d_A[1] = Common->dev_mempool + 4*Common->devBuffSize;
+    gpu_p->d_Ls = Common->dev_mempool + 5*Common->devBuffSize;
     gpu_p->d_Map = gpu_p->d_Ls + (nls+1)*sizeof(Int) ;
     gpu_p->d_RelativeMap = gpu_p->d_Map + (n+1)*sizeof(Int) ;
 

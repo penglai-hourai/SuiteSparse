@@ -182,8 +182,7 @@ int CHOLMOD(start)
     Common->updateCKernelsComplete = NULL;
 
     /* these are destroyed by cholmod_gpu_deallocate */
-    for (k = 0; k < GPU_NUM; k++)
-        Common->dev_mempool[k] = NULL;
+    Common->dev_mempool = NULL;
     Common->dev_mempool_size = 0;
     Common->host_pinned_mempool = NULL;
     Common->host_pinned_mempool_size = 0;

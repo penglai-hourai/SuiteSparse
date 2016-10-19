@@ -273,10 +273,6 @@
 
 /* The number of OMP threads should typically be set to the number of cores   */
 /* per socket inthe machine being used.  This maximizes memory performance.   */
-#ifndef GPU_NUM
-#define GPU_NUM 1
-#endif
-
 #ifndef CHOLMOD_OMP_NUM_THREADS
 #define CHOLMOD_OMP_NUM_THREADS 4
 #endif
@@ -994,7 +990,7 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     updateCKernelsComplete;
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    void *dev_mempool[GPU_NUM];    /* pointer to single allocation of device memory */
+    void *dev_mempool;    /* pointer to single allocation of device memory */
     size_t dev_mempool_size;
 
     void *host_pinned_mempool;  /* pointer to single allocation of pinned mem */

@@ -1107,7 +1107,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
         *Previous, *pending, *front_col;
-    Int i, nsuper, n, s, sparent, t;
+    Int nsuper, n, s, sparent, t;
 
     sem_init(&thread_semaphore, 0, CHOLMOD_PTHREADS_NUM_THREADS);
     pthread_mutex_init(&main_mutex, NULL);
@@ -1120,8 +1120,8 @@ static int TEMPLATE (cholmod_super_numeric)
     /* these variables are not used if the GPU module is not installed */
 
 #ifdef GPU_BLAS
-    int useGPU = FALSE, useGPU_p[GPU_NUM];
-    cholmod_gpu_pointers gpu_p[GPU_NUM];
+    int useGPU = FALSE;
+    cholmod_gpu_pointers gpu_p[1];
 #endif
 
     /* ---------------------------------------------------------------------- */
@@ -1182,22 +1182,18 @@ static int TEMPLATE (cholmod_super_numeric)
         front_col[s] = -1;
 
 #ifdef GPU_BLAS
-    for (i = 0; i < GPU_NUM; i++)
-    {
         /* local copy of useGPU */
         if ( (Common->useGPU == 1) && L->useGPU)
         {
             /* Initialize the GPU.  If not found, don't use it. */
-            useGPU_p[i] = TEMPLATE2 (CHOLMOD (gpu_init))
-                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], i, &gpu_p[i]) ;
+            useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
+                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], gpu_p) ;
         }
         else
         {
-            useGPU_p[i] = 0;
+            useGPU = 0;
         }
         /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
-        useGPU |= useGPU_p[i];
-    }
 #endif
 
 #ifndef NTIMER
@@ -1271,17 +1267,20 @@ static int TEMPLATE (cholmod_super_numeric)
                     thread_args[s].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
                     thread_args[s].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
 #ifdef GPU_BLAS
-                    thread_args[s].GPUslot_p = NULL;
-                    thread_args[s].useGPU = FALSE;
-                    thread_args[s].gpu_p = GPU_NUM;
-                    for (i = 0; i < GPU_NUM; i++)
-                        if (useGPU_p[i])
-                        {
-                            useGPU_p[i] = FALSE;
-                            thread_args[s].GPUslot_p = &useGPU_p[i];
-                            thread_args[s].useGPU = TRUE;
-                            thread_args[s].gpu_p = gpu_p;
-                        }
+                    if (useGPU)
+                    {
+                        useGPU = FALSE;
+                        thread_args[s].GPUslot_p = &useGPU;
+                        thread_args[s].useGPU = TRUE;
+                        thread_args[s].gpu_p = gpu_p;
+                    }
+                    else
+                    {
+                        useGPU = FALSE;
+                        thread_args[s].GPUslot_p = NULL;
+                        thread_args[s].useGPU = FALSE;
+                        thread_args[s].gpu_p = NULL;
+                    }
 #endif
                     thread_args[s].thread_semaphore_p = &thread_semaphore;
                     thread_args[s].thread_mutex_p = &thread_mutex;
