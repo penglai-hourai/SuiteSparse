@@ -281,6 +281,10 @@
 #define CHOLMOD_PTHREADS_NUM_THREADS 2
 #endif
 
+#ifndef CHOLMOD_CUDA_NUM_BLOCKS
+#define CHOLMOD_CUDA_NUM_BLOCKS 1024
+#endif
+
 /* Define buffering parameters for GPU processing */
 #ifdef GPU_BLAS
 #include <cublas_v2.h>

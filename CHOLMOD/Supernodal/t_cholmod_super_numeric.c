@@ -134,7 +134,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     double *Ax, *Fx, *Lx;
     double *C;
 
-    Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col;
+    Int *Iwork, *SuperMap, *FrontBusy, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col, *rear_col;
     Int *Head, *Map, *RelativeMap;
 
     Int s, ss, sparent;
@@ -233,7 +233,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
     SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    //RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    FrontBusy   = Iwork + n ;                               /* size n (i/i/l) */
     Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
     Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
@@ -241,6 +241,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
     pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
     front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
+    rear_col    = Iwork + 2*((size_t) n) + 7*((size_t) nsuper) ;/* size nsuper*/
 
     //Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
@@ -1044,12 +1045,13 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         *GPUslot_p = TRUE;
 #endif
 
-        front_col[s] = Lpi[s+1];
-        sparent = SuperMap [Ls [psi + nscol]] ;
-        if (sparent != EMPTY)
-            pending[sparent]--;
+    FrontBusy[s] = FALSE;
+    front_col[s] = rear_col[s];
+    sparent = SuperMap [Ls [psi + nscol]] ;
+    if (sparent != EMPTY)
+        pending[sparent]--;
 
-        *thread_used_p = FALSE;
+    *thread_used_p = FALSE;
     sem_post(thread_semaphore_p);
 
     return void_args;
@@ -1085,9 +1087,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
     double one [2], zero [2];
     double *Lx;
-    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
+    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *FrontBusy, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
-        *Previous, *pending, *front_col;
+        *Previous, *pending, *front_col, *rear_col;
     Int i, nsuper, n, s, sparent;
 
     sem_init(&thread_semaphore, 0, CHOLMOD_PTHREADS_NUM_THREADS);
@@ -1133,7 +1135,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
     SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    //RelativeMap = Iwork + n ;                               /* size n (i/i/l) */
+    FrontBusy   = Iwork + n ;                               /* size n (i/i/l) */
     Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
     Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
     Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
@@ -1141,6 +1143,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
     pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
     front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
+    rear_col    = Iwork + 2*((size_t) n) + 7*((size_t) nsuper) ;/* size nsuper*/
 
     Ls = L->s ;
     Lpi = L->pi ;
@@ -1159,7 +1162,11 @@ static int TEMPLATE (cholmod_super_numeric)
             pending[sparent]++;
     }
     for (s = 0; s < nsuper; s++)
-        front_col[s] = -1;
+    {
+        FrontBusy[s] = FALSE;
+        front_col[s] = Lpi[s];
+        rear_col[s] = Lpi[s+1];
+    }
 
     for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
     {
@@ -1233,7 +1240,7 @@ static int TEMPLATE (cholmod_super_numeric)
         for (s = nsuper - 1 ; s >= 0 ; s--)
         //for (s = 0 ; s < nsuper ; s++)
         {
-            if (front_col[s] < 0)
+            if (!FrontBusy[s] && front_col[s] < Lpi[s+1])
             {
                 end_of_factorization = FALSE;
                 if (pending[s] <= 0)
@@ -1242,8 +1249,8 @@ static int TEMPLATE (cholmod_super_numeric)
                     for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS && thread_used[i]; i++);
                     if (i < CHOLMOD_PTHREADS_NUM_THREADS)
                     {
+                        FrontBusy[s] = TRUE;
                         thread_used[i] = TRUE;
-                        front_col[s] = Lpi[s];
                         thread_args[i].A = A;
                         thread_args[i].F = F;
                         thread_args[i].zero = zero;
