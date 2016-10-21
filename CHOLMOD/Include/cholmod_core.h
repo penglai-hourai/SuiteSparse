@@ -1006,7 +1006,7 @@ typedef struct cholmod_common_struct
     void *host_pinned_mempool[CUDA_GPU_NUM];  /* pointer to single allocation of pinned mem */
     size_t host_pinned_mempool_size[CUDA_GPU_NUM];
 
-    size_t devBuffSize[CUDA_GPU_NUM];
+    size_t devBuffSize;
     int    ibuffer[CUDA_GPU_NUM];
 
     double syrkStart[CUDA_GPU_NUM];          /* time syrk started */

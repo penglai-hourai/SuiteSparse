@@ -98,7 +98,7 @@ typedef struct
     Int *RelativeMap;
     double *C;
 #ifdef GPU_BLAS
-    int *GPUslot_p;
+    int *gpu_used_p;
     int useGPU;
     cholmod_gpu_pointers *gpu_p;
 #endif
@@ -158,8 +158,9 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
     int iHostBuff, iDevBuff, useGPU, GPUavailable ;
-    int *GPUslot_p;
+    int *gpu_used_p;
     cholmod_gpu_pointers *gpu_p ;
+    int device;
 #endif
 
     thread_args = void_args;
@@ -180,9 +181,10 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     RelativeMap = thread_args->RelativeMap;
     C = thread_args->C;
 #ifdef GPU_BLAS
-    GPUslot_p = thread_args->GPUslot_p;
+    gpu_used_p = thread_args->gpu_used_p;
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
+    device = gpu_p->device;
 #endif
     s = thread_args->s;
     nscol_new = thread_args->nscol_new;
@@ -453,7 +455,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 #ifdef GPU_BLAS
         /* initialize the buffer counter */
         if ( useGPU ) {
-            Common->ibuffer = 0;
+            Common->ibuffer[device] = 0;
             supernodeUsedGPU = 0;
             idescendant = 0;
             d = Head[s];
@@ -505,7 +507,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                  */
 
                 iHostBuff =
-                    (Common->ibuffer) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
+                    (Common->ibuffer[device]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                 cudaError_t cuErr;
 
                 if ( idescendant > 0 )  {
@@ -752,10 +754,10 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             else
             {
                 supernodeUsedGPU = 1;   /* GPU was used for this supernode*/
-                Common->ibuffer++;      /* gpu_updateC is asynchronous, so use
+                Common->ibuffer[device]++;      /* gpu_updateC is asynchronous, so use
                                          * the next host buffer for the next
                                          * supernode */
-                Common->ibuffer = Common->ibuffer%
+                Common->ibuffer[device] = Common->ibuffer[device]%
                     (CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
             }
 #endif
@@ -789,8 +791,8 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
 #ifdef GPU_BLAS
         if ( useGPU ) {
-            iHostBuff = (Common->ibuffer)%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-            iDevBuff = (Common->ibuffer)%CHOLMOD_DEVICE_STREAMS;
+            iHostBuff = (Common->ibuffer[device])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+            iDevBuff = (Common->ibuffer[device])%CHOLMOD_DEVICE_STREAMS;
 
             /* combine updates assembled on the GPU with updates
              * assembled on the CPU */
@@ -1041,8 +1043,8 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         }
 
 #ifdef GPU_BLAS
-    if (useGPU && GPUslot_p != NULL)
-        *GPUslot_p = TRUE;
+    if (useGPU && gpu_used_p != NULL)
+        *gpu_used_p = FALSE;
 #endif
 
     FrontBusy[s] = FALSE;
@@ -1102,8 +1104,10 @@ static int TEMPLATE (cholmod_super_numeric)
     /* these variables are not used if the GPU module is not installed */
 
 #ifdef GPU_BLAS
+    int device;
     int useGPU = FALSE;
-    cholmod_gpu_pointers gpu_p[1];
+    cholmod_gpu_pointers gpu_p[CUDA_GPU_NUM];
+    int gpu_used[CUDA_GPU_NUM];
 #endif
 
     /* ---------------------------------------------------------------------- */
@@ -1176,12 +1180,21 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 
 #ifdef GPU_BLAS
+    for (device = 0; device < Common->cuda_gpu_num; device++)
+        gpu_used[device] = FALSE;
+    for (device = Common->cuda_gpu_num; device < CUDA_GPU_NUM; device++)
+        gpu_used[device] = TRUE;
+
+    for (device = 0; device < Common->cuda_gpu_num; device++)
+        gpu_p[device].device = device;
+
         /* local copy of useGPU */
+    for (device = 0; device < Common->cuda_gpu_num; device++)
         if ( (Common->useGPU == 1) && L->useGPU)
         {
             /* Initialize the GPU.  If not found, don't use it. */
             useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
-                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], gpu_p) ;
+                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[device]) ;
         }
         else
         {
@@ -1260,17 +1273,17 @@ static int TEMPLATE (cholmod_super_numeric)
                         thread_args[i].Cwork = Cwork;
                         thread_args[i].Common = Common;
 #ifdef GPU_BLAS
-                        if (useGPU)
+                        for (device = 0; device < Common->cuda_gpu_num && gpu_used[device]; device++);
+                        if (useGPU && !gpu_used[device])
                         {
-                            useGPU = FALSE;
-                            thread_args[i].GPUslot_p = &useGPU;
+                            gpu_used[device] = TRUE;
+                            thread_args[i].gpu_used_p = &gpu_used[device];
                             thread_args[i].useGPU = TRUE;
                             thread_args[i].gpu_p = gpu_p;
                         }
                         else
                         {
-                            useGPU = FALSE;
-                            thread_args[i].GPUslot_p = NULL;
+                            thread_args[i].gpu_used_p = NULL;
                             thread_args[i].useGPU = FALSE;
                             thread_args[i].gpu_p = NULL;
                         }

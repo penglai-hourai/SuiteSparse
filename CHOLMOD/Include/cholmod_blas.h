@@ -251,7 +251,9 @@ void BLAS_DTRSM (char *side, char *uplo, char *transa, char *diag, BLAS_INT *m,
     } \
     if (!CHECK_BLAS_INT || BLAS_OK) \
     { \
+        printf ("----------------checkpoint----------------\n"); \
 	BLAS_DTRSM (side, uplo, transa, diag, &M, &N, alpha, A, &LDA, B, &LDB);\
+        printf ("++++++++++++++++checkpoint++++++++++++++++\n"); \
     } \
 }
 

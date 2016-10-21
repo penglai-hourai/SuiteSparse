@@ -184,6 +184,9 @@ int CHOLMOD(super_symbolic2)
     size_t max_bytes;
     const char* env_max_fraction;
     double max_fraction;
+#ifdef GPU_BLAS
+    int device;
+#endif
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -271,7 +274,6 @@ int CHOLMOD(super_symbolic2)
                 else
                 {
                     Common->useGPU = 1; /* use the gpu */
-                    CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
                     if (Common->cuda_gpu_num > CUDA_GPU_NUM)
                         Common->cuda_gpu_num = CUDA_GPU_NUM;
                     env_max_bytes = getenv("CHOLMOD_GPU_MEM_BYTES");
@@ -305,14 +307,16 @@ int CHOLMOD(super_symbolic2)
         {
             /* fprintf (stderr, "\nprobe GPU:\n") ; */
             Common->useGPU = CHOLMOD(gpu_probe) (Common); 
+            CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
             /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
         }
 
         if ( Common->useGPU == 1 )
         {
             /* Cholesky + GPU, so allocate space */
+            for (device = 0; device < Common->cuda_gpu_num; device++)
             /* fprintf (stderr, "allocate GPU:\n") ; */
-            CHOLMOD(gpu_allocate) ( Common );
+            CHOLMOD(gpu_allocate) ( Common, device );
             /* fprintf (stderr, "allocate GPU done\n") ; */
         }
 #else

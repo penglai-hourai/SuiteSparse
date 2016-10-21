@@ -54,6 +54,7 @@ int CHOLMOD(start)
 )
 {
     int k ;
+    int device;
 
     if (Common == NULL)
     {
@@ -171,24 +172,28 @@ int CHOLMOD(start)
 
     Common->cuda_gpu_num = 0;
     /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
-    Common->cublasHandle = NULL ;
-    Common->cublasEventPotrf [0] = NULL ;
-    Common->cublasEventPotrf [1] = NULL ;
-    Common->cublasEventPotrf [2] = NULL ;
+    for (device = 0; device < CUDA_GPU_NUM; device++)
+    {
+    Common->cublasHandle[device] = NULL ;
+    Common->cublasEventPotrf[device] [0] = NULL ;
+    Common->cublasEventPotrf[device] [1] = NULL ;
+    Common->cublasEventPotrf[device] [2] = NULL ;
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        Common->gpuStream [k] = NULL ;
-        Common->updateCBuffersFree [k] = NULL ;
+        Common->gpuStream[device] [k] = NULL ;
+        Common->updateCBuffersFree[device] [k] = NULL ;
     }
-    Common->updateCKernelsComplete = NULL;
+    Common->updateCKernelsComplete[device] = NULL;
 
     /* these are destroyed by cholmod_gpu_deallocate */
-    Common->dev_mempool = NULL;
-    Common->dev_mempool_size = 0;
-    Common->host_pinned_mempool = NULL;
-    Common->host_pinned_mempool_size = 0;
+    Common->dev_mempool[device] = NULL;
+    Common->dev_mempool_size[device] = 0;
+    Common->host_pinned_mempool[device] = NULL;
+    Common->host_pinned_mempool_size[device] = 0;
 
-    Common->syrkStart = 0 ;
+    Common->syrkStart[device] = 0 ;
+    }
+    Common->devBuffSize = 0;
 
     Common->cholmod_cpu_gemm_time = 0 ;
     Common->cholmod_cpu_syrk_time = 0 ;
@@ -570,6 +575,10 @@ int CHOLMOD(free_work)
     cholmod_common *Common
 )
 {
+#ifdef GPU_BLAS
+    int device;
+#endif
+
     RETURN_IF_NULL_COMMON (FALSE) ;
     Common->Flag  = CHOLMOD(free) (Common->nrow, sizeof (Int),
 	    Common->Flag, Common) ;
@@ -584,7 +593,8 @@ int CHOLMOD(free_work)
     Common->xworksize = 0 ;
 
 #ifdef GPU_BLAS
-    CHOLMOD(gpu_deallocate) (Common) ;
+    for (device = 0; device < Common->cuda_gpu_num; device++)
+    CHOLMOD(gpu_deallocate) (Common, device) ;
 #endif
     return (TRUE) ;
 }

@@ -194,42 +194,41 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
  * Deallocate all GPU related buffers.
  */
 
-int CHOLMOD(gpu_deallocate)
-(
-    cholmod_common *Common
-)
+int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
 {
 
 #ifdef GPU_BLAS
     cudaError_t cudaErr;
 
-    if ( Common->dev_mempool )
+    cudaSetDevice(device);
+
+    if ( Common->dev_mempool[device] )
     {
-        /* fprintf (stderr, "free dev_mempool\n") ; */
-        cudaErr = cudaFree (Common->dev_mempool);
-        /* fprintf (stderr, "free dev_mempool done\n") ; */
+        /* fprintf (stderr, "free dev_mempool[%d]\n", device) ; */
+        cudaErr = cudaFree (Common->dev_mempool[device]);
+        /* fprintf (stderr, "free dev_mempool[%d] done\n", device) ; */
         if ( cudaErr )
         {
             ERROR ( CHOLMOD_GPU_PROBLEM,
                     "GPU error when freeing device memory.");
         }
     }
-    Common->dev_mempool = NULL;
-    Common->dev_mempool_size = 0;
+    Common->dev_mempool[device] = NULL;
+    Common->dev_mempool_size[device] = 0;
 
-    if ( Common->host_pinned_mempool )
+    if ( Common->host_pinned_mempool[device] )
     {
-        /* fprintf (stderr, "free host_pinned_mempool\n") ; */
-        cudaErr = cudaFreeHost ( Common->host_pinned_mempool );
-        /* fprintf (stderr, "free host_pinned_mempool done\n") ; */
+        /* fprintf (stderr, "free host_pinned_mempool[%d]\n", device) ; */
+        cudaErr = cudaFreeHost ( Common->host_pinned_mempool[device] );
+        /* fprintf (stderr, "free host_pinned_mempool[%d] done\n", device) ; */
         if ( cudaErr )
         {
             ERROR ( CHOLMOD_GPU_PROBLEM,
                     "GPU error when freeing host pinned memory.");
         }
     }
-    Common->host_pinned_mempool = NULL;
-    Common->host_pinned_mempool_size = 0;
+    Common->host_pinned_mempool[device] = NULL;
+    Common->host_pinned_mempool_size[device] = 0;
 
     CHOLMOD (gpu_end) (Common) ;
 #endif
@@ -248,32 +247,36 @@ void CHOLMOD(gpu_end)
 {
 #ifdef GPU_BLAS
     int k ;
+    int device;
 
     /* ------------------------------------------------------------------ */
     /* destroy Cublas Handle */
     /* ------------------------------------------------------------------ */
 
-    if (Common->cublasHandle)
+    for (device = 0; device < Common->cuda_gpu_num; device++)
+    if (Common->cublasHandle[device])
     {
-        /* fprintf (stderr, "destroy cublas %p\n", Common->cublasHandle) ; */
-        cublasDestroy (Common->cublasHandle) ;
-        /* fprintf (stderr, "destroy cublas done\n") ; */
-        Common->cublasHandle = NULL ;
+        /* fprintf (stderr, "destroy cublas[%d] %p\n", device, Common->cublasHandle[device]) ; */
+        cublasDestroy (Common->cublasHandle[device]) ;
+        /* fprintf (stderr, "destroy cublas[%d] done\n", device) ; */
+        Common->cublasHandle[device] = NULL ;
     }
 
+    for (device = 0; device < Common->cuda_gpu_num; device++)
+    {
     /* ------------------------------------------------------------------ */
     /* destroy each CUDA stream */
     /* ------------------------------------------------------------------ */
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        if (Common->gpuStream [k])
+        if (Common->gpuStream[device] [k])
         {
-            /* fprintf (stderr, "destroy gpuStream [%d] %p\n", k,
-                Common->gpuStream [k]) ; */
-            cudaStreamDestroy (Common->gpuStream [k]) ;
-            /* fprintf (stderr, "destroy gpuStream [%d] done\n", k) ; */
-            Common->gpuStream [k] = NULL ;
+            /* fprintf (stderr, "destroy gpuStream[%d] [%d] %p\n", device, k,
+                Common->gpuStream[device] [k]) ; */
+            cudaStreamDestroy (Common->gpuStream[device] [k]) ;
+            /* fprintf (stderr, "destroy gpuStream[%d] [%d] done\n", device, k) ; */
+            Common->gpuStream[device] [k] = NULL ;
         }
     }
 
@@ -283,35 +286,36 @@ void CHOLMOD(gpu_end)
 
     for (k = 0 ; k < 3 ; k++)
     {
-        if (Common->cublasEventPotrf [k])
+        if (Common->cublasEventPotrf[device] [k])
         {
-            /* fprintf (stderr, "destroy cublasEnventPotrf [%d] %p\n", k,
-                Common->cublasEventPotrf [k]) ; */
-            cudaEventDestroy (Common->cublasEventPotrf [k]) ;
-            /* fprintf (stderr, "destroy cublasEnventPotrf [%d] done\n", k) ; */
-            Common->cublasEventPotrf [k] = NULL ;
+            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] %p\n", device, k,
+                Common->cublasEventPotrf[device] [k]) ; */
+            cudaEventDestroy (Common->cublasEventPotrf[device] [k]) ;
+            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] done\n", device, k) ; */
+            Common->cublasEventPotrf[device] [k] = NULL ;
         }
+    }
     }
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        if (Common->updateCBuffersFree [k])
+        if (Common->updateCBuffersFree[device] [k])
         {
-            /* fprintf (stderr, "destroy updateCBuffersFree [%d] %p\n", k,
-                Common->updateCBuffersFree [k]) ; */
-            cudaEventDestroy (Common->updateCBuffersFree [k]) ;
-            /* fprintf (stderr, "destroy updateCBuffersFree [%d] done\n", k) ;*/
-            Common->updateCBuffersFree [k] = NULL ;
+            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] %p\n", device, k,
+                Common->updateCBuffersFree[device] [k]) ; */
+            cudaEventDestroy (Common->updateCBuffersFree[device] [k]) ;
+            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] done\n", device, k) ;*/
+            Common->updateCBuffersFree[device] [k] = NULL ;
         }
     }
 
-    if (Common->updateCKernelsComplete)
+    if (Common->updateCKernelsComplete[device])
     {
-        /* fprintf (stderr, "destroy updateCKernelsComplete %p\n",
-            Common->updateCKernelsComplete) ; */
-        cudaEventDestroy (Common->updateCKernelsComplete) ;
-        /* fprintf (stderr, "destroy updateCKernelsComplete done\n") ; */
-        Common->updateCKernelsComplete = NULL;
+        /* fprintf (stderr, "destroy updateCKernelsComplete[%d] %p\n", device,
+            Common->updateCKernelsComplete[device]) ; */
+        cudaEventDestroy (Common->updateCKernelsComplete[device]) ;
+        /* fprintf (stderr, "destroy updateCKernelsComplete[%d] done\n", device) ; */
+        Common->updateCKernelsComplete[device] = NULL;
     }
 #endif
 }
@@ -350,7 +354,7 @@ void CHOLMOD(gpu_end)
  *
  */
 
-int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
+int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
 {
 
 #ifdef GPU_BLAS
@@ -363,6 +367,10 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
     cublasStatus_t cublasErr;
     size_t maxGpuMemBytes;
     double maxGpuMemFraction;
+
+    size_t devBuffSize;
+
+    cudaSetDevice(device);
 
     /* fprintf (stderr, "gpu_allocate useGPU %d\n", Common->useGPU) ; */
     if (Common->useGPU != 1) return (0) ;
@@ -390,7 +398,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
          *  (other programs could already have allocated some GPU memory,
          *  possibly even previous calls to gpu_allocate).  Always leave
          *  50 MB free for driver use. */
-        requestedDeviceMemory = fdm+Common->dev_mempool_size-
+        requestedDeviceMemory = fdm+Common->dev_mempool_size[device]-
             1024ll*1024ll*50ll;
     }
     else if ( maxGpuMemBytes > 0 && maxGpuMemFraction > 0 ) {
@@ -416,19 +424,19 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
     }
 
     /* do nothing if sufficient memory has already been allocated */
-    if ( requestedDeviceMemory <= Common->dev_mempool_size ) {
+    if ( requestedDeviceMemory <= Common->dev_mempool_size[device] ) {
 
         CHOLMOD_GPU_PRINTF (("requested = %d, mempool = %d \n",
-            requestedDeviceMemory, Common->dev_mempool_size));
+            requestedDeviceMemory, Common->dev_mempool_size[device]));
         CHOLMOD_GPU_PRINTF (("GPU NOTE:  gpu_allocate did nothing \n"));
         return 0;
     }
 
-    CHOLMOD(gpu_deallocate);
+    CHOLMOD(gpu_deallocate, Common, device);
 
     /* create cuBlas handle */
-    if ( ! Common->cublasHandle ) {
-        cublasErr = cublasCreate (&(Common->cublasHandle)) ;
+    if ( ! Common->cublasHandle[device] ) {
+        cublasErr = cublasCreate (&(Common->cublasHandle[device])) ;
         if (cublasErr != CUBLAS_STATUS_SUCCESS) {
             ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
             return 1;
@@ -439,25 +447,27 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
     requestedHostMemory = requestedDeviceMemory*CHOLMOD_HOST_SUPERNODE_BUFFERS/
         CHOLMOD_DEVICE_SUPERNODE_BUFFERS;
 
-    cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool),
+    cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool[device]),
                                requestedHostMemory );
     while ( cudaErr ) {
         /* insufficient host memory, try again with less */
         requestedHostMemory *= .5;
-        cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool),
+        cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool[device]),
                                    requestedHostMemory );
     }
-    Common->host_pinned_mempool_size = requestedHostMemory;
+    Common->host_pinned_mempool_size[device] = requestedHostMemory;
 
     requestedDeviceMemory = requestedHostMemory*
         CHOLMOD_DEVICE_SUPERNODE_BUFFERS/CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
     /* Split up the memory allocations into required device buffers. */
-    Common->devBuffSize = requestedDeviceMemory/
+    devBuffSize = requestedDeviceMemory/
         (size_t)CHOLMOD_DEVICE_SUPERNODE_BUFFERS;
-    Common->devBuffSize -= Common->devBuffSize%0x20000;
+    devBuffSize -= devBuffSize%0x20000;
+    if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)
+        Common->devBuffSize = devBuffSize;
 
-    cudaErr = cudaMalloc ( &(Common->dev_mempool), requestedDeviceMemory );
+    cudaErr = cudaMalloc ( &(Common->dev_mempool[device]), requestedDeviceMemory );
     /*
     CHOLMOD_HANDLE_CUDA_ERROR (cudaErr,"device memory allocation failure\n");
     */
@@ -468,7 +478,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common )
         ERROR (CHOLMOD_GPU_PROBLEM, "device memory allocation failure\n") ;
     }
 
-    Common->dev_mempool_size = requestedDeviceMemory;
+    Common->dev_mempool_size[device] = requestedDeviceMemory;
 
 #endif
 
