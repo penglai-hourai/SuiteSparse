@@ -169,6 +169,7 @@ int CHOLMOD(start)
     /* GPU initializations */
     /* ---------------------------------------------------------------------- */
 
+    Common->cuda_gpu_num = 0;
     /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
     Common->cublasHandle = NULL ;
     Common->cublasEventPotrf [0] = NULL ;

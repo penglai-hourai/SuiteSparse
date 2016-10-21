@@ -281,8 +281,12 @@
 #define CHOLMOD_PTHREADS_NUM_THREADS 2
 #endif
 
-#ifndef CHOLMOD_CUDA_NUM_BLOCKS
-#define CHOLMOD_CUDA_NUM_BLOCKS 1024
+#ifndef CUDA_GPU_NUM
+#define CUDA_GPU_NUM 2
+#endif
+
+#ifndef CUDA_STREAM_NUM
+#define CUDA_STREAM_NUM 1024
 #endif
 
 /* Define buffering parameters for GPU processing */
@@ -985,25 +989,27 @@ typedef struct cholmod_common_struct
     #define CHOLMOD_CUDAEVENT     void *
 #endif
 
-    CHOLMOD_CUBLAS_HANDLE cublasHandle ;
+    int cuda_gpu_num;
+
+    CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_GPU_NUM];
 
     /* a set of streams for general use */
-    CHOLMOD_CUDASTREAM    gpuStream[CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_CUDASTREAM    gpuStream[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    CHOLMOD_CUDAEVENT     cublasEventPotrf [3] ;
-    CHOLMOD_CUDAEVENT     updateCKernelsComplete;
-    CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_GPU_NUM] [3] ;
+    CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_GPU_NUM];
+    CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    void *dev_mempool;    /* pointer to single allocation of device memory */
-    size_t dev_mempool_size;
+    void *dev_mempool[CUDA_GPU_NUM];    /* pointer to single allocation of device memory */
+    size_t dev_mempool_size[CUDA_GPU_NUM];
 
-    void *host_pinned_mempool;  /* pointer to single allocation of pinned mem */
-    size_t host_pinned_mempool_size;
+    void *host_pinned_mempool[CUDA_GPU_NUM];  /* pointer to single allocation of pinned mem */
+    size_t host_pinned_mempool_size[CUDA_GPU_NUM];
 
-    size_t devBuffSize;
-    int    ibuffer;
+    size_t devBuffSize[CUDA_GPU_NUM];
+    int    ibuffer[CUDA_GPU_NUM];
 
-    double syrkStart ;          /* time syrk started */
+    double syrkStart[CUDA_GPU_NUM];          /* time syrk started */
 
     /* run times of the different parts of CHOLMOD (GPU and CPU) */
     double cholmod_cpu_gemm_time ;
