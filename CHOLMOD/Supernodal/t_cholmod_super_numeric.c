@@ -1165,7 +1165,6 @@ static int TEMPLATE (cholmod_super_numeric)
     {
         FrontBusy[s] = FALSE;
         front_col[s] = Lpi[s];
-        rear_col[s] = Lpi[s+1];
     }
 
     for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
@@ -1250,6 +1249,7 @@ static int TEMPLATE (cholmod_super_numeric)
                     if (i < CHOLMOD_PTHREADS_NUM_THREADS)
                     {
                         FrontBusy[s] = TRUE;
+                        rear_col[s] = Lpi[s+1];
                         thread_used[i] = TRUE;
                         thread_args[i].A = A;
                         thread_args[i].F = F;
