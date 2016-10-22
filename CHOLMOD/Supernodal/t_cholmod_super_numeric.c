@@ -184,6 +184,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     gpu_used_p = thread_args->gpu_used_p;
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
+    if (useGPU && gpu_p != NULL)
     device = gpu_p->device;
 #endif
     s = thread_args->s;
@@ -1021,6 +1022,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         else
         {
 #ifdef GPU_BLAS
+            if (useGPU)
             TEMPLATE2 ( CHOLMOD (gpu_copy_supernode) )
                 ( Common, Lx, psx, nscol, nscol2, nsrow,
                   supernodeUsedGPU, iHostBuff, gpu_p);
@@ -1274,12 +1276,12 @@ static int TEMPLATE (cholmod_super_numeric)
                         thread_args[i].Common = Common;
 #ifdef GPU_BLAS
                         for (device = 0; device < Common->cuda_gpu_num && gpu_used[device]; device++);
-                        if (useGPU && !gpu_used[device])
+                        if (useGPU && device < Common->cuda_gpu_num)
                         {
                             gpu_used[device] = TRUE;
                             thread_args[i].gpu_used_p = &gpu_used[device];
                             thread_args[i].useGPU = TRUE;
-                            thread_args[i].gpu_p = gpu_p;
+                            thread_args[i].gpu_p = &gpu_p[device];
                         }
                         else
                         {

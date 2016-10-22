@@ -432,7 +432,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
         return 0;
     }
 
-    CHOLMOD(gpu_deallocate, Common, device);
+    CHOLMOD(gpu_deallocate) (Common, device);
 
     /* create cuBlas handle */
     if ( ! Common->cublasHandle[device] ) {
