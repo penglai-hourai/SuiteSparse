@@ -278,11 +278,11 @@
 #endif
 
 #ifndef CHOLMOD_PTHREADS_NUM_THREADS
-#define CHOLMOD_PTHREADS_NUM_THREADS 4
+#define CHOLMOD_PTHREADS_NUM_THREADS 16
 #endif
 
 #ifndef CUDA_GPU_NUM
-#define CUDA_GPU_NUM 1
+#define CUDA_GPU_NUM 8
 #endif
 
 #ifndef CUDA_STREAM_NUM

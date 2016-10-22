@@ -317,7 +317,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         /* (all supernodes in a level are independent) */
         /* ------------------------------------------------------------------ */
 
-    printf ("--------checkpoint--------\n");
 #ifdef GPU_BLAS
         if ( useGPU )
         {
@@ -856,7 +855,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             Common->CHOLMOD_CPU_POTRF_TIME += SuiteSparse_time ()- tstart ;
 #endif
         }
-    printf ("++++++++checkpoint++++++++\n");
 
         /* ------------------------------------------------------------------ */
         /* check if the matrix is not positive definite */
@@ -1050,11 +1048,14 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         *gpu_used_p = FALSE;
 #endif
 
-    FrontBusy[s] = FALSE;
     front_col[s] = rear_col[s];
-    sparent = SuperMap [Ls [psi + nscol]] ;
-    if (sparent != EMPTY)
-        pending[sparent]--;
+    if (front_col[s] >= psi + nscol)
+    {
+        sparent = SuperMap [Ls [psi + nscol]] ;
+        if (sparent > s && sparent < nsuper)
+            pending[sparent]--;
+    }
+    FrontBusy[s] = FALSE;
 
     *thread_used_p = FALSE;
     sem_post(thread_semaphore_p);
