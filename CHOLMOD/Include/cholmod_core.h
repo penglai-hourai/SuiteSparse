@@ -282,7 +282,7 @@
 #endif
 
 #ifndef CUDA_GPU_NUM
-#define CUDA_GPU_NUM 2
+#define CUDA_GPU_NUM 1
 #endif
 
 #ifndef CUDA_STREAM_NUM

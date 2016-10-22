@@ -274,8 +274,6 @@ int CHOLMOD(super_symbolic2)
                 else
                 {
                     Common->useGPU = 1; /* use the gpu */
-                    if (Common->cuda_gpu_num > CUDA_GPU_NUM)
-                        Common->cuda_gpu_num = CUDA_GPU_NUM;
                     env_max_bytes = getenv("CHOLMOD_GPU_MEM_BYTES");
                     env_max_fraction = getenv("CHOLMOD_GPU_MEM_FRACTION");
                     if ( env_max_bytes )
@@ -297,7 +295,6 @@ int CHOLMOD(super_symbolic2)
                 /* CHOLMOD_USE_GPU environment variable not set, so no GPU
                  * acceleration will be used */
                 Common->useGPU = 0;
-                Common->cuda_gpu_num = 0;
             }
             /* fprintf (stderr, "useGPU queried: %d\n", Common->useGPU) ; */
         }
@@ -308,8 +305,12 @@ int CHOLMOD(super_symbolic2)
             /* fprintf (stderr, "\nprobe GPU:\n") ; */
             Common->useGPU = CHOLMOD(gpu_probe) (Common); 
             CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
+            if (Common->cuda_gpu_num > CUDA_GPU_NUM)
+                Common->cuda_gpu_num = CUDA_GPU_NUM;
             /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
         }
+        else
+            Common->cuda_gpu_num = 0;
 
         if ( Common->useGPU == 1 )
         {
