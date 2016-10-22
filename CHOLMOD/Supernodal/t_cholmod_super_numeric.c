@@ -317,6 +317,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
         /* (all supernodes in a level are independent) */
         /* ------------------------------------------------------------------ */
 
+    printf ("--------checkpoint--------\n");
 #ifdef GPU_BLAS
         if ( useGPU )
         {
@@ -519,7 +520,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                     }
                     else {
                         cuErr = cudaEventQuery
-                            ( Common->updateCBuffersFree[iHostBuff] );
+                            ( Common->updateCBuffersFree[device][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
                              * descendant (anticipating that this will be
@@ -571,7 +572,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             PRINT1 (("Child: ")) ;
             DEBUG (CHOLMOD(dump_super) (d, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                         Common)) ;
-
             /* -------------------------------------------------------------- */
             /* find the range of rows of d that affect rows k1 to k2-1 of s */
             /* -------------------------------------------------------------- */
@@ -856,6 +856,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             Common->CHOLMOD_CPU_POTRF_TIME += SuiteSparse_time ()- tstart ;
 #endif
         }
+    printf ("++++++++checkpoint++++++++\n");
 
         /* ------------------------------------------------------------------ */
         /* check if the matrix is not positive definite */
