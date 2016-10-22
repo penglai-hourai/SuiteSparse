@@ -1098,7 +1098,7 @@ static int TEMPLATE (cholmod_super_numeric)
         *Previous, *pending, *front_col, *rear_col;
     Int i, nsuper, n, s, sparent;
 
-    sem_init(&thread_semaphore, 0, CHOLMOD_PTHREADS_NUM_THREADS);
+    sem_init(&thread_semaphore, 0, Common->cholmod_pthreads_num_threads);
     pthread_mutex_init(&thread_mutex, NULL);
 
     /* ---------------------------------------------------------------------- */
@@ -1175,13 +1175,15 @@ static int TEMPLATE (cholmod_super_numeric)
         front_col[s] = Lpi[s];
     }
 
-    for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
+    for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
     {
         thread_used[i] = FALSE;
         thread_args[i].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
         thread_args[i].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
         thread_args[i].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
     }
+    for (i = Common->cholmod_pthreads_num_threads; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
+        thread_used[i] = TRUE;
 
 #ifdef GPU_BLAS
     for (device = 0; device < Common->cuda_gpu_num; device++)
@@ -1262,8 +1264,8 @@ static int TEMPLATE (cholmod_super_numeric)
                 if (pending[s] <= 0)
                 {
                     sem_wait(&thread_semaphore);
-                    for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS && thread_used[i]; i++);
-                    if (i < CHOLMOD_PTHREADS_NUM_THREADS)
+                    for (i = 0; i < Common->cholmod_pthreads_num_threads && thread_used[i]; i++);
+                    if (i < Common->cholmod_pthreads_num_threads)
                     {
                         FrontBusy[s] = TRUE;
                         rear_col[s] = Lpi[s+1];
@@ -1320,13 +1322,13 @@ static int TEMPLATE (cholmod_super_numeric)
         }
     }
 
-    for (i = 0 ; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
+    for (i = 0 ; i < Common->cholmod_pthreads_num_threads; i++)
     {
         if (thread_used[i])
             pthread_join(threads[i], NULL);
     }
 
-    for (i = 0; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
+    for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
     {
         thread_args[i].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[i].Map, Common);
         thread_args[i].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[i].RelativeMap, Common);

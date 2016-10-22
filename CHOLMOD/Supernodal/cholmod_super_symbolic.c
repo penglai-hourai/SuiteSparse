@@ -323,7 +323,12 @@ int CHOLMOD(super_symbolic2)
 #else
         /* GPU acceleration is only supported for long int version */
         Common->useGPU = 0;
+        Common->cuda_gpu_num = 0;
 #endif
+        if (Common->cuda_gpu_num <= 0 || Common->cuda_gpu_num >= CHOLMOD_PTHREADS_NUM_THREADS)
+            Common->cholmod_pthreads_num_threads = CHOLMOD_PTHREADS_NUM_THREADS;
+        else
+            Common->cholmod_pthreads_num_threads = Common->cuda_gpu_num;
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */

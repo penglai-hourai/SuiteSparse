@@ -989,6 +989,7 @@ typedef struct cholmod_common_struct
     #define CHOLMOD_CUDAEVENT     void *
 #endif
 
+    int cholmod_pthreads_num_threads;
     int cuda_gpu_num;
 
     CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_GPU_NUM];
