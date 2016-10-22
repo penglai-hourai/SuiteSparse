@@ -1310,7 +1310,8 @@ static int TEMPLATE (cholmod_super_numeric)
         {
 #ifdef GPU_BLAS
             if ( useGPU ) {
-                CHOLMOD (gpu_end) (Common) ;
+        for (device = 0; device < Common->cuda_gpu_num; device++)
+                CHOLMOD (gpu_end) (Common, device) ;
             }
 #endif
             return (Common->status >= CHOLMOD_OK) ;
@@ -1339,7 +1340,8 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef GPU_BLAS
     if ( useGPU )
     {
-        CHOLMOD (gpu_end) (Common) ;
+        for (device = 0; device < Common->cuda_gpu_num; device++)
+        CHOLMOD (gpu_end) (Common, device) ;
     }
 #endif
 

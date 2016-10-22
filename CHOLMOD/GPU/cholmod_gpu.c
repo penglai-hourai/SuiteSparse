@@ -230,7 +230,7 @@ int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
     Common->host_pinned_mempool[device] = NULL;
     Common->host_pinned_mempool_size[device] = 0;
 
-    CHOLMOD (gpu_end) (Common) ;
+    CHOLMOD (gpu_end) (Common, device) ;
 #endif
 
     return (0);
@@ -240,20 +240,15 @@ int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
 /* === cholmod_gpu_end ====================================================== */
 /* ========================================================================== */
 
-void CHOLMOD(gpu_end)
-(
-    cholmod_common *Common
-)
+void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 {
 #ifdef GPU_BLAS
     int k ;
-    int device;
 
     /* ------------------------------------------------------------------ */
     /* destroy Cublas Handle */
     /* ------------------------------------------------------------------ */
 
-    for (device = 0; device < Common->cuda_gpu_num; device++)
     if (Common->cublasHandle[device])
     {
         /* fprintf (stderr, "destroy cublas[%d] %p\n", device, Common->cublasHandle[device]) ; */
@@ -262,7 +257,6 @@ void CHOLMOD(gpu_end)
         Common->cublasHandle[device] = NULL ;
     }
 
-    for (device = 0; device < Common->cuda_gpu_num; device++)
     {
     /* ------------------------------------------------------------------ */
     /* destroy each CUDA stream */

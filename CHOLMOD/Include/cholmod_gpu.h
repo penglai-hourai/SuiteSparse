@@ -68,8 +68,8 @@ int cholmod_l_gpu_probe ( cholmod_common *Common ) ;
 int cholmod_gpu_deallocate   ( cholmod_common *Common, int device ) ;
 int cholmod_l_gpu_deallocate ( cholmod_common *Common, int device ) ;
 
-void cholmod_gpu_end   ( cholmod_common *Common ) ;
-void cholmod_l_gpu_end ( cholmod_common *Common ) ;
+void cholmod_gpu_end   ( cholmod_common *Common, int device ) ;
+void cholmod_l_gpu_end ( cholmod_common *Common, int device ) ;
 
 int cholmod_gpu_allocate   ( cholmod_common *Common, int device ) ;
 int cholmod_l_gpu_allocate ( cholmod_common *Common, int device ) ;
