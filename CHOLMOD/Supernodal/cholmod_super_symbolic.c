@@ -307,6 +307,8 @@ int CHOLMOD(super_symbolic2)
             CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
             if (Common->cuda_gpu_num > CUDA_GPU_NUM)
                 Common->cuda_gpu_num = CUDA_GPU_NUM;
+            if (Common->cuda_gpu_num > CHOLMOD_PTHREADS_NUM_THREADS)
+                Common->cuda_gpu_num = CHOLMOD_PTHREADS_NUM_THREADS;
             /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
         }
         else
@@ -325,7 +327,7 @@ int CHOLMOD(super_symbolic2)
         Common->useGPU = 0;
         Common->cuda_gpu_num = 0;
 #endif
-        if (Common->cuda_gpu_num <= 0 || Common->cuda_gpu_num >= CHOLMOD_PTHREADS_NUM_THREADS)
+        if (Common->cuda_gpu_num <= 0)
             Common->cholmod_pthreads_num_threads = CHOLMOD_PTHREADS_NUM_THREADS;
         else
             Common->cholmod_pthreads_num_threads = Common->cuda_gpu_num;
