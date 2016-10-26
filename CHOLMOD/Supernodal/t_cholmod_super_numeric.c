@@ -104,7 +104,6 @@ typedef struct
 #endif
     int *thread_used_p;
     sem_t *thread_semaphore_p;
-    pthread_mutex_t *main_mutex_p;
     pthread_mutex_t *thread_mutex_p;
     Int s;
     Int nscol_new;
@@ -118,7 +117,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
     int *thread_used_p;
     sem_t *thread_semaphore_p;
-    pthread_mutex_t  *main_mutex_p, *thread_mutex_p;
+    pthread_mutex_t *thread_mutex_p;
 
     cholmod_sparse *A, *F;
     double *zero, *one, *beta;
@@ -168,7 +167,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
     thread_used_p = thread_args->thread_used_p;
     thread_semaphore_p = thread_args->thread_semaphore_p;
-    main_mutex_p = thread_args->main_mutex_p;
     thread_mutex_p = thread_args->thread_mutex_p;
 
     A = thread_args->A;
@@ -188,6 +186,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     gpu_p = thread_args->gpu_p;
     if (useGPU && gpu_p != NULL)
     device = gpu_p->device;
+    cudaSetDevice(device);
 #endif
     s = thread_args->s;
     nscol_new = thread_args->nscol_new;
@@ -1051,7 +1050,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 #endif
 
     front_col[s] = rear_col[s];
-    if (front_col[s] >= psi + nscol)
+    if (front_col[s] >= Super[s+1])
     {
         sparent = SuperMap [Ls [psi + nscol]] ;
         if (sparent > s && sparent < nsuper)
@@ -1065,8 +1064,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
 
     *thread_used_p = FALSE;
     pthread_mutex_lock(thread_mutex_p);
-    if (pthread_mutex_trylock(main_mutex_p) != 0)
-    pthread_mutex_unlock(main_mutex_p);
     pthread_mutex_unlock(thread_mutex_p);
     sem_post(thread_semaphore_p);
 
@@ -1096,7 +1093,7 @@ static int TEMPLATE (cholmod_super_numeric)
 {
     int to_return = FALSE, end_of_factorization = FALSE, front_ready;
     sem_t thread_semaphore;
-    pthread_mutex_t main_mutex, thread_mutex;
+    pthread_mutex_t thread_mutex;
     pthread_t threads[CHOLMOD_PTHREADS_NUM_THREADS];
     int thread_used[CHOLMOD_PTHREADS_NUM_THREADS];
     TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PTHREADS_NUM_THREADS];
@@ -1106,11 +1103,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *FrontBusy, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
         *Previous, *pending, *front_col, *rear_col;
-    Int i, nsuper, n, s, sparent;
-
-    sem_init(&thread_semaphore, 0, Common->cholmod_pthreads_num_threads);
-    pthread_mutex_init(&main_mutex, NULL);
-    pthread_mutex_init(&thread_mutex, NULL);
+    Int i, nsuper, n, s, t, sparent;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -1124,6 +1117,13 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_gpu_pointers gpu_p[CUDA_GPU_NUM];
     int gpu_used[CUDA_GPU_NUM];
 #endif
+
+    double timestamp;
+
+    timestamp = SuiteSparse_time();
+
+    sem_init(&thread_semaphore, 0, Common->cholmod_pthreads_num_threads);
+    pthread_mutex_init(&thread_mutex, NULL);
 
     /* ---------------------------------------------------------------------- */
     /* guard against integer overflow in the BLAS */
@@ -1183,7 +1183,7 @@ static int TEMPLATE (cholmod_super_numeric)
     for (s = 0; s < nsuper; s++)
     {
         FrontBusy[s] = FALSE;
-        front_col[s] = Lpi[s];
+        front_col[s] = Super[s];
     }
 
     for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
@@ -1259,68 +1259,74 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
+    printf ("init time = %lf\n", SuiteSparse_time() - timestamp);
+    timestamp = SuiteSparse_time();
+
     /* ---------------------------------------------------------------------- */
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
+    t = 0;
     while (!end_of_factorization)
     {
         end_of_factorization = TRUE;
-        pthread_mutex_lock(&main_mutex);
-        for (s = nsuper - 1 ; s >= 0 ; s--)
-        //for (s = 0 ; s < nsuper ; s++)
+        sem_wait(&thread_semaphore);
+        for (s = t, t = nsuper ; s < nsuper; s++)
         {
-            if (!FrontBusy[s] && front_col[s] < Lpi[s+1])
+            if (!FrontBusy[s])
             {
-                end_of_factorization = FALSE;
-                if (pending[s] <= 0)
+                if (front_col[s] < Super[s+1])
                 {
-                    sem_wait(&thread_semaphore);
-                    for (i = 0; i < Common->cholmod_pthreads_num_threads && thread_used[i]; i++);
-                    if (i < Common->cholmod_pthreads_num_threads)
-                    {
-                        FrontBusy[s] = TRUE;
-                        rear_col[s] = Lpi[s+1];
-                        thread_used[i] = TRUE;
-                        thread_args[i].A = A;
-                        thread_args[i].F = F;
-                        thread_args[i].zero = zero;
-                        thread_args[i].one = one;
-                        thread_args[i].beta = beta;
-                        thread_args[i].L = L;
-                        thread_args[i].Cwork = Cwork;
-                        thread_args[i].Common = Common;
-#ifdef GPU_BLAS
-                        for (device = 0; device < Common->cuda_gpu_num && gpu_used[device]; device++);
-                        if (useGPU && device < Common->cuda_gpu_num)
-                        {
-                            gpu_used[device] = TRUE;
-                            thread_args[i].gpu_used_p = &gpu_used[device];
-                            thread_args[i].useGPU = TRUE;
-                            thread_args[i].gpu_p = &gpu_p[device];
-                        }
-                        else
-                        {
-                            thread_args[i].gpu_used_p = NULL;
-                            thread_args[i].useGPU = FALSE;
-                            thread_args[i].gpu_p = NULL;
-                        }
-#endif
-                        thread_args[i].thread_used_p = &thread_used[i];
-                        thread_args[i].thread_semaphore_p = &thread_semaphore;
-                        thread_args[i].main_mutex_p = &main_mutex;
-                        thread_args[i].thread_mutex_p = &thread_mutex;
-                        thread_args[i].s = s;
-                        thread_args[i].nscol_new = 0;
-                        thread_args[i].repeat_supernode = FALSE;
-                        thread_args[i].to_return_p = &to_return;;
-
-                        pthread_create(&threads[i], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[i]);
-                        //pthread_join(threads[i], NULL);
-                    }
-                    else
-                        sem_post(&thread_semaphore);
+                    end_of_factorization = FALSE;
+                    if (t >= nsuper)
+                        t = s;
+                    if (pending[s] <= 0)
+                        break;
                 }
+            }
+        }
+        if (s != nsuper)
+        {
+            for (i = 0; i < Common->cholmod_pthreads_num_threads && thread_used[i]; i++);
+            if (i < Common->cholmod_pthreads_num_threads)
+            {
+                FrontBusy[s] = TRUE;
+                rear_col[s] = Super[s+1];
+                thread_used[i] = TRUE;
+                thread_args[i].A = A;
+                thread_args[i].F = F;
+                thread_args[i].zero = zero;
+                thread_args[i].one = one;
+                thread_args[i].beta = beta;
+                thread_args[i].L = L;
+                thread_args[i].Cwork = Cwork;
+                thread_args[i].Common = Common;
+#ifdef GPU_BLAS
+                for (device = 0; device < Common->cuda_gpu_num && gpu_used[device]; device++);
+                if (useGPU && device < Common->cuda_gpu_num)
+                {
+                    gpu_used[device] = TRUE;
+                    thread_args[i].gpu_used_p = &gpu_used[device];
+                    thread_args[i].useGPU = TRUE;
+                    thread_args[i].gpu_p = &gpu_p[device];
+                }
+                else
+                {
+                    thread_args[i].gpu_used_p = NULL;
+                    thread_args[i].useGPU = FALSE;
+                    thread_args[i].gpu_p = NULL;
+                }
+#endif
+                thread_args[i].thread_used_p = &thread_used[i];
+                thread_args[i].thread_semaphore_p = &thread_semaphore;
+                thread_args[i].thread_mutex_p = &thread_mutex;
+                thread_args[i].s = s;
+                thread_args[i].nscol_new = 0;
+                thread_args[i].repeat_supernode = FALSE;
+                thread_args[i].to_return_p = &to_return;;
+
+                pthread_create(&threads[i], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[i]);
+                //pthread_join(threads[i], NULL);
             }
         }
         if (to_return)
@@ -1335,11 +1341,17 @@ static int TEMPLATE (cholmod_super_numeric)
         }
     }
 
+    printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
+    timestamp = SuiteSparse_time();
+
     for (i = 0 ; i < Common->cholmod_pthreads_num_threads; i++)
     {
         if (thread_used[i])
             pthread_join(threads[i], NULL);
     }
+
+    printf ("wait time = %lf\n", SuiteSparse_time() - timestamp);
+    timestamp = SuiteSparse_time();
 
     for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
     {
@@ -1349,7 +1361,6 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 
     sem_destroy(&thread_semaphore);
-    pthread_mutex_destroy(&main_mutex);
     pthread_mutex_destroy(&thread_mutex);
 
     /* success; matrix is positive definite */
@@ -1362,6 +1373,8 @@ static int TEMPLATE (cholmod_super_numeric)
             CHOLMOD (gpu_end) (Common, device) ;
     }
 #endif
+
+    printf ("cleanup time = %lf\n", SuiteSparse_time() - timestamp);
 
     return (Common->status >= CHOLMOD_OK) ;
 

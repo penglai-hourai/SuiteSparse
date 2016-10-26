@@ -186,7 +186,7 @@ int CHOLMOD(super_numeric)
     PRINT1 (("nsuper "ID" maxcsize %g\n", nsuper, (double) maxcsize)) ;
     ASSERT (nsuper >= 0 && maxcsize > 0) ;
 
-    /* w = 2*n + 8*nsuper */
+    /* w = 5*n + 5*nsuper */
     w = CHOLMOD(mult_size_t) (n, 2, &ok) ;
     t = CHOLMOD(mult_size_t) (nsuper, 8, &ok) ;
     w = CHOLMOD(add_size_t) (w, t, &ok) ;
