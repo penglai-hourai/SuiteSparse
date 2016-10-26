@@ -1095,6 +1095,9 @@ static int TEMPLATE (cholmod_super_numeric)
     sem_t thread_semaphore;
     pthread_mutex_t thread_mutex;
     pthread_t threads[CHOLMOD_PTHREADS_NUM_THREADS];
+    pthread_attr_t thread_attr;
+    struct sched_param thread_attr_param;
+    int min_prio, max_prio, mid_prio;
     int thread_used[CHOLMOD_PTHREADS_NUM_THREADS];
     TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PTHREADS_NUM_THREADS];
 
@@ -1124,6 +1127,17 @@ static int TEMPLATE (cholmod_super_numeric)
 
     sem_init(&thread_semaphore, 0, Common->cholmod_pthreads_num_threads);
     pthread_mutex_init(&thread_mutex, NULL);
+
+    pthread_attr_init(&thread_attr);
+    pthread_attr_setinheritsched(&thread_attr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setschedpolicy(&thread_attr, SCHED_OTHER);
+    min_prio = sched_get_priority_min(SCHED_OTHER);
+    max_prio = sched_get_priority_max(SCHED_OTHER);
+    mid_prio = (min_prio + max_prio) / 2;
+    thread_attr_param.sched_priority = min_prio;
+    pthread_setschedparam(pthread_self(), SCHED_OTHER, &thread_attr_param);
+    thread_attr_param.sched_priority = max_prio;
+    pthread_attr_setschedparam(&thread_attr, &thread_attr_param);
 
     /* ---------------------------------------------------------------------- */
     /* guard against integer overflow in the BLAS */
@@ -1325,7 +1339,7 @@ static int TEMPLATE (cholmod_super_numeric)
                 thread_args[i].repeat_supernode = FALSE;
                 thread_args[i].to_return_p = &to_return;;
 
-                pthread_create(&threads[i], NULL, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[i]);
+                pthread_create(&threads[i], &thread_attr, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[i]);
                 //pthread_join(threads[i], NULL);
             }
         }
@@ -1362,6 +1376,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     sem_destroy(&thread_semaphore);
     pthread_mutex_destroy(&thread_mutex);
+    pthread_attr_destroy(&thread_attr);
 
     /* success; matrix is positive definite */
     L->minor = n ;

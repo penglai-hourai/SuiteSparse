@@ -289,17 +289,13 @@
 #define CHOLMOD_PTHREADS_NUM_THREADS (CUDA_GPU_NUM + CPU_THREAD_NUM)
 #endif
 
-#ifndef CUDA_STREAM_NUM
-#define CUDA_STREAM_NUM 1024
-#endif
-
 /* Define buffering parameters for GPU processing */
 #ifdef GPU_BLAS
 #include <cublas_v2.h>
 #endif
 
 #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 6
-#define CHOLMOD_HOST_SUPERNODE_BUFFERS 8
+#define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 #define CHOLMOD_DEVICE_STREAMS 2
 
 /* ========================================================================== */
