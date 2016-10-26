@@ -282,7 +282,7 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 0
+#define CPU_THREAD_NUM 2
 #endif
 
 #ifndef CHOLMOD_PTHREADS_NUM_THREADS

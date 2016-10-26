@@ -531,6 +531,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                             skips = 0;
                         }
                         else {
+                            continue;
                             /* buffers are not available, so the GPU is busy,
                              * so assemble a small descendant (anticipating
                              * that it will be assembled on the host) */
@@ -628,6 +629,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
             if ( useGPU ) {
                 /* set up GPU to assemble new supernode */
                 if ( GPUavailable == 1) {
+#if 0
                     if ( ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT &&
                          ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT ) {
                         if ( ! mapCreatedOnGpu ) {
@@ -641,6 +643,13 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                          * flag to stop stop performing cudaEventQueries */
                         GPUavailable = -1;
                     }
+#else
+                        if ( ! mapCreatedOnGpu ) {
+                            TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode))
+                                ( Common, nscol, nsrow, psi, gpu_p );
+                            mapCreatedOnGpu = 1;
+                        }
+#endif
                 }
             }
 #endif
