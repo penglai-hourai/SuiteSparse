@@ -538,7 +538,17 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
 #else
-    magma_dsyrk(MagmaLower, MagmaNoTrans, (int) ndrow1, (int) ndcol, alpha, devPtrLx, ndrow2, beta, devPtrC, ndrow2, Common->magmaQueue[device][iDevBuff]);
+    magma_dsyrk(
+        MagmaLower, MagmaNoTrans,
+        (int) ndrow1,
+        (int) ndcol,    /* N, K: L1 is ndrow1-by-ndcol */
+        alpha,          /* ALPHA:  1 */
+        devPtrLx,
+        ndrow2,         /* A, LDA: L1, ndrow2 */
+        beta,           /* BETA:   0 */
+        devPtrC,
+        ndrow2,         /* C, LDC: C1 */
+        Common->magmaQueue[device][iDevBuff]);
 #endif
 #else
 #ifndef MAGMA
@@ -554,7 +564,17 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         (cuDoubleComplex *) devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
 #else
-    magma_zherk(MagmaLower, MagmaNoTrans, (int) ndrow1, (int) ndcol, alpha, (const cuDoubleComplex *) devPtrLx, ndrow2, beta, devPtrC, ndrow2, Common->magmaQueue[device][iDevBuff]);
+    magma_zherk(
+        MagmaLower, MagmaNoTrans,
+        (int) ndrow1,
+        (int) ndcol,    /* N, K: L1 is ndrow1-by-ndcol*/
+        alpha,          /* ALPHA:  1 */
+        (const cuDoubleComplex *) devPtrLx,
+        ndrow2,         /* A, LDA: L1, ndrow2 */
+        beta,           /* BETA:   0 */
+        (cuDoubleComplex *) devPtrC,
+        ndrow2,         /* C, LDC: C1 */
+        Common->magmaQueue[device][iDevBuff]);
 #endif
 #endif
 
@@ -599,11 +619,23 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             devPtrC + L_ENTRY*ndrow1,       /* C, LDC: C2 */
             ndrow2) ;
 #else
-        magma_dgemm(MagmaNoTrans, MagmaTrans, ndrow3, ndrow1, ndcol, alpha, devPtrLx + L_ENTRY*(ndrow1), ndrow2, devPtrLx, ndrow2, beta, devPtrC + L_ENTRY*ndrow1, ndrow2, Common->magmaQueue[device][iDevBuff]);
+        magma_dgemm(
+            MagmaNoTrans, MagmaTrans
+            ndrow3, ndrow1, ndcol,          /* M, N, K */
+            alpha,                          /* ALPHA:  1 */
+            devPtrLx + L_ENTRY*(ndrow1),    /* A, LDA: L2*/
+            ndrow2,                         /* ndrow */
+            devPtrLx,                       /* B, LDB: L1 */
+            ndrow2,                         /* ndrow */
+            beta,                           /* BETA:   0 */
+            devPtrC + L_ENTRY*ndrow1,       /* C, LDC: C2 */
+            ndrow2,
+            Common->magmaQueue[device][iDevBuff]);
 #endif
 #else
         cuDoubleComplex calpha  = {1.0,0.0} ;
         cuDoubleComplex cbeta   = {0.0,0.0} ;
+#ifndef MAGMA
         cublasStatus = cublasZgemm (Common->cublasHandle[device],
             CUBLAS_OP_N, CUBLAS_OP_C,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
@@ -615,6 +647,20 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             &cbeta,                         /* BETA:   0 */
             (cuDoubleComplex *)devPtrC + ndrow1,
             ndrow2) ;
+#else
+        magma_zgemm(
+            MagmaNoTrans, MagmaConjTrans,
+            ndrow3, ndrow1, ndcol,          /* M, N, K */
+            calpha,                         /* ALPHA:  1 */
+            (const cuDoubleComplex*) devPtrLx + ndrow1,
+            ndrow2,                         /* ndrow */
+            (const cuDoubleComplex *) devPtrLx,
+            ndrow2,                         /* ndrow */
+            cbeta,                          /* BETA:   0 */
+            (cuDoubleComplex *)devPtrC + ndrow1,
+            ndrow2,
+            Common->magmaQueue[device][iDevBuff]);
+#endif
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -932,23 +978,32 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         alpha = -1.0 ;
         beta  = 1.0 ;
 #ifdef REAL
-#if 1
+#ifndef MAGMA
         cublasStatus = cublasDsyrk (Common->cublasHandle[device],
             CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, jb, j,
             &alpha, devPtrA + j, gpu_lda,
             &beta,  devPtrA + j + j*gpu_lda, gpu_lda) ;
 #else
-        magma_dsyrk(MagmaLower, MagmaNoTrans, jb, j, alpha, devPtrA + j, gpu_lda, beta,  devPtrA + j + j*gpu_lda, gpu_lda, Common->magmaQueue[device][0]);
+        magma_dsyrk(
+            MagmaLower, MagmaNoTrans, jb, j,
+            alpha, devPtrA + j, gpu_lda,
+            beta,  devPtrA + j + j*gpu_lda, gpu_lda,
+            Common->magmaQueue[device][0]) ;
 #endif
 
 #else
+#ifndef MAGMA
         cublasStatus = cublasZherk (Common->cublasHandle[device],
             CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, jb, j,
-            &alpha, (cuDoubleComplex*)devPtrA + j,
-            gpu_lda,
-            &beta,
-            (cuDoubleComplex*)devPtrA + j + j*gpu_lda,
-            gpu_lda) ;
+            &alpha, (cuDoubleComplex*)devPtrA + j, gpu_lda,
+            &beta, (cuDoubleComplex*)devPtrA + j + j*gpu_lda, gpu_lda) ;
+#else
+        magma_zherk (
+            MagmaLower, MagmaNoTrans, jb, j,
+            alpha, (cuDoubleComplex*)devPtrA + j, gpu_lda,
+            beta, (cuDoubleComplex*)devPtrA + j + j*gpu_lda, gpu_lda,
+            Common->magmaQueue[device][0]) ;
+#endif
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1000,6 +1055,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 #ifdef REAL
             alpha = -1.0 ;
             beta  = 1.0 ;
+#ifndef MAGMA
             cublasStatus = cublasDgemm (Common->cublasHandle[device],
                 CUBLAS_OP_N, CUBLAS_OP_T,
                 (n-j-jb), jb, j,
@@ -1008,10 +1064,22 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 devPtrA + (j)  , gpu_lda,
                 &beta,
                 devPtrA + (j+jb + j*gpu_lda), gpu_lda) ;
+#else
+            magma_dgemm (
+                MagmaNoTrans, MagmaTrans,
+                (n-j-jb), jb, j,
+                alpha,
+                devPtrA + (j+jb), gpu_lda,
+                devPtrA + (j)  , gpu_lda,
+                beta,
+                devPtrA + (j+jb + j*gpu_lda), gpu_lda,
+                Common->magmaQueue[device][0]) ;
+#endif
 
 #else
             cuDoubleComplex calpha = {-1.0,0.0} ;
             cuDoubleComplex cbeta  = { 1.0,0.0} ;
+#ifndef MAGMA
             cublasStatus = cublasZgemm (Common->cublasHandle[device],
                 CUBLAS_OP_N, CUBLAS_OP_C,
                 (n-j-jb), jb, j,
@@ -1024,6 +1092,21 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 (cuDoubleComplex*)devPtrA +
                 (j+jb + j*gpu_lda),
                 gpu_lda ) ;
+#else
+            magma_zgemm (
+                MagmaNoTrans, MagmaConjTrans,
+                (n-j-jb), jb, j,
+                calpha,
+                (cuDoubleComplex*)devPtrA + (j+jb),
+                gpu_lda,
+                (cuDoubleComplex*)devPtrA + (j),
+                gpu_lda,
+                cbeta,
+                (cuDoubleComplex*)devPtrA +
+                (j+jb + j*gpu_lda),
+                gpu_lda,
+                Common->magmaQueue[device][0]) ;
+#endif
 #endif
 
             if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1084,6 +1167,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 
 #ifdef REAL
             alpha  = 1.0 ;
+#ifndef MAGMA
             cublasStatus = cublasDtrsm (Common->cublasHandle[device],
                 CUBLAS_SIDE_RIGHT,
                 CUBLAS_FILL_MODE_LOWER,
@@ -1093,7 +1177,19 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 devPtrA + (j + j*gpu_lda), gpu_lda,
                 devPtrA + (j+jb + j*gpu_lda), gpu_lda) ;
 #else
+            magma_dtrsm (
+                MagmaRight,
+                MagmaLower,
+                MagmaTrans, MagmaNonUnit,
+                (n-j-jb), jb,
+                alpha,
+                devPtrA + (j + j*gpu_lda), gpu_lda,
+                devPtrA + (j+jb + j*gpu_lda), gpu_lda,
+                Common->magmaQueue[device][0]) ;
+#endif
+#else
             cuDoubleComplex calpha  = {1.0,0.0};
+#ifndef MAGMA
             cublasStatus = cublasZtrsm (Common->cublasHandle[device],
                 CUBLAS_SIDE_RIGHT,
                 CUBLAS_FILL_MODE_LOWER,
@@ -1106,6 +1202,21 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 (cuDoubleComplex *)devPtrA +
                 (j+jb + j*gpu_lda),
                 gpu_lda) ;
+#else
+            magma_ztrsm (
+                MagmaRight,
+                MagmaLower,
+                MagmaConjTrans, MagmaNonUnit,
+                (n-j-jb), jb,
+                calpha,
+                (cuDoubleComplex *)devPtrA +
+                (j + j*gpu_lda),
+                gpu_lda,
+                (cuDoubleComplex *)devPtrA +
+                (j+jb + j*gpu_lda),
+                gpu_lda,
+                Common->magmaQueue[device][0]) ;
+#endif
 #endif
 
             if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1254,6 +1365,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
         }
 
 #ifdef REAL
+#ifndef MAGMA
         cublasStatus = cublasDtrsm (Common->cublasHandle[device],
                                     CUBLAS_SIDE_RIGHT,
                                     CUBLAS_FILL_MODE_LOWER,
@@ -1267,6 +1379,22 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
                                     devPtrB + gpu_row_start,
                                     gpu_ldb) ;
 #else
+        magma_dtrsm (
+            MagmaRight,
+            MagmaLower,
+            MagmaTrans,
+            MagmanonUnit,
+            gpu_row_chunk,
+            nscol2,
+            alpha,
+            devPtrA,
+            gpu_lda,
+            devPtrB + gpu_row_start,
+            gpu_ldb,
+            Common->magmaQueue[device][ibuf]) ;
+#endif
+#else
+#ifndef MAGMA
         cublasStatus = cublasZtrsm (Common->cublasHandle[device],
                                     CUBLAS_SIDE_RIGHT,
                                     CUBLAS_FILL_MODE_LOWER,
@@ -1279,6 +1407,21 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
                                     gpu_lda,
                                     (cuDoubleComplex *)devPtrB + gpu_row_start ,
                                     gpu_ldb) ;
+#else
+        magma_ztrsm (
+            MagmaRight,
+            MagmaLower,
+            MagmaConjTrans,
+            MagmanonUnit,
+            gpu_row_chunk,
+            nscol2,
+            calpha,
+            (const cuDoubleComplex *) devPtrA,
+            gpu_lda,
+            (cuDoubleComplex *)devPtrB + gpu_row_start ,
+            gpu_ldb,
+            Common->magmaQueue[device][ibuf]) ;
+#endif
 #endif
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
         {
