@@ -79,6 +79,7 @@ SUITESPARSE_VERSION = 4.5.3
         BLAS = -lrefblas -lgfortran -lstdc++
         LAPACK = -llapack
 	CFLAGS += --coverage
+	CFLAGS += -DMAGMA
 	OPTIMIZATION = -g
 	LDFLAGS += --coverage
     endif

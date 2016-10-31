@@ -18,6 +18,9 @@
 #include <string.h>
 #include "cholmod_template.h"
 
+#include <magma.h>
+#include <magmablas_q.h>
+
 #undef L_ENTRY
 #ifdef REAL
 #define L_ENTRY 1
@@ -522,7 +525,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     beta   = 0.0 ;
 
 #ifdef REAL
-#if 1
+#ifndef MAGMA
     cublasStatus = cublasDsyrk (Common->cublasHandle[device],
         CUBLAS_FILL_MODE_LOWER,
         CUBLAS_OP_N,
@@ -538,6 +541,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     magma_dsyrk(MagmaLower, MagmaNoTrans, (int) ndrow1, (int) ndcol, alpha, devPtrLx, ndrow2, beta, devPtrC, ndrow2, Common->magmaQueue[device][iDevBuff]);
 #endif
 #else
+#ifndef MAGMA
     cublasStatus = cublasZherk (Common->cublasHandle[device],
         CUBLAS_FILL_MODE_LOWER,
         CUBLAS_OP_N,
@@ -549,6 +553,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         &beta,          /* BETA:   0 */
         (cuDoubleComplex *) devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
+#else
+    magma_zherk(MagmaLower, MagmaNoTrans, (int) ndrow1, (int) ndcol, alpha, (const cuDoubleComplex *) devPtrLx, ndrow2, beta, devPtrC, ndrow2, Common->magmaQueue[device][iDevBuff]);
+#endif
 #endif
 
     if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -571,10 +578,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 
     if (ndrow3 > 0)
     {
-#ifndef REAL
-        cuDoubleComplex calpha  = {1.0,0.0} ;
-        cuDoubleComplex cbeta   = {0.0,0.0} ;
-#endif
 
         /* ------------------------------------------------------------------ */
         /* do the CUDA BLAS dgemm */
@@ -583,6 +586,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 #ifdef REAL
         alpha  = 1.0 ;
         beta   = 0.0 ;
+#ifndef MAGMA
         cublasStatus = cublasDgemm (Common->cublasHandle[device],
             CUBLAS_OP_N, CUBLAS_OP_T,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
@@ -595,6 +599,11 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             devPtrC + L_ENTRY*ndrow1,       /* C, LDC: C2 */
             ndrow2) ;
 #else
+        magma_dgemm(MagmaNoTrans, MagmaTrans, ndrow3, ndrow1, ndcol, alpha, devPtrLx + L_ENTRY*(ndrow1), ndrow2, devPtrLx, ndrow2, beta, devPtrC + L_ENTRY*ndrow1, ndrow2, Common->magmaQueue[device][iDevBuff]);
+#endif
+#else
+        cuDoubleComplex calpha  = {1.0,0.0} ;
+        cuDoubleComplex cbeta   = {0.0,0.0} ;
         cublasStatus = cublasZgemm (Common->cublasHandle[device],
             CUBLAS_OP_N, CUBLAS_OP_C,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
@@ -923,10 +932,14 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         alpha = -1.0 ;
         beta  = 1.0 ;
 #ifdef REAL
+#if 1
         cublasStatus = cublasDsyrk (Common->cublasHandle[device],
             CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, jb, j,
             &alpha, devPtrA + j, gpu_lda,
             &beta,  devPtrA + j + j*gpu_lda, gpu_lda) ;
+#else
+        magma_dsyrk(MagmaLower, MagmaNoTrans, jb, j, alpha, devPtrA + j, gpu_lda, beta,  devPtrA + j + j*gpu_lda, gpu_lda, Common->magmaQueue[device][0]);
+#endif
 
 #else
         cublasStatus = cublasZherk (Common->cublasHandle[device],
