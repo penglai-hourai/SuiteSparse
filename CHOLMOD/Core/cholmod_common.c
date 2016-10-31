@@ -185,6 +185,7 @@ int CHOLMOD(start)
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
         Common->gpuStream[device] [k] = NULL ;
+        Common->magmaQueue[device][k] = NULL ;
         Common->updateCBuffersFree[device] [k] = NULL ;
     }
     Common->updateCKernelsComplete[device] = NULL;

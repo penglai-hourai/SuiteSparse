@@ -292,6 +292,7 @@
 /* Define buffering parameters for GPU processing */
 #ifdef GPU_BLAS
 #include <cublas_v2.h>
+#include <magma.h>
 #endif
 
 #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 6
@@ -982,11 +983,13 @@ typedef struct cholmod_common_struct
     #define CHOLMOD_CUBLAS_HANDLE cublasHandle_t
     #define CHOLMOD_CUDASTREAM    cudaStream_t
     #define CHOLMOD_CUDAEVENT     cudaEvent_t
+    #define CHOLMOD_MAGMAQUEUE    magma_queue_t
 #else
     /* ... so make them void * pointers if the GPU is not being used */
     #define CHOLMOD_CUBLAS_HANDLE void *
     #define CHOLMOD_CUDASTREAM    void *
     #define CHOLMOD_CUDAEVENT     void *
+    #define CHOLMOD_MAGMAQUEUE    void *
 #endif
 
     int cholmod_pthreads_num_threads;
@@ -1000,6 +1003,8 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_GPU_NUM] [3] ;
     CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_GPU_NUM];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+
+    CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     void *dev_mempool[CUDA_GPU_NUM];    /* pointer to single allocation of device memory */
     size_t dev_mempool_size[CUDA_GPU_NUM];

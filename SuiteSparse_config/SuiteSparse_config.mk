@@ -155,9 +155,9 @@ SUITESPARSE_VERSION = 4.5.3
             #   $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a \
             #   $(MKLROOT)/lib/intel64/libmkl_core.a \
             #   $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
-            #   -Wl,--end-group -lpthread -lm
+            #   -Wl,--end-group -lm
             # using dynamic linking:
-            BLAS = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm
+            BLAS = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lm -lmagma
             LAPACK =
         else
             # use the OpenBLAS at http://www.openblas.net

@@ -146,6 +146,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
                 ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
                 return (0) ;
             }
+            magma_queue_create_from_cuda(device, Common->gpuStream[device][i], Common->cublasHandle[device], NULL, &(Common->magmaQueue[device][i]));
         }
 
         /* ------------------------------------------------------------------ */
@@ -521,6 +522,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     beta   = 0.0 ;
 
 #ifdef REAL
+#if 1
     cublasStatus = cublasDsyrk (Common->cublasHandle[device],
         CUBLAS_FILL_MODE_LOWER,
         CUBLAS_OP_N,
@@ -532,6 +534,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         &beta,          /* BETA:   0 */
         devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
+#else
+    magma_dsyrk(MagmaLower, MagmaNoTrans, (int) ndrow1, (int) ndcol, alpha, devPtrLx, ndrow2, beta, devPtrC, ndrow2, Common->magmaQueue[device][iDevBuff]);
+#endif
 #else
     cublasStatus = cublasZherk (Common->cublasHandle[device],
         CUBLAS_FILL_MODE_LOWER,

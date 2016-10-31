@@ -245,6 +245,15 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 #ifdef GPU_BLAS
     int k ;
 
+    for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
+    {
+        if (Common->magmaQueue[device] [k])
+        {
+            magma_queue_destroy(Common->magmaQueue[device][k]) ;
+            Common->magmaQueue[device][k] = NULL ;
+        }
+    }
+
     /* ------------------------------------------------------------------ */
     /* destroy Cublas Handle */
     /* ------------------------------------------------------------------ */
