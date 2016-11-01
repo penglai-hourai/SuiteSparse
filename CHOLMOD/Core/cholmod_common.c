@@ -173,7 +173,7 @@ int CHOLMOD(start)
     /* GPU initializations */
     /* ---------------------------------------------------------------------- */
 
-    Common->cholmod_pthreads_num_threads = 0;
+    Common->cholmod_parallel_num_threads = 0;
     Common->cuda_gpu_num = 0;
     /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
     for (device = 0; device < CUDA_GPU_NUM; device++)

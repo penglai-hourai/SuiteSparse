@@ -325,7 +325,7 @@ int CHOLMOD(super_symbolic2)
         Common->useGPU = 0;
         Common->cuda_gpu_num = 0;
 #endif
-        Common->cholmod_pthreads_num_threads = Common->cuda_gpu_num + CPU_THREAD_NUM;
+        Common->cholmod_parallel_num_threads = Common->cuda_gpu_num + CPU_THREAD_NUM;
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */

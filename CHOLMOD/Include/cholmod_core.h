@@ -282,11 +282,11 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 2
+#define CPU_THREAD_NUM 0
 #endif
 
-#ifndef CHOLMOD_PTHREADS_NUM_THREADS
-#define CHOLMOD_PTHREADS_NUM_THREADS (CUDA_GPU_NUM + CPU_THREAD_NUM)
+#ifndef CHOLMOD_PARALLEL_NUM_THREADS
+#define CHOLMOD_PARALLEL_NUM_THREADS (CUDA_GPU_NUM + CPU_THREAD_NUM)
 #endif
 
 /* Define buffering parameters for GPU processing */
@@ -992,7 +992,7 @@ typedef struct cholmod_common_struct
     #define CHOLMOD_MAGMAQUEUE    void *
 #endif
 
-    int cholmod_pthreads_num_threads;
+    int cholmod_parallel_num_threads;
     int cuda_gpu_num;
 
     CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_GPU_NUM];

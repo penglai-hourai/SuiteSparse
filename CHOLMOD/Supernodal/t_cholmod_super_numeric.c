@@ -16,8 +16,6 @@
 /* === complex arithmetic =================================================== */
 /* ========================================================================== */
 
-#include <semaphore.h>
-#include <pthread.h>
 #include "cholmod_template.h"
 
 #undef L_ENTRY
@@ -98,26 +96,18 @@ typedef struct
     Int *RelativeMap;
     double *C;
 #ifdef GPU_BLAS
-    int *gpu_used_p;
     int useGPU;
     cholmod_gpu_pointers *gpu_p;
 #endif
-    int *thread_used_p;
-    sem_t *thread_semaphore_p;
-    pthread_mutex_t *thread_mutex_p;
     Int s;
     Int nscol_new;
     Int repeat_supernode;
     int *to_return_p;
 } TEMPLATE (CHOLMOD (thread_args));
 
-static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
+static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 {
     TEMPLATE (CHOLMOD (thread_args)) *thread_args;
-
-    int *thread_used_p;
-    sem_t *thread_semaphore_p;
-    pthread_mutex_t *thread_mutex_p;
 
     cholmod_sparse *A, *F;
     double *zero, *one, *beta;
@@ -158,16 +148,11 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
     int iHostBuff, iDevBuff, useGPU, GPUavailable ;
-    int *gpu_used_p;
     cholmod_gpu_pointers *gpu_p ;
     int device;
 #endif
 
     thread_args = void_args;
-
-    thread_used_p = thread_args->thread_used_p;
-    thread_semaphore_p = thread_args->thread_semaphore_p;
-    thread_mutex_p = thread_args->thread_mutex_p;
 
     A = thread_args->A;
     F = thread_args->F;
@@ -181,7 +166,6 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
     RelativeMap = thread_args->RelativeMap;
     C = thread_args->C;
 #ifdef GPU_BLAS
-    gpu_used_p = thread_args->gpu_used_p;
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
     if (useGPU && gpu_p != NULL)
@@ -789,11 +773,12 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 {
                     dancestor = SuperMap [Ls [pdi2]] ;
                     ASSERT (dancestor > s && dancestor < nsuper) ;
-                    pthread_mutex_lock(thread_mutex_p);
-                    /* place d in the link list of its next ancestor */
-                    Next [d] = Head [dancestor] ;
-                    Head [dancestor] = d ;
-                    pthread_mutex_unlock(thread_mutex_p);
+#pragma omp critical
+                    {
+                        /* place d in the link list of its next ancestor */
+                        Next [d] = Head [dancestor] ;
+                        Head [dancestor] = d ;
+                    }
                 }
             }
 
@@ -954,7 +939,7 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 thread_args->s = s;
                 thread_args->nscol_new = nscol_new;
                 thread_args->repeat_supernode = repeat_supernode;
-                TEMPLATE (cholmod_super_numeric_pthread) (void_args);
+                TEMPLATE (cholmod_super_numeric_threaded) (void_args);
 
                 return void_args;
             }
@@ -1021,11 +1006,12 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 ASSERT (Ls [psi + nscol] <  Super [sparent+1]) ;
                 ASSERT (SuperMap [Ls [psi + nscol]] == sparent) ;
                 ASSERT (sparent > s && sparent < nsuper) ;
-                pthread_mutex_lock(thread_mutex_p);
-                /* place s in link list of its parent */
-                Next [s] = Head [sparent] ;
-                Head [sparent] = s ;
-                pthread_mutex_unlock(thread_mutex_p);
+#pragma omp critical
+                {
+                    /* place s in link list of its parent */
+                    Next [s] = Head [sparent] ;
+                    Head [sparent] = s ;
+                }
             }
         }
         else
@@ -1053,28 +1039,17 @@ static void * TEMPLATE (cholmod_super_numeric_pthread) (void *void_args)
                 *(thread_args->to_return_p) = TRUE;
         }
 
-#ifdef GPU_BLAS
-    if (useGPU && gpu_used_p != NULL)
-        *gpu_used_p = FALSE;
-#endif
-
     front_col[s] = rear_col[s];
     if (front_col[s] >= Super[s+1])
     {
         sparent = SuperMap [Ls [psi + nscol]] ;
         if (sparent > s && sparent < nsuper)
         {
-            pthread_mutex_lock(thread_mutex_p);
+#pragma omp critical
             pending[sparent]--;
-            pthread_mutex_unlock(thread_mutex_p);
         }
     }
     FrontBusy[s] = FALSE;
-
-    *thread_used_p = FALSE;
-    pthread_mutex_lock(thread_mutex_p);
-    pthread_mutex_unlock(thread_mutex_p);
-    sem_post(thread_semaphore_p);
 
     return void_args;
 }
@@ -1101,21 +1076,14 @@ static int TEMPLATE (cholmod_super_numeric)
     )
 {
     int to_return = FALSE, end_of_factorization = FALSE, front_ready;
-    sem_t thread_semaphore;
-    pthread_mutex_t thread_mutex;
-    pthread_t threads[CHOLMOD_PTHREADS_NUM_THREADS];
-    pthread_attr_t thread_attr;
-    struct sched_param thread_attr_param;
-    int min_prio, max_prio, mid_prio;
-    int thread_used[CHOLMOD_PTHREADS_NUM_THREADS];
-    TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PTHREADS_NUM_THREADS];
+    TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PARALLEL_NUM_THREADS];
 
     double one [2], zero [2];
     double *Lx;
     Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *FrontBusy, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
         *Previous, *pending, *front_col, *rear_col;
-    Int i, nsuper, n, s, t, sparent;
+    Int nsuper, n, s, t, sparent;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -1123,30 +1091,15 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* these variables are not used if the GPU module is not installed */
 
-#ifdef GPU_BLAS
     int device;
+#ifdef GPU_BLAS
     int useGPU = FALSE;
     cholmod_gpu_pointers gpu_p[CUDA_GPU_NUM];
-    int gpu_used[CUDA_GPU_NUM];
 #endif
 
     double timestamp;
 
     timestamp = SuiteSparse_time();
-
-    sem_init(&thread_semaphore, 0, Common->cholmod_pthreads_num_threads);
-    pthread_mutex_init(&thread_mutex, NULL);
-
-    pthread_attr_init(&thread_attr);
-    pthread_attr_setinheritsched(&thread_attr, PTHREAD_EXPLICIT_SCHED);
-    pthread_attr_setschedpolicy(&thread_attr, SCHED_OTHER);
-    min_prio = sched_get_priority_min(SCHED_OTHER);
-    max_prio = sched_get_priority_max(SCHED_OTHER);
-    mid_prio = (min_prio + max_prio) / 2;
-    thread_attr_param.sched_priority = min_prio;
-    pthread_setschedparam(pthread_self(), SCHED_OTHER, &thread_attr_param);
-    thread_attr_param.sched_priority = max_prio;
-    pthread_attr_setschedparam(&thread_attr, &thread_attr_param);
 
     /* ---------------------------------------------------------------------- */
     /* guard against integer overflow in the BLAS */
@@ -1209,22 +1162,14 @@ static int TEMPLATE (cholmod_super_numeric)
         front_col[s] = Super[s];
     }
 
-    for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
+    for (device = 0; device < Common->cholmod_parallel_num_threads; device++)
     {
-        thread_used[i] = FALSE;
-        thread_args[i].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[i].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[i].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
+        thread_args[device].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
+        thread_args[device].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
+        thread_args[device].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
     }
-    for (i = Common->cholmod_pthreads_num_threads; i < CHOLMOD_PTHREADS_NUM_THREADS; i++)
-        thread_used[i] = TRUE;
 
 #ifdef GPU_BLAS
-    for (device = 0; device < Common->cuda_gpu_num; device++)
-        gpu_used[device] = FALSE;
-    for (device = Common->cuda_gpu_num; device < CUDA_GPU_NUM; device++)
-        gpu_used[device] = TRUE;
-
     for (device = 0; device < Common->cuda_gpu_num; device++)
         gpu_p[device].device = device;
 
@@ -1290,102 +1235,82 @@ static int TEMPLATE (cholmod_super_numeric)
     /* ---------------------------------------------------------------------- */
 
     t = 0;
-    while (!end_of_factorization)
+#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s) schedule (static)
+    for (device = 0; device < CHOLMOD_PARALLEL_NUM_THREADS; device++)
     {
-        end_of_factorization = TRUE;
-        sem_wait(&thread_semaphore);
-        for (s = t, t = nsuper ; s < nsuper; s++)
+        if (device < Common->cholmod_parallel_num_threads)
         {
-            if (!FrontBusy[s])
+            while (!end_of_factorization)
             {
-                if (front_col[s] < Super[s+1])
+#pragma omp critical
                 {
-                    end_of_factorization = FALSE;
-                    if (t >= nsuper)
-                        t = s;
-                    if (pending[s] <= 0)
-                        break;
+                    end_of_factorization = TRUE;
+                    for (s = t, t = nsuper ; s < nsuper; s++)
+                    {
+                        if (!FrontBusy[s])
+                        {
+                            if (front_col[s] < Super[s+1])
+                            {
+                                end_of_factorization = FALSE;
+                                if (t >= nsuper)
+                                    t = s;
+                                if (pending[s] <= 0)
+                                    break;
+                            }
+                        }
+                    }
+                    if (s < nsuper)
+                    {
+                        FrontBusy[s] = TRUE;
+                        rear_col[s] = Super[s+1];
+                    }
                 }
-            }
-        }
-        if (s != nsuper)
-        {
-            for (i = 0; i < Common->cholmod_pthreads_num_threads && thread_used[i]; i++);
-            if (i < Common->cholmod_pthreads_num_threads)
-            {
-                FrontBusy[s] = TRUE;
-                rear_col[s] = Super[s+1];
-                thread_used[i] = TRUE;
-                thread_args[i].A = A;
-                thread_args[i].F = F;
-                thread_args[i].zero = zero;
-                thread_args[i].one = one;
-                thread_args[i].beta = beta;
-                thread_args[i].L = L;
-                thread_args[i].Cwork = Cwork;
-                thread_args[i].Common = Common;
+                if (s < nsuper)
+                {
+                    thread_args[device].A = A;
+                    thread_args[device].F = F;
+                    thread_args[device].zero = zero;
+                    thread_args[device].one = one;
+                    thread_args[device].beta = beta;
+                    thread_args[device].L = L;
+                    thread_args[device].Cwork = Cwork;
+                    thread_args[device].Common = Common;
 #ifdef GPU_BLAS
-                for (device = 0; device < Common->cuda_gpu_num && gpu_used[device]; device++);
-                if (useGPU && device < Common->cuda_gpu_num)
-                {
-                    gpu_used[device] = TRUE;
-                    thread_args[i].gpu_used_p = &gpu_used[device];
-                    thread_args[i].useGPU = TRUE;
-                    thread_args[i].gpu_p = &gpu_p[device];
-                }
-                else
-                {
-                    thread_args[i].gpu_used_p = NULL;
-                    thread_args[i].useGPU = FALSE;
-                    thread_args[i].gpu_p = NULL;
-                }
+                    if (useGPU && device < Common->cuda_gpu_num)
+                    {
+                        thread_args[device].useGPU = TRUE;
+                        thread_args[device].gpu_p = &gpu_p[device];
+                    }
+                    else
+                    {
+                        thread_args[device].useGPU = FALSE;
+                        thread_args[device].gpu_p = NULL;
+                    }
 #endif
-                thread_args[i].thread_used_p = &thread_used[i];
-                thread_args[i].thread_semaphore_p = &thread_semaphore;
-                thread_args[i].thread_mutex_p = &thread_mutex;
-                thread_args[i].s = s;
-                thread_args[i].nscol_new = 0;
-                thread_args[i].repeat_supernode = FALSE;
-                thread_args[i].to_return_p = &to_return;;
+                    thread_args[device].s = s;
+                    thread_args[device].nscol_new = 0;
+                    thread_args[device].repeat_supernode = FALSE;
+                    thread_args[device].to_return_p = &to_return;;
 
-                pthread_create(&threads[i], &thread_attr, TEMPLATE (cholmod_super_numeric_pthread), &thread_args[i]);
-                //pthread_join(threads[i], NULL);
+                    TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[device]);
+
+                    if (to_return)
+                        end_of_factorization = TRUE;
+                }
             }
-        }
-        if (to_return)
-        {
-#ifdef GPU_BLAS
-            if ( useGPU ) {
-                for (device = 0; device < Common->cuda_gpu_num; device++)
-                    CHOLMOD (gpu_end) (Common, device) ;
-            }
-#endif
-            return (Common->status >= CHOLMOD_OK) ;
         }
     }
 
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
-    for (i = 0 ; i < Common->cholmod_pthreads_num_threads; i++)
+    for (device = 0; device < Common->cholmod_parallel_num_threads; device++)
     {
-        if (thread_used[i])
-            pthread_join(threads[i], NULL);
+        thread_args[device].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[device].Map, Common);
+        thread_args[device].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[device].RelativeMap, Common);
+        thread_args[device].C = CHOLMOD(free) (L->maxcsize, sizeof(double), thread_args[device].C, Common);
     }
 
-    printf ("wait time = %lf\n", SuiteSparse_time() - timestamp);
-    timestamp = SuiteSparse_time();
-
-    for (i = 0; i < Common->cholmod_pthreads_num_threads; i++)
-    {
-        thread_args[i].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[i].Map, Common);
-        thread_args[i].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[i].RelativeMap, Common);
-        thread_args[i].C = CHOLMOD(free) (L->maxcsize, sizeof(double), thread_args[i].C, Common);
-    }
-
-    sem_destroy(&thread_semaphore);
-    pthread_mutex_destroy(&thread_mutex);
-    pthread_attr_destroy(&thread_attr);
 
     /* success; matrix is positive definite */
     L->minor = n ;
