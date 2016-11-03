@@ -506,7 +506,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         skips--;
                     }
                     else {
-                        cuErr = cudaEventQuery
+                        cuErr = cudaEventSynchronize
                             ( Common->updateCBuffersFree[vdevice][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
@@ -518,7 +518,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                             skips = 0;
                         }
                         else {
-                            continue;
                             /* buffers are not available, so the GPU is busy,
                              * so assemble a small descendant (anticipating
                              * that it will be assembled on the host) */
@@ -1151,18 +1150,18 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Lx = L->x ;
 
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
     for (s = 0; s < nsuper; s++)
+    {
+        FrontBusy[s] = FALSE;
+        front_col[s] = Super[s];
         pending[s] = 0;
+    }
     for (s = 0; s < nsuper; s++)
     {
         sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
         if (sparent > s && sparent < nsuper)
             pending[sparent]++;
-    }
-    for (s = 0; s < nsuper; s++)
-    {
-        FrontBusy[s] = FALSE;
-        front_col[s] = Super[s];
     }
 
     for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
@@ -1180,19 +1179,19 @@ static int TEMPLATE (cholmod_super_numeric)
         gpu_p[vdevice].vdevice = vdevice;
     }
 
-        /* local copy of useGPU */
-    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
-        if ( (Common->useGPU == 1) && L->useGPU)
+    /* local copy of useGPU */
+    if ( (Common->useGPU == 1) && L->useGPU)
+        for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
             /* Initialize the GPU.  If not found, don't use it. */
             useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
                 (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[vdevice]) ;
         }
-        else
-        {
-            useGPU = 0;
-        }
-        /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
+    else
+    {
+        useGPU = 0;
+    }
+    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
 #endif
 
 #ifndef NTIMER
@@ -1260,14 +1259,9 @@ static int TEMPLATE (cholmod_super_numeric)
                             {
                                 end_of_factorization = FALSE;
                                 if (t >= nsuper)
-                                {
                                     t = s;
-                                    if (pending[s] <= 0)
-                                    {
-                                        t++;
-                                        break;
-                                    }
-                                }
+                                if (pending[s] <= 0)
+                                    break;
                             }
                         }
                     }
@@ -1312,6 +1306,8 @@ static int TEMPLATE (cholmod_super_numeric)
                         break;
                     }
                 }
+                else
+                    break;
             }
         }
     }

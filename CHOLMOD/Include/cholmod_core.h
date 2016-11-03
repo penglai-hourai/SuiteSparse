@@ -278,11 +278,11 @@
 #endif
 
 #ifndef CUDA_GPU_PARALLEL
-#define CUDA_GPU_PARALLEL 1
+#define CUDA_GPU_PARALLEL 8
 #endif
 
 #ifndef CUDA_GPU_NUM
-#define CUDA_GPU_NUM 8
+#define CUDA_GPU_NUM 1
 #endif
 
 #ifndef CUDA_VGPU_NUM
