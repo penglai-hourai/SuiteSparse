@@ -506,7 +506,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         skips--;
                     }
                     else {
-                        cuErr = cudaEventSynchronize
+                        cuErr = cudaEventQuery
                             ( Common->updateCBuffersFree[vdevice][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
@@ -615,7 +615,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
             if ( useGPU ) {
                 /* set up GPU to assemble new supernode */
                 if ( GPUavailable == 1) {
-#if 0
+#if 1
                     if ( ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT &&
                          ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT ) {
                         if ( ! mapCreatedOnGpu ) {
