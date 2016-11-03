@@ -57,7 +57,7 @@ int CHOLMOD(start)
 )
 {
     int k ;
-    int device;
+    int device, vdevice;
 
     if (Common == NULL)
     {
@@ -175,29 +175,36 @@ int CHOLMOD(start)
 
     Common->cholmod_parallel_num_threads = 0;
     Common->cuda_gpu_num = 0;
-    /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
+    Common->cuda_vgpu_num = 0;
+
     for (device = 0; device < CUDA_GPU_NUM; device++)
     {
-    Common->cublasHandle[device] = NULL ;
-    Common->cublasEventPotrf[device] [0] = NULL ;
-    Common->cublasEventPotrf[device] [1] = NULL ;
-    Common->cublasEventPotrf[device] [2] = NULL ;
-    for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
+        /* these are destroyed by cholmod_gpu_deallocate */
+        Common->dev_mempool[device] = NULL;
+        Common->dev_mempool_size[device] = 0;
+        Common->host_pinned_mempool[device] = NULL;
+    }
+
+    /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
+    for (vdevice = 0; vdevice < CUDA_VGPU_NUM; vdevice++)
     {
-        Common->gpuStream[device] [k] = NULL ;
-        Common->magmaQueue[device][k] = NULL ;
-        Common->updateCBuffersFree[device] [k] = NULL ;
-    }
-    Common->updateCKernelsComplete[device] = NULL;
+        Common->cublasHandle[vdevice] = NULL ;
+        Common->cublasEventPotrf[vdevice] [0] = NULL ;
+        Common->cublasEventPotrf[vdevice] [1] = NULL ;
+        Common->cublasEventPotrf[vdevice] [2] = NULL ;
+        for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
+        {
+            Common->gpuStream[vdevice] [k] = NULL ;
+            Common->magmaQueue[vdevice][k] = NULL ;
+            Common->updateCBuffersFree[vdevice] [k] = NULL ;
+        }
+        Common->updateCKernelsComplete[vdevice] = NULL;
 
-    /* these are destroyed by cholmod_gpu_deallocate */
-    Common->dev_mempool[device] = NULL;
-    Common->dev_mempool_size[device] = 0;
-    Common->host_pinned_mempool[device] = NULL;
-    Common->host_pinned_mempool_size[device] = 0;
+        Common->host_pinned_mempool_size[vdevice] = 0;
 
-    Common->syrkStart[device] = 0 ;
+        Common->syrkStart[vdevice] = 0 ;
     }
+
     Common->devBuffSize = 0;
 
     Common->cholmod_cpu_gemm_time = 0 ;

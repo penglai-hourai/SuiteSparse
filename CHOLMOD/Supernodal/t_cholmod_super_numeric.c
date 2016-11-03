@@ -149,7 +149,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         idescendant, dlarge, dsmall, skips ;
     int iHostBuff, iDevBuff, useGPU, GPUavailable ;
     cholmod_gpu_pointers *gpu_p ;
-    int device;
+    int device, vdevice;
 #endif
 
     thread_args = void_args;
@@ -169,8 +169,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
     if (useGPU && gpu_p != NULL)
-    device = gpu_p->device;
-    cudaSetDevice(device);
+    {
+        device = gpu_p->device;
+        vdevice = gpu_p->vdevice;
+        cudaSetDevice(device);
+    }
 #endif
     s = thread_args->s;
     nscol_new = thread_args->nscol_new;
@@ -441,7 +444,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 #ifdef GPU_BLAS
         /* initialize the buffer counter */
         if ( useGPU ) {
-            Common->ibuffer[device] = 0;
+            Common->ibuffer[vdevice] = 0;
             supernodeUsedGPU = 0;
             idescendant = 0;
             d = Head[s];
@@ -493,7 +496,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                  */
 
                 iHostBuff =
-                    (Common->ibuffer[device]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
+                    (Common->ibuffer[vdevice]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                 cudaError_t cuErr;
 
                 if ( idescendant > 0 )  {
@@ -504,7 +507,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                     }
                     else {
                         cuErr = cudaEventQuery
-                            ( Common->updateCBuffersFree[device][iHostBuff] );
+                            ( Common->updateCBuffersFree[vdevice][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
                              * descendant (anticipating that this will be
@@ -748,10 +751,10 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
             else
             {
                 supernodeUsedGPU = 1;   /* GPU was used for this supernode*/
-                Common->ibuffer[device]++;      /* gpu_updateC is asynchronous, so use
+                Common->ibuffer[vdevice]++;      /* gpu_updateC is asynchronous, so use
                                          * the next host buffer for the next
                                          * supernode */
-                Common->ibuffer[device] = Common->ibuffer[device]%
+                Common->ibuffer[vdevice] = Common->ibuffer[vdevice]%
                     (CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
             }
 #endif
@@ -786,8 +789,8 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 
 #ifdef GPU_BLAS
         if ( useGPU ) {
-            iHostBuff = (Common->ibuffer[device])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-            iDevBuff = (Common->ibuffer[device])%CHOLMOD_DEVICE_STREAMS;
+            iHostBuff = (Common->ibuffer[vdevice])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+            iDevBuff = (Common->ibuffer[vdevice])%CHOLMOD_DEVICE_STREAMS;
 
             /* combine updates assembled on the GPU with updates
              * assembled on the CPU */
@@ -1091,10 +1094,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* these variables are not used if the GPU module is not installed */
 
-    int device;
+    int device, vdevice;
 #ifdef GPU_BLAS
     int useGPU = FALSE;
-    cholmod_gpu_pointers gpu_p[CUDA_GPU_NUM];
+    cholmod_gpu_pointers gpu_p[CUDA_VGPU_NUM];
 #endif
 
     double timestamp;
@@ -1162,24 +1165,28 @@ static int TEMPLATE (cholmod_super_numeric)
         front_col[s] = Super[s];
     }
 
-    for (device = 0; device < Common->cholmod_parallel_num_threads; device++)
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        thread_args[device].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[device].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[device].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
+        thread_args[vdevice].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
+        thread_args[vdevice].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
+        thread_args[vdevice].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
     }
 
 #ifdef GPU_BLAS
-    for (device = 0; device < Common->cuda_gpu_num; device++)
-        gpu_p[device].device = device;
+    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+    {
+        device = vdevice / CUDA_GPU_PARALLEL;
+        gpu_p[vdevice].device = device;
+        gpu_p[vdevice].vdevice = vdevice;
+    }
 
         /* local copy of useGPU */
-    for (device = 0; device < Common->cuda_gpu_num; device++)
+    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         if ( (Common->useGPU == 1) && L->useGPU)
         {
             /* Initialize the GPU.  If not found, don't use it. */
             useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
-                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[device]) ;
+                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[vdevice]) ;
         }
         else
         {
@@ -1236,9 +1243,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
     t = 0;
 #pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s) schedule (static)
-    for (device = 0; device < CHOLMOD_PARALLEL_NUM_THREADS; device++)
+    for (vdevice = 0; vdevice < CHOLMOD_PARALLEL_NUM_THREADS; vdevice++)
     {
-        if (device < Common->cholmod_parallel_num_threads)
+        if (vdevice < Common->cholmod_parallel_num_threads)
         {
             while (!end_of_factorization)
             {
@@ -1253,9 +1260,14 @@ static int TEMPLATE (cholmod_super_numeric)
                             {
                                 end_of_factorization = FALSE;
                                 if (t >= nsuper)
+                                {
                                     t = s;
-                                if (pending[s] <= 0)
-                                    break;
+                                    if (pending[s] <= 0)
+                                    {
+                                        t++;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -1267,35 +1279,38 @@ static int TEMPLATE (cholmod_super_numeric)
                 }
                 if (s < nsuper)
                 {
-                    thread_args[device].A = A;
-                    thread_args[device].F = F;
-                    thread_args[device].zero = zero;
-                    thread_args[device].one = one;
-                    thread_args[device].beta = beta;
-                    thread_args[device].L = L;
-                    thread_args[device].Cwork = Cwork;
-                    thread_args[device].Common = Common;
+                    thread_args[vdevice].A = A;
+                    thread_args[vdevice].F = F;
+                    thread_args[vdevice].zero = zero;
+                    thread_args[vdevice].one = one;
+                    thread_args[vdevice].beta = beta;
+                    thread_args[vdevice].L = L;
+                    thread_args[vdevice].Cwork = Cwork;
+                    thread_args[vdevice].Common = Common;
 #ifdef GPU_BLAS
-                    if (useGPU && device < Common->cuda_gpu_num)
+                    if (useGPU && vdevice < Common->cuda_vgpu_num)
                     {
-                        thread_args[device].useGPU = TRUE;
-                        thread_args[device].gpu_p = &gpu_p[device];
+                        thread_args[vdevice].useGPU = TRUE;
+                        thread_args[vdevice].gpu_p = &gpu_p[vdevice];
                     }
                     else
                     {
-                        thread_args[device].useGPU = FALSE;
-                        thread_args[device].gpu_p = NULL;
+                        thread_args[vdevice].useGPU = FALSE;
+                        thread_args[vdevice].gpu_p = NULL;
                     }
 #endif
-                    thread_args[device].s = s;
-                    thread_args[device].nscol_new = 0;
-                    thread_args[device].repeat_supernode = FALSE;
-                    thread_args[device].to_return_p = &to_return;;
+                    thread_args[vdevice].s = s;
+                    thread_args[vdevice].nscol_new = 0;
+                    thread_args[vdevice].repeat_supernode = FALSE;
+                    thread_args[vdevice].to_return_p = &to_return;;
 
-                    TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[device]);
+                    TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[vdevice]);
 
                     if (to_return)
+                    {
                         end_of_factorization = TRUE;
+                        break;
+                    }
                 }
             }
         }
@@ -1304,11 +1319,11 @@ static int TEMPLATE (cholmod_super_numeric)
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
-    for (device = 0; device < Common->cholmod_parallel_num_threads; device++)
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        thread_args[device].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[device].Map, Common);
-        thread_args[device].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[device].RelativeMap, Common);
-        thread_args[device].C = CHOLMOD(free) (L->maxcsize, sizeof(double), thread_args[device].C, Common);
+        thread_args[vdevice].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[vdevice].Map, Common);
+        thread_args[vdevice].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[vdevice].RelativeMap, Common);
+        thread_args[vdevice].C = CHOLMOD(free) (L->maxcsize, sizeof(double), thread_args[vdevice].C, Common);
     }
 
 

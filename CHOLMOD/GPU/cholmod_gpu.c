@@ -245,14 +245,15 @@ int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
 void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 {
 #ifdef GPU_BLAS
-    int k ;
+    int k, vdevice;
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        if (Common->magmaQueue[device] [k])
+        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        if (Common->magmaQueue[vdevice] [k])
         {
-            magma_queue_destroy(Common->magmaQueue[device][k]) ;
-            Common->magmaQueue[device][k] = NULL ;
+            magma_queue_destroy(Common->magmaQueue[vdevice][k]) ;
+            Common->magmaQueue[vdevice][k] = NULL ;
         }
     }
 
@@ -260,12 +261,13 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
     /* destroy Cublas Handle */
     /* ------------------------------------------------------------------ */
 
-    if (Common->cublasHandle[device])
+    for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+    if (Common->cublasHandle[vdevice])
     {
-        /* fprintf (stderr, "destroy cublas[%d] %p\n", device, Common->cublasHandle[device]) ; */
-        cublasDestroy (Common->cublasHandle[device]) ;
+        /* fprintf (stderr, "destroy cublas[%d] %p\n", device, Common->cublasHandle[vdevice]) ; */
+        cublasDestroy (Common->cublasHandle[vdevice]) ;
         /* fprintf (stderr, "destroy cublas[%d] done\n", device) ; */
-        Common->cublasHandle[device] = NULL ;
+        Common->cublasHandle[vdevice] = NULL ;
     }
 
     {
@@ -275,13 +277,14 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        if (Common->gpuStream[device] [k])
+        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        if (Common->gpuStream[vdevice] [k])
         {
-            /* fprintf (stderr, "destroy gpuStream[%d] [%d] %p\n", device, k,
-                Common->gpuStream[device] [k]) ; */
-            cudaStreamDestroy (Common->gpuStream[device] [k]) ;
-            /* fprintf (stderr, "destroy gpuStream[%d] [%d] done\n", device, k) ; */
-            Common->gpuStream[device] [k] = NULL ;
+            /* fprintf (stderr, "destroy gpuStream[%d] [%d] %p\n", vdevice, k,
+                Common->gpuStream[vdevice] [k]) ; */
+            cudaStreamDestroy (Common->gpuStream[vdevice] [k]) ;
+            /* fprintf (stderr, "destroy gpuStream[%d] [%d] done\n", vdevice, k) ; */
+            Common->gpuStream[vdevice] [k] = NULL ;
         }
     }
 
@@ -291,36 +294,41 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     for (k = 0 ; k < 3 ; k++)
     {
-        if (Common->cublasEventPotrf[device] [k])
+        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        if (Common->cublasEventPotrf[vdevice] [k])
         {
-            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] %p\n", device, k,
-                Common->cublasEventPotrf[device] [k]) ; */
-            cudaEventDestroy (Common->cublasEventPotrf[device] [k]) ;
-            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] done\n", device, k) ; */
-            Common->cublasEventPotrf[device] [k] = NULL ;
+            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] %p\n", vdevice, k,
+                Common->cublasEventPotrf[vdevice] [k]) ; */
+            cudaEventDestroy (Common->cublasEventPotrf[vdevice] [k]) ;
+            /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] done\n", vdevice, k) ; */
+            Common->cublasEventPotrf[vdevice] [k] = NULL ;
         }
     }
     }
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        if (Common->updateCBuffersFree[device] [k])
+        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        if (Common->updateCBuffersFree[vdevice] [k])
         {
-            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] %p\n", device, k,
-                Common->updateCBuffersFree[device] [k]) ; */
-            cudaEventDestroy (Common->updateCBuffersFree[device] [k]) ;
-            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] done\n", device, k) ;*/
-            Common->updateCBuffersFree[device] [k] = NULL ;
+            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] %p\n", vdevice, k,
+                Common->updateCBuffersFree[vdevice] [k]) ; */
+            cudaEventDestroy (Common->updateCBuffersFree[vdevice] [k]) ;
+            /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] done\n", vdevice, k) ;*/
+            Common->updateCBuffersFree[vdevice] [k] = NULL ;
         }
     }
 
     if (Common->updateCKernelsComplete[device])
     {
-        /* fprintf (stderr, "destroy updateCKernelsComplete[%d] %p\n", device,
-            Common->updateCKernelsComplete[device]) ; */
-        cudaEventDestroy (Common->updateCKernelsComplete[device]) ;
-        /* fprintf (stderr, "destroy updateCKernelsComplete[%d] done\n", device) ; */
-        Common->updateCKernelsComplete[device] = NULL;
+        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        {
+            /* fprintf (stderr, "destroy updateCKernelsComplete[%d] %p\n", vdevice,
+               Common->updateCKernelsComplete[vdevice]) ; */
+            cudaEventDestroy (Common->updateCKernelsComplete[vdevice]) ;
+            /* fprintf (stderr, "destroy updateCKernelsComplete[%d] done\n", vdevice) ; */
+            Common->updateCKernelsComplete[vdevice] = NULL;
+        }
     }
 #endif
 }
@@ -374,6 +382,8 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     double maxGpuMemFraction;
 
     size_t devBuffSize;
+
+    int vdevice;
 
     cudaSetDevice(device);
 
@@ -440,8 +450,9 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     CHOLMOD(gpu_deallocate) (Common, device);
 
     /* create cuBlas handle */
-    if ( ! Common->cublasHandle[device] ) {
-        cublasErr = cublasCreate (&(Common->cublasHandle[device])) ;
+    for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+    if ( ! Common->cublasHandle[vdevice] ) {
+        cublasErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
         if (cublasErr != CUBLAS_STATUS_SUCCESS) {
             ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
             return 1;
@@ -467,6 +478,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
 
     /* Split up the memory allocations into required device buffers. */
     devBuffSize = requestedDeviceMemory/
+        CUDA_GPU_PARALLEL/
         (size_t)CHOLMOD_DEVICE_SUPERNODE_BUFFERS;
     devBuffSize -= devBuffSize%0x20000;
     if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)

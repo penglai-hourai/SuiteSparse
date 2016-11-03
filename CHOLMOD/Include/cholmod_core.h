@@ -277,8 +277,16 @@
 #define CHOLMOD_OMP_NUM_THREADS 4
 #endif
 
+#ifndef CUDA_GPU_PARALLEL
+#define CUDA_GPU_PARALLEL 1
+#endif
+
 #ifndef CUDA_GPU_NUM
 #define CUDA_GPU_NUM 8
+#endif
+
+#ifndef CUDA_VGPU_NUM
+#define CUDA_VGPU_NUM (CUDA_GPU_NUM * CUDA_GPU_PARALLEL)
 #endif
 
 #ifndef CPU_THREAD_NUM
@@ -286,7 +294,7 @@
 #endif
 
 #ifndef CHOLMOD_PARALLEL_NUM_THREADS
-#define CHOLMOD_PARALLEL_NUM_THREADS (CUDA_GPU_NUM + CPU_THREAD_NUM)
+#define CHOLMOD_PARALLEL_NUM_THREADS (CUDA_VGPU_NUM + CPU_THREAD_NUM)
 #endif
 
 /* Define buffering parameters for GPU processing */
@@ -994,17 +1002,18 @@ typedef struct cholmod_common_struct
 
     int cholmod_parallel_num_threads;
     int cuda_gpu_num;
+    int cuda_vgpu_num;
 
-    CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_GPU_NUM];
+    CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_VGPU_NUM];
 
     /* a set of streams for general use */
-    CHOLMOD_CUDASTREAM    gpuStream[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_CUDASTREAM    gpuStream[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_GPU_NUM] [3] ;
-    CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_GPU_NUM];
-    CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_VGPU_NUM] [3] ;
+    CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_VGPU_NUM];
+    CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-    CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_GPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     void *dev_mempool[CUDA_GPU_NUM];    /* pointer to single allocation of device memory */
     size_t dev_mempool_size[CUDA_GPU_NUM];
@@ -1013,9 +1022,9 @@ typedef struct cholmod_common_struct
     size_t host_pinned_mempool_size[CUDA_GPU_NUM];
 
     size_t devBuffSize;
-    int    ibuffer[CUDA_GPU_NUM];
+    int    ibuffer[CUDA_VGPU_NUM];
 
-    double syrkStart[CUDA_GPU_NUM];          /* time syrk started */
+    double syrkStart[CUDA_VGPU_NUM];          /* time syrk started */
 
     /* run times of the different parts of CHOLMOD (GPU and CPU) */
     double cholmod_cpu_gemm_time ;
