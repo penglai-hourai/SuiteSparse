@@ -506,7 +506,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         skips--;
                     }
                     else {
+#if 1
                         cuErr = cudaEventQuery
+#else
+                        cuErr = cudaEventSynchronize
+#endif
                             ( Common->updateCBuffersFree[vdevice][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
@@ -1242,73 +1246,70 @@ static int TEMPLATE (cholmod_super_numeric)
 
     t = 0;
 #pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s) schedule (static)
-    for (vdevice = 0; vdevice < CHOLMOD_PARALLEL_NUM_THREADS; vdevice++)
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        if (vdevice < Common->cholmod_parallel_num_threads)
+        while (!end_of_factorization)
         {
-            while (!end_of_factorization)
-            {
 #pragma omp critical
+            {
+                end_of_factorization = TRUE;
+                for (s = t, t = nsuper ; s < nsuper; s++)
                 {
-                    end_of_factorization = TRUE;
-                    for (s = t, t = nsuper ; s < nsuper; s++)
+                    if (!FrontBusy[s])
                     {
-                        if (!FrontBusy[s])
+                        if (front_col[s] < Super[s+1])
                         {
-                            if (front_col[s] < Super[s+1])
-                            {
-                                end_of_factorization = FALSE;
-                                if (t >= nsuper)
-                                    t = s;
-                                if (pending[s] <= 0)
-                                    break;
-                            }
+                            end_of_factorization = FALSE;
+                            if (t >= nsuper)
+                                t = s;
+                            if (pending[s] <= 0)
+                                break;
                         }
-                    }
-                    if (s < nsuper)
-                    {
-                        FrontBusy[s] = TRUE;
-                        rear_col[s] = Super[s+1];
                     }
                 }
                 if (s < nsuper)
                 {
-                    thread_args[vdevice].A = A;
-                    thread_args[vdevice].F = F;
-                    thread_args[vdevice].zero = zero;
-                    thread_args[vdevice].one = one;
-                    thread_args[vdevice].beta = beta;
-                    thread_args[vdevice].L = L;
-                    thread_args[vdevice].Cwork = Cwork;
-                    thread_args[vdevice].Common = Common;
+                    FrontBusy[s] = TRUE;
+                    rear_col[s] = Super[s+1];
+                }
+            }
+            if (s < nsuper)
+            {
+                thread_args[vdevice].A = A;
+                thread_args[vdevice].F = F;
+                thread_args[vdevice].zero = zero;
+                thread_args[vdevice].one = one;
+                thread_args[vdevice].beta = beta;
+                thread_args[vdevice].L = L;
+                thread_args[vdevice].Cwork = Cwork;
+                thread_args[vdevice].Common = Common;
 #ifdef GPU_BLAS
-                    if (useGPU && vdevice < Common->cuda_vgpu_num)
-                    {
-                        thread_args[vdevice].useGPU = TRUE;
-                        thread_args[vdevice].gpu_p = &gpu_p[vdevice];
-                    }
-                    else
-                    {
-                        thread_args[vdevice].useGPU = FALSE;
-                        thread_args[vdevice].gpu_p = NULL;
-                    }
-#endif
-                    thread_args[vdevice].s = s;
-                    thread_args[vdevice].nscol_new = 0;
-                    thread_args[vdevice].repeat_supernode = FALSE;
-                    thread_args[vdevice].to_return_p = &to_return;;
-
-                    TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[vdevice]);
-
-                    if (to_return)
-                    {
-                        end_of_factorization = TRUE;
-                        break;
-                    }
+                if (useGPU && vdevice < Common->cuda_vgpu_num)
+                {
+                    thread_args[vdevice].useGPU = TRUE;
+                    thread_args[vdevice].gpu_p = &gpu_p[vdevice];
                 }
                 else
+                {
+                    thread_args[vdevice].useGPU = FALSE;
+                    thread_args[vdevice].gpu_p = NULL;
+                }
+#endif
+                thread_args[vdevice].s = s;
+                thread_args[vdevice].nscol_new = 0;
+                thread_args[vdevice].repeat_supernode = FALSE;
+                thread_args[vdevice].to_return_p = &to_return;;
+
+                TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[vdevice]);
+
+                if (to_return)
+                {
+                    end_of_factorization = TRUE;
                     break;
+                }
             }
+            else
+                break;
         }
     }
 
