@@ -997,13 +997,17 @@ typedef struct cholmod_common_struct
     #define CHOLMOD_CUBLAS_HANDLE cublasHandle_t
     #define CHOLMOD_CUDASTREAM    cudaStream_t
     #define CHOLMOD_CUDAEVENT     cudaEvent_t
+#ifdef MAGMA
     #define CHOLMOD_MAGMAQUEUE    magma_queue_t
+#endif
 #else
     /* ... so make them void * pointers if the GPU is not being used */
     #define CHOLMOD_CUBLAS_HANDLE void *
     #define CHOLMOD_CUDASTREAM    void *
     #define CHOLMOD_CUDAEVENT     void *
+#ifdef MAGMA
     #define CHOLMOD_MAGMAQUEUE    void *
+#endif
 #endif
 
     int cholmod_parallel_num_threads;
@@ -1018,9 +1022,9 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_VGPU_NUM] [3] ;
     CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_VGPU_NUM];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
-
+#ifdef MAGMA
     CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
-
+#endif
     void *dev_mempool[CUDA_GPU_NUM];    /* pointer to single allocation of device memory */
     size_t dev_mempool_size[CUDA_GPU_NUM];
 

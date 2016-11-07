@@ -247,6 +247,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 #ifdef GPU_BLAS
     int k, vdevice;
 
+#ifdef MAGMA
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
         for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
@@ -256,6 +257,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
             Common->magmaQueue[vdevice][k] = NULL ;
         }
     }
+#endif
 
     /* ------------------------------------------------------------------ */
     /* destroy Cublas Handle */

@@ -151,7 +151,9 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
                 ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
                 return (0) ;
             }
+#ifdef MAGMA
             magma_queue_create_from_cuda(device, Common->gpuStream[vdevice][i], Common->cublasHandle[vdevice], NULL, &(Common->magmaQueue[vdevice][i]));
+#endif
         }
 
         /* ------------------------------------------------------------------ */

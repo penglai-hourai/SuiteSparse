@@ -82,45 +82,27 @@
 #endif
 #endif
 
-typedef struct
-{
-    cholmod_sparse *A;
-    cholmod_sparse *F;
-    double *beta;
-    cholmod_factor *L;
-    cholmod_common *Common;
-    Int *Map;
-    Int *RelativeMap;
-    double *C;
+static void TEMPLATE (cholmod_super_numeric_threaded_repeated)
+(
+    cholmod_sparse *A,
+    cholmod_sparse *F,
+    double *beta,
+    cholmod_factor *L,
+    cholmod_common *Common,
+    Int *Map,
+    Int *RelativeMap,
+    double *C,
 #ifdef GPU_BLAS
-    int useGPU;
-    cholmod_gpu_pointers *gpu_p;
+    int useGPU,
+    cholmod_gpu_pointers *gpu_p,
 #endif
-    Int s;
-    Int nscol_new;
-    int *to_return_p;
-} TEMPLATE (CHOLMOD (thread_args));
-
-static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_args)
+    Int s,
+    int *to_return_p,
+    Int nscol_new
+)
 {
-    TEMPLATE (CHOLMOD (thread_args)) * const thread_args = void_args;
-
-    const cholmod_sparse * const A = thread_args->A;
-    const cholmod_sparse * const F = thread_args->F;
-
     const double one [2] =  {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     const double zero [2] = {0, 0} ;     /* BETA for *syrk, *herk, and *gemm */
-    const double * const beta = thread_args->beta;
-    cholmod_factor * const L = thread_args->L;
-    cholmod_common * const Common = thread_args->Common;
-
-    const Int s = thread_args->s;
-
-    Int * const Map = thread_args->Map;
-    Int * const RelativeMap = thread_args->RelativeMap;
-    double * const C = thread_args->C;
-
-    Int repeat_supernode;
 
     Int *Ap, *Ai, *Anz, *Az, Apacked, stype;
     Int *Fp, *Fi, *Fnz, *Fz, Fpacked;
@@ -132,7 +114,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
     Int *Head;
 
     Int ss, sparent;
-    Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
+    Int k1, k2, nscol, nscol2, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
     Int pf, pfend;
     Int d, dnext, dancestor;
     Int kd1, kd2, pdi, pdend, ndcol, pdi1, pdi2, ndrow, ndrow1, ndrow2, pdx, pdx1;
@@ -151,17 +133,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
 #ifdef GPU_BLAS
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
-    int iHostBuff, iDevBuff, useGPU, GPUavailable ;
-    cholmod_gpu_pointers *gpu_p ;
+    int iHostBuff, iDevBuff, GPUavailable ;
     int device, vdevice;
 #endif
 
-    repeat_supernode = TRUE;
-    nscol_new = thread_args->nscol_new;
-
 #ifdef GPU_BLAS
-    useGPU = thread_args->useGPU;
-    gpu_p = thread_args->gpu_p;
     if (useGPU && gpu_p != NULL)
     {
         device = gpu_p->device;
@@ -384,7 +360,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
             }
         }
 
-        PRINT1 (("Supernode with just A: repeat: "ID"\n", repeat_supernode)) ;
+        PRINT1 (("Supernode with just A: repeat: "ID"\n", TRUE)) ;
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
         PRINT1 (("\n\n")) ;
@@ -393,24 +369,10 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
         /* save/restore the list of supernodes */
         /* ------------------------------------------------------------------ */
 
-        if (!repeat_supernode)
+        for (d = Head [s] ; d != EMPTY ; d = Next [d])
         {
-            /* Save the list of pending descendants in case s is not positive
-             * definite.  Also save Lpos for each descendant d, so that we can
-             * find which part of d is used to update s. */
-            for (d = Head [s] ; d != EMPTY ; d = Next [d])
-            {
-                Lpos_save [d] = Lpos [d] ;
-                Next_save [d] = Next [d] ;
-            }
-        }
-        else
-        {
-            for (d = Head [s] ; d != EMPTY ; d = Next [d])
-            {
-                Lpos [d] = Lpos_save [d] ;
-                Next [d] = Next_save [d] ;
-            }
+            Lpos [d] = Lpos_save [d] ;
+            Next [d] = Next_save [d] ;
         }
 
         /* ------------------------------------------------------------------ */
@@ -754,26 +716,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
 
             dnext = Next [d] ;
 
-            if (!repeat_supernode)
-            {
-                /* If node s is being repeated, Head [dancestor] has already
-                 * been cleared (set to EMPTY).  It must remain EMPTY.  The
-                 * dancestor will not be factorized since the factorization
-                 * terminates at node s. */
-                Lpos [d] = pdi2 - pdi ;
-                if (Lpos [d] < ndrow)
-                {
-                    dancestor = SuperMap [Ls [pdi2]] ;
-                    ASSERT (dancestor > s && dancestor < nsuper) ;
-#pragma omp critical
-                    {
-                        /* place d in the link list of its next ancestor */
-                        Next [d] = Head [dancestor] ;
-                        Head [dancestor] = d ;
-                    }
-                }
-            }
-
         }  /* end of descendant supernode loop */
 
 #ifdef GPU_BLAS
@@ -790,7 +732,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
 #endif
 
         PRINT1 (("\nSupernode with contributions A: repeat: "ID"\n",
-                 repeat_supernode)) ;
+                 TRUE)) ;
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
         PRINT1 (("\n\n")) ;
@@ -810,7 +752,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
          * including the column containing the problematic entry.
          */
 
-        nscol2 = (repeat_supernode) ? (nscol_new) : (nscol) ;
+        nscol2 = nscol_new ;
 
 #ifdef GPU_BLAS
         if ( !useGPU
@@ -847,8 +789,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
         /* check if the matrix is not positive definite */
         /* ------------------------------------------------------------------ */
 
-        if (repeat_supernode)
-        {
             /* the leading part has been refactorized; it must have succeeded */
             info = 0 ;
 
@@ -860,80 +800,12 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
                 /* Lx [p] = 0 ; */
                 L_CLEAR (Lx,p) ;
             }
-        }
 
         /* info is set to one in LAPACK_*potrf if blas_ok is FALSE.  It is
          * set to zero in dpotrf/zpotrf if the factorization was successful. */
         if (CHECK_BLAS_INT && !Common->blas_ok)
         {
             ERROR (CHOLMOD_TOO_LARGE, "problem too large for the BLAS") ;
-        }
-
-        if (info != 0)
-        {
-            /* Matrix is not positive definite.  dpotrf/zpotrf do NOT report an
-             * error if the diagonal of L has NaN's, only if it has a zero. */
-            if (Common->status == CHOLMOD_OK)
-            {
-                ERROR (CHOLMOD_NOT_POSDEF, "matrix not positive definite") ;
-            }
-
-            /* L->minor is the column of L that contains a zero or negative
-             * diagonal term. */
-            L->minor = k1 + info - 1 ;
-
-            /* clear the link lists of all subsequent supernodes */
-            for (ss = s+1 ; ss < nsuper ; ss++)
-            {
-                Head [ss] = EMPTY ;
-            }
-
-            /* zero this supernode, and all remaining supernodes */
-            pend = L->xsize ;
-            for (p = psx ; p < pend ; p++)
-            {
-                /* Lx [p] = 0. ; */
-                L_CLEAR (Lx,p) ;
-            }
-
-            /* If L is indefinite, it still contains useful information.
-             * Supernodes 0 to s-1 are valid, similar to MATLAB [R,p]=chol(A),
-             * where the 1-based p is identical to the 0-based L->minor.  Since
-             * L->minor is in the current supernode s, it and any columns to the
-             * left of it in supernode s are also all zero.  This differs from
-             * [R,p]=chol(A), which contains nonzero rows 1 to p-1.  Fix this
-             * by setting repeat_supernode to TRUE, and repeating supernode s.
-             *
-             * If Common->quick_return_if_not_posdef is true, then the entire
-             * supernode s is not factorized; it is left as all zero.
-             */
-
-            if (info == 1 || Common->quick_return_if_not_posdef)
-            {
-                /* If the first column of supernode s contains a zero or
-                 * negative diagonal entry, then it is already properly set to
-                 * zero.  Also, info will be 1 if integer overflow occured in
-                 * the BLAS. */
-                Head [s] = EMPTY ;
-
-                *(thread_args->to_return_p) = TRUE;
-                return void_args;
-            }
-            else
-            {
-                /* Repeat supernode s, but only factorize it up to but not
-                 * including the column containing the problematic diagonal
-                 * entry. */
-                repeat_supernode = TRUE ;
-                //s-- ;
-                nscol_new = info - 1 ;
-
-                thread_args->s = s;
-                thread_args->nscol_new = nscol_new;
-                TEMPLATE (cholmod_super_numeric_threaded_repeated) (void_args);
-
-                return void_args;
-            }
         }
 
         /* ------------------------------------------------------------------ */
@@ -987,23 +859,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
                 ERROR (CHOLMOD_TOO_LARGE, "problem too large for the BLAS") ;
             }
 
-            if (!repeat_supernode)
-            {
-                /* Lpos [s] is offset of first row of s affecting its parent */
-                Lpos [s] = nscol ;
-                sparent = SuperMap [Ls [psi + nscol]] ;
-                ASSERT (sparent != EMPTY) ;
-                ASSERT (Ls [psi + nscol] >= Super [sparent]) ;
-                ASSERT (Ls [psi + nscol] <  Super [sparent+1]) ;
-                ASSERT (SuperMap [Ls [psi + nscol]] == sparent) ;
-                ASSERT (sparent > s && sparent < nsuper) ;
-#pragma omp critical
-                {
-                    /* place s in link list of its parent */
-                    Next [s] = Head [sparent] ;
-                    Head [sparent] = s ;
-                }
-            }
         }
         else
         {
@@ -1022,13 +877,10 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
 
-        if (repeat_supernode)
-        {
             /* matrix is not positive definite; finished clean-up for supernode
              * containing negative diagonal */
 
-                *(thread_args->to_return_p) = TRUE;
-        }
+                *to_return_p = TRUE;
 
     front_status[s] = FRONT_DONE;
     sparent = SuperMap [Ls [psi + nscol]] ;
@@ -1036,29 +888,29 @@ static void * TEMPLATE (cholmod_super_numeric_threaded_repeated) (void *void_arg
 #pragma omp critical
         pending[sparent]--;
 
-    return void_args;
+    return;
 }
 
-static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
+static void TEMPLATE (cholmod_super_numeric_threaded)
+(
+    cholmod_sparse *A,
+    cholmod_sparse *F,
+    double *beta,
+    cholmod_factor *L,
+    cholmod_common *Common,
+    Int *Map,
+    Int *RelativeMap,
+    double *C,
+#ifdef GPU_BLAS
+    int useGPU,
+    cholmod_gpu_pointers *gpu_p,
+#endif
+    Int s,
+    int *to_return_p
+)
 {
-    TEMPLATE (CHOLMOD (thread_args)) * const thread_args = void_args;
-
-    const cholmod_sparse * const A = thread_args->A;
-    const cholmod_sparse * const F = thread_args->F;
-
     const double one [2] =  {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     const double zero [2] = {0, 0} ;     /* BETA for *syrk, *herk, and *gemm */
-    const double * const beta = thread_args->beta;
-    cholmod_factor * const L = thread_args->L;
-    cholmod_common * const Common = thread_args->Common;
-
-    const Int s = thread_args->s;
-
-    Int * const Map = thread_args->Map;
-    Int * const RelativeMap = thread_args->RelativeMap;
-    double * const C = thread_args->C;
-
-    Int repeat_supernode;
 
     Int *Ap, *Ai, *Anz, *Az, Apacked, stype;
     Int *Fp, *Fi, *Fnz, *Fz, Fpacked;
@@ -1089,17 +941,13 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 #ifdef GPU_BLAS
     Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
         idescendant, dlarge, dsmall, skips ;
-    int iHostBuff, iDevBuff, useGPU, GPUavailable ;
-    cholmod_gpu_pointers *gpu_p ;
+    int iHostBuff, iDevBuff, GPUavailable ;
     int device, vdevice;
 #endif
 
-    repeat_supernode = FALSE;
     nscol_new = 0;
 
 #ifdef GPU_BLAS
-    useGPU = thread_args->useGPU;
-    gpu_p = thread_args->gpu_p;
     if (useGPU && gpu_p != NULL)
     {
         device = gpu_p->device;
@@ -1322,7 +1170,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
             }
         }
 
-        PRINT1 (("Supernode with just A: repeat: "ID"\n", repeat_supernode)) ;
+        PRINT1 (("Supernode with just A: repeat: "ID"\n", FALSE)) ;
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
         PRINT1 (("\n\n")) ;
@@ -1331,8 +1179,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         /* save/restore the list of supernodes */
         /* ------------------------------------------------------------------ */
 
-        if (!repeat_supernode)
-        {
             /* Save the list of pending descendants in case s is not positive
              * definite.  Also save Lpos for each descendant d, so that we can
              * find which part of d is used to update s. */
@@ -1341,15 +1187,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                 Lpos_save [d] = Lpos [d] ;
                 Next_save [d] = Next [d] ;
             }
-        }
-        else
-        {
-            for (d = Head [s] ; d != EMPTY ; d = Next [d])
-            {
-                Lpos [d] = Lpos_save [d] ;
-                Next [d] = Next_save [d] ;
-            }
-        }
 
         /* ------------------------------------------------------------------ */
         /* update supernode s with each pending descendant d */
@@ -1692,8 +1529,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 
             dnext = Next [d] ;
 
-            if (!repeat_supernode)
-            {
                 /* If node s is being repeated, Head [dancestor] has already
                  * been cleared (set to EMPTY).  It must remain EMPTY.  The
                  * dancestor will not be factorized since the factorization
@@ -1710,7 +1545,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         Head [dancestor] = d ;
                     }
                 }
-            }
 
         }  /* end of descendant supernode loop */
 
@@ -1728,7 +1562,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 #endif
 
         PRINT1 (("\nSupernode with contributions A: repeat: "ID"\n",
-                 repeat_supernode)) ;
+                 FALSE)) ;
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
         PRINT1 (("\n\n")) ;
@@ -1748,7 +1582,7 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
          * including the column containing the problematic entry.
          */
 
-        nscol2 = (repeat_supernode) ? (nscol_new) : (nscol) ;
+        nscol2 = nscol ;
 
 #ifdef GPU_BLAS
         if ( !useGPU
@@ -1784,21 +1618,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         /* ------------------------------------------------------------------ */
         /* check if the matrix is not positive definite */
         /* ------------------------------------------------------------------ */
-
-        if (repeat_supernode)
-        {
-            /* the leading part has been refactorized; it must have succeeded */
-            info = 0 ;
-
-            /* zero out the rest of this supernode */
-            p = psx + nsrow * nscol_new ;
-            pend = psx + nsrow * nscol ;            /* s is nsrow-by-nscol */
-            for ( ; p < pend ; p++)
-            {
-                /* Lx [p] = 0 ; */
-                L_CLEAR (Lx,p) ;
-            }
-        }
 
         /* info is set to one in LAPACK_*potrf if blas_ok is FALSE.  It is
          * set to zero in dpotrf/zpotrf if the factorization was successful. */
@@ -1854,23 +1673,26 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                  * the BLAS. */
                 Head [s] = EMPTY ;
 
-                *(thread_args->to_return_p) = TRUE;
-                return void_args;
+                *to_return_p = TRUE;
+                return;
             }
             else
             {
                 /* Repeat supernode s, but only factorize it up to but not
                  * including the column containing the problematic diagonal
                  * entry. */
-                repeat_supernode = TRUE ;
-                //s-- ;
                 nscol_new = info - 1 ;
 
-                thread_args->s = s;
-                thread_args->nscol_new = nscol_new;
-                TEMPLATE (cholmod_super_numeric_threaded_repeated) (void_args);
+                TEMPLATE (cholmod_super_numeric_threaded_repeated)
+                    (
+                        A, F, beta, L, Common, Map, RelativeMap, C,
+#ifdef GPU_BLAS
+                        useGPU, gpu_p,
+#endif
+                        s, to_return_p, nscol_new
+                    );
 
-                return void_args;
+                return;
             }
         }
 
@@ -1925,8 +1747,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                 ERROR (CHOLMOD_TOO_LARGE, "problem too large for the BLAS") ;
             }
 
-            if (!repeat_supernode)
-            {
                 /* Lpos [s] is offset of first row of s affecting its parent */
                 Lpos [s] = nscol ;
                 sparent = SuperMap [Ls [psi + nscol]] ;
@@ -1941,7 +1761,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                     Next [s] = Head [sparent] ;
                     Head [sparent] = s ;
                 }
-            }
         }
         else
         {
@@ -1960,21 +1779,13 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         DEBUG (CHOLMOD(dump_super) (s, Super, Lpi, Ls, Lpx, Lx, L_ENTRY,
                                     Common)) ;
 
-        if (repeat_supernode)
-        {
-            /* matrix is not positive definite; finished clean-up for supernode
-             * containing negative diagonal */
-
-                *(thread_args->to_return_p) = TRUE;
-        }
-
     front_status[s] = FRONT_DONE;
     sparent = SuperMap [Ls [psi + nscol]] ;
     if (sparent > s && sparent < nsuper)
 #pragma omp critical
         pending[sparent]--;
 
-    return void_args;
+    return;
 }
 
 /* ========================================================================== */
@@ -1998,8 +1809,6 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_common *Common
     )
 {
-    TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PARALLEL_NUM_THREADS];
-
     Int *globalMap, *globalRelativeMap;
     double *globalC;
 
@@ -2093,14 +1902,6 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
-    {
-        thread_args[vdevice].Map = globalMap + vdevice * n;
-        thread_args[vdevice].RelativeMap = globalRelativeMap + vdevice * n;
-        thread_args[vdevice].C = globalC + vdevice * L->maxcsize;
-    }
-
 #ifdef GPU_BLAS
     for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
@@ -2167,29 +1968,28 @@ static int TEMPLATE (cholmod_super_numeric)
             }
             if (s < nsuper)
             {
-                thread_args[vdevice].A = A;
-                thread_args[vdevice].F = F;
-                thread_args[vdevice].beta = beta;
-                thread_args[vdevice].L = L;
-                thread_args[vdevice].Common = Common;
 #ifdef GPU_BLAS
                 if (useGPU && vdevice < Common->cuda_vgpu_num)
                 {
-                    thread_args[vdevice].useGPU = TRUE;
-                    thread_args[vdevice].gpu_p = &gpu_p[vdevice];
+                    TEMPLATE (cholmod_super_numeric_threaded)
+                        (
+                            A, F, beta, L, Common, globalMap + vdevice * n, globalRelativeMap + vdevice * n, globalC + vdevice * L->maxcsize,
+                            TRUE, &gpu_p[vdevice],
+                            s, &to_return
+                        );
                 }
                 else
-                {
-                    thread_args[vdevice].useGPU = FALSE;
-                    thread_args[vdevice].gpu_p = NULL;
-                }
 #endif
-                thread_args[vdevice].s = s;
-                thread_args[vdevice].nscol_new = 0;
-                thread_args[vdevice].to_return_p = &to_return;;
-
-                TEMPLATE (cholmod_super_numeric_threaded) (&(thread_args[vdevice]));
-
+                {
+                    TEMPLATE (cholmod_super_numeric_threaded)
+                        (
+                            A, F, beta, L, Common, globalMap + vdevice * n, globalRelativeMap + vdevice * n, globalC + vdevice * L->maxcsize,
+#ifdef GPU_BLAS
+                            FALSE, NULL,
+#endif
+                            s, &to_return
+                        );
+                }
                 if (to_return)
                 {
                     end_of_factorization = TRUE;
