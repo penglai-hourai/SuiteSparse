@@ -290,12 +290,18 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 0
+#define CPU_THREAD_NUM 16
 #endif
 
 #ifndef CHOLMOD_PARALLEL_NUM_THREADS
-#define CHOLMOD_PARALLEL_NUM_THREADS (CUDA_VGPU_NUM + CPU_THREAD_NUM)
+#define CHOLMOD_PARALLEL_NUM_THREADS (MAX (CUDA_VGPU_NUM, CPU_THREAD_NUM))
 #endif
+
+enum {
+    FRONT_IDLE,
+    FRONT_FACTORIZE,
+    FRONT_DONE
+};
 
 /* Define buffering parameters for GPU processing */
 #ifdef GPU_BLAS
@@ -1025,6 +1031,10 @@ typedef struct cholmod_common_struct
     int    ibuffer[CUDA_VGPU_NUM];
 
     double syrkStart[CUDA_VGPU_NUM];          /* time syrk started */
+
+    void * globalMap;
+    void * globalRelativeMap;
+    void * globalC;
 
     /* run times of the different parts of CHOLMOD (GPU and CPU) */
     double cholmod_cpu_gemm_time ;

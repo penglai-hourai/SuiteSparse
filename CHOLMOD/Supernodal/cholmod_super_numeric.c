@@ -187,9 +187,9 @@ int CHOLMOD(super_numeric)
     PRINT1 (("nsuper "ID" maxcsize %g\n", nsuper, (double) maxcsize)) ;
     ASSERT (nsuper >= 0 && maxcsize > 0) ;
 
-    /* w = 5*n + 5*nsuper */
+    /* w = 2*n + 7*nsuper */
     w = CHOLMOD(mult_size_t) (n, 2, &ok) ;
-    t = CHOLMOD(mult_size_t) (nsuper, 8, &ok) ;
+    t = CHOLMOD(mult_size_t) (nsuper, 7, &ok) ;
     w = CHOLMOD(add_size_t) (w, t, &ok) ;
     if (!ok)
     {
@@ -232,7 +232,7 @@ int CHOLMOD(super_numeric)
     /* get more workspace */
     /* ---------------------------------------------------------------------- */
 
-    C = CHOLMOD(allocate_dense) (maxcsize, 1, maxcsize, L->xtype, Common) ;
+    C = CHOLMOD(allocate_dense) (maxcsize, CHOLMOD_PARALLEL_NUM_THREADS, maxcsize, L->xtype, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	int status = Common->status ;

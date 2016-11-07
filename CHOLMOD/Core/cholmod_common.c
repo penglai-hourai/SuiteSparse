@@ -120,6 +120,9 @@ int CHOLMOD(start)
     Common->Xwork = NULL ;
     Common->no_workspace_reallocate = FALSE ;
 
+    Common->globalMap = NULL;
+    Common->globalRelativeMap = NULL;
+
     /* ---------------------------------------------------------------------- */
     /* statistics */
     /* ---------------------------------------------------------------------- */
@@ -480,6 +483,12 @@ int CHOLMOD(allocate_work)
 	Common->Flag = CHOLMOD(malloc) (nrow,   sizeof (Int), Common) ;
 	Common->Head = CHOLMOD(malloc) (nrow1, sizeof (Int), Common) ;
 
+    Common->globalMap = CHOLMOD(free) (Common->nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common->globalMap, Common);
+    Common->globalRelativeMap = CHOLMOD(free) (Common->nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common->globalRelativeMap, Common);
+
+    Common->globalMap = CHOLMOD(malloc) (nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common);
+    Common->globalRelativeMap = CHOLMOD(malloc) (nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common);
+
 	/* record the new size of Flag and Head */
 	Common->nrow = nrow ;
 
@@ -603,6 +612,9 @@ int CHOLMOD(free_work)
     Common->nrow = 0 ;
     Common->iworksize = 0 ;
     Common->xworksize = 0 ;
+
+    Common->globalMap = CHOLMOD(free) (Common->nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common->globalMap, Common);
+    Common->globalRelativeMap = CHOLMOD(free) (Common->nrow * CHOLMOD_PARALLEL_NUM_THREADS, sizeof(Int), Common->globalRelativeMap, Common);
 
 #ifdef GPU_BLAS
     for (device = 0; device < Common->cuda_gpu_num; device++)

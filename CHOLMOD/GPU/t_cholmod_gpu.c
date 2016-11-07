@@ -122,12 +122,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     /* divvy up the memory in dev_mempool */
-    gpu_p->d_Lx[0] = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize;
-    gpu_p->d_Lx[1] = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize + Common->devBuffSize;
-    gpu_p->d_C = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize + 2*Common->devBuffSize;
-    gpu_p->d_A[0] = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize + 3*Common->devBuffSize;
-    gpu_p->d_A[1] = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize + 4*Common->devBuffSize;
-    gpu_p->d_Ls = Common->dev_mempool[device] + voffset * CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->devBuffSize + 5*Common->devBuffSize;
+    gpu_p->d_Lx[0]  = Common->dev_mempool[device] + 0 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Lx[1]  = Common->dev_mempool[device] + 1 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_C      = Common->dev_mempool[device] + 2 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[0]   = Common->dev_mempool[device] + 3 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[1]   = Common->dev_mempool[device] + 4 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_Map = gpu_p->d_Ls + (nls+1)*sizeof(Int) ;
     gpu_p->d_RelativeMap = gpu_p->d_Map + (n+1)*sizeof(Int) ;
 
@@ -186,7 +186,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     for ( k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
-        gpu_p->h_Lx[k] = Common->host_pinned_mempool[device] + voffset * CHOLMOD_HOST_SUPERNODE_BUFFERS * Common->devBuffSize + k * Common->devBuffSize;
+        gpu_p->h_Lx[k] = Common->host_pinned_mempool[device] + k * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     }
 
     return (1);  /* initialization successfull, useGPU = 1 */
@@ -892,9 +892,10 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     /* heuristic to get the block size depending of the problem size */
     /* ---------------------------------------------------------------------- */
 
-    nb = 128 ;
-    if (nscol2 > 4096) nb = 256 ;
-    if (nscol2 > 8192) nb = 384 ;
+    nb = CHOLMOD_POTRF_LIMIT;
+    if (nscol2 >= 128) nb = 128;
+    if (nscol2 >= 4096) nb = 256;
+    if (nscol2 >= 8192) nb = 384;
     n  = nscol2 ;
     gpu_lda = ((nscol2+31)/32)*32 ;
     lda = nsrow ;

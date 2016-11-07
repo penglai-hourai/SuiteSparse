@@ -86,11 +86,8 @@ typedef struct
 {
     cholmod_sparse *A;
     cholmod_sparse *F;
-    double *zero;
-    double *one;
     double *beta;
     cholmod_factor *L;
-    cholmod_dense *Cwork;
     cholmod_common *Common;
     Int *Map;
     Int *RelativeMap;
@@ -107,13 +104,22 @@ typedef struct
 
 static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
 {
-    TEMPLATE (CHOLMOD (thread_args)) *thread_args;
+    TEMPLATE (CHOLMOD (thread_args)) * const thread_args = void_args;
 
-    cholmod_sparse *A, *F;
-    double *zero, *one, *beta;
-    cholmod_factor *L;
-    cholmod_dense *Cwork;
-    cholmod_common *Common;
+    const cholmod_sparse * const A = thread_args->A;
+    const cholmod_sparse * const F = thread_args->F;
+
+    const double one [2] =  {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
+    const double zero [2] = {0, 0} ;     /* BETA for *syrk, *herk, and *gemm */
+    const double * const beta = thread_args->beta;
+    cholmod_factor * const L = thread_args->L;
+    cholmod_common * const Common = thread_args->Common;
+
+    const Int s = thread_args->s;
+
+    Int * const Map = thread_args->Map;
+    Int * const RelativeMap = thread_args->RelativeMap;
+    double * const C = thread_args->C;
 
     Int repeat_supernode;
 
@@ -122,12 +128,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
     Int *Ls, n;
     Int *Super, *Lpi, *Lpx, nsuper;
     double *Ax, *Fx, *Lx;
-    double *C;
 
-    Int *Iwork, *SuperMap, *FrontBusy, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_col, *rear_col;
-    Int *Head, *Map, *RelativeMap;
+    Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_status;
+    Int *Head;
 
-    Int s, ss, sparent;
+    Int ss, sparent;
     Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
     Int pf, pfend;
     Int d, dnext, dancestor;
@@ -152,19 +157,9 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
     int device, vdevice;
 #endif
 
-    thread_args = void_args;
+    nscol_new = thread_args->nscol_new;
+    repeat_supernode = thread_args->repeat_supernode;
 
-    A = thread_args->A;
-    F = thread_args->F;
-    zero = thread_args->zero;
-    one = thread_args->one;
-    beta = thread_args->beta;
-    L = thread_args->L;
-    Cwork = thread_args->Cwork;
-    Common = thread_args->Common;
-    Map = thread_args->Map;
-    RelativeMap = thread_args->RelativeMap;
-    C = thread_args->C;
 #ifdef GPU_BLAS
     useGPU = thread_args->useGPU;
     gpu_p = thread_args->gpu_p;
@@ -175,9 +170,6 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         cudaSetDevice(device);
     }
 #endif
-    s = thread_args->s;
-    nscol_new = thread_args->nscol_new;
-    repeat_supernode = thread_args->repeat_supernode;
 
     n = L->n;
     nsuper = L->nsuper;
@@ -219,22 +211,17 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
         Fpacked = F->packed ;
     }
 
-    //C = Cwork->x ;      /* workspace of size L->maxcsize */
-
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
-    SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    FrontBusy   = Iwork + n ;                               /* size n (i/i/l) */
-    Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
-    Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
-    Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
-    Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
-    Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
-    pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
-    front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
-    rear_col    = Iwork + 2*((size_t) n) + 7*((size_t) nsuper) ;/* size nsuper*/
+    SuperMap        = Iwork ;                                   /* size n (i/i/l) */
+    Next            = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
+    Lpos            = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
+    Next_save       = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
+    Lpos_save       = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
+    Previous        = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
+    pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    front_status    = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
-    //Map  = Common->Flag ;   /* size n, use Flag as workspace for Map array */
     Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
 
     /* clear the Map so that changes in the pattern of A can be detected */
@@ -1045,17 +1032,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                 *(thread_args->to_return_p) = TRUE;
         }
 
-    front_col[s] = rear_col[s];
-    if (front_col[s] >= Super[s+1])
-    {
-        sparent = SuperMap [Ls [psi + nscol]] ;
-        if (sparent > s && sparent < nsuper)
-        {
+    front_status[s] = FRONT_DONE;
+    sparent = SuperMap [Ls [psi + nscol]] ;
+    if (sparent > s && sparent < nsuper)
 #pragma omp critical
-            pending[sparent]--;
-        }
-    }
-    FrontBusy[s] = FALSE;
+        pending[sparent]--;
 
     return void_args;
 }
@@ -1081,14 +1062,17 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_common *Common
     )
 {
-    int to_return = FALSE, end_of_factorization = FALSE, front_ready;
     TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PARALLEL_NUM_THREADS];
 
-    double one [2], zero [2];
+    Int *globalMap, *globalRelativeMap;
+    double *globalC;
+
+    int to_return = FALSE, end_of_factorization = FALSE, front_ready;
+
     double *Lx;
-    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *FrontBusy, *Next,
+    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
         *Lpos, *Iwork, *Next_save, *Lpos_save,
-        *Previous, *pending, *front_col, *rear_col;
+        *Previous, *pending, *front_status;
     Int nsuper, n, s, t, sparent;
 
     /* ---------------------------------------------------------------------- */
@@ -1122,11 +1106,6 @@ static int TEMPLATE (cholmod_super_numeric)
     nsuper = L->nsuper ;
     n = L->n ;
 
-    one [0] =  1.0 ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
-    one [1] =  0. ;
-    zero [0] = 0. ;     /* BETA for *syrk, *herk, and *gemm */
-    zero [1] = 0. ;
-
     /* Iwork must be of size 2n + 5*nsuper, allocated in the caller,
      * cholmod_super_numeric.  The memory cannot be allocated here because the
      * cholmod_super_numeric initializes SuperMap, and cholmod_allocate_work
@@ -1135,16 +1114,14 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* allocate integer workspace */
     Iwork = Common->Iwork ;
-    SuperMap    = Iwork ;                                   /* size n (i/i/l) */
-    FrontBusy   = Iwork + n ;                               /* size n (i/i/l) */
-    Next        = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
-    Lpos        = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
-    Next_save   = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
-    Lpos_save   = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
-    Previous    = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
-    pending     = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
-    front_col   = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
-    rear_col    = Iwork + 2*((size_t) n) + 7*((size_t) nsuper) ;/* size nsuper*/
+    SuperMap        = Iwork ;                                   /* size n (i/i/l) */
+    Next            = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
+    Lpos            = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
+    Next_save       = Iwork + 2*((size_t) n) + 2*((size_t) nsuper) ;/* size nsuper*/
+    Lpos_save       = Iwork + 2*((size_t) n) + 3*((size_t) nsuper) ;/* size nsuper*/
+    Previous        = Iwork + 2*((size_t) n) + 4*((size_t) nsuper) ;/* size nsuper*/
+    pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
+    front_status    = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
     Ls = L->s ;
     Lpi = L->pi ;
@@ -1154,49 +1131,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Lx = L->x ;
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
-    for (s = 0; s < nsuper; s++)
-    {
-        FrontBusy[s] = FALSE;
-        front_col[s] = Super[s];
-        pending[s] = 0;
-    }
-    for (s = 0; s < nsuper; s++)
-    {
-        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
-        if (sparent > s && sparent < nsuper)
-            pending[sparent]++;
-    }
-
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
-    {
-        thread_args[vdevice].Map = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[vdevice].RelativeMap = CHOLMOD(malloc) (n, sizeof(Int), Common);
-        thread_args[vdevice].C = CHOLMOD(malloc) (L->maxcsize, sizeof(double), Common);
-    }
-
-#ifdef GPU_BLAS
-    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
-    {
-        device = vdevice / CUDA_GPU_PARALLEL;
-        gpu_p[vdevice].device = device;
-        gpu_p[vdevice].vdevice = vdevice;
-    }
-
-    /* local copy of useGPU */
-    if ( (Common->useGPU == 1) && L->useGPU)
-        for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
-        {
-            /* Initialize the GPU.  If not found, don't use it. */
-            useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
-                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[vdevice]) ;
-        }
-    else
-    {
-        useGPU = 0;
-    }
-    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
-#endif
+    globalMap = Common->globalMap;
+    globalRelativeMap = Common->globalRelativeMap;
+    globalC = Cwork->x;
 
 #ifndef NTIMER
     /* clear GPU / CPU statistics */
@@ -1220,13 +1157,37 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-    /* If the matrix is not positive definite, the supernode s containing the
-     * first zero or negative diagonal entry of L is repeated (but factorized
-     * only up to just before the problematic diagonal entry). The purpose is
-     * to provide MATLAB with [R,p]=chol(A); columns 1 to p-1 of L=R' are
-     * required, where L(p,p) is the problematic diagonal entry.  The
-     * repeat_supernode flag tells us whether this is the repeated supernode.
-     * Once supernode s is repeated, the factorization is terminated. */
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    {
+        thread_args[vdevice].Map = globalMap + vdevice * n;
+        thread_args[vdevice].RelativeMap = globalRelativeMap + vdevice * n;
+        thread_args[vdevice].C = globalC + vdevice * L->maxcsize;
+    }
+
+#ifdef GPU_BLAS
+    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+    {
+        device = vdevice / CUDA_GPU_PARALLEL;
+        gpu_p[vdevice].device = device;
+        gpu_p[vdevice].vdevice = vdevice;
+    }
+
+    /* local copy of useGPU */
+    if ( (Common->useGPU == 1) && L->useGPU)
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+        for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+        {
+            /* Initialize the GPU.  If not found, don't use it. */
+            useGPU = TEMPLATE2 (CHOLMOD (gpu_init))
+                (/*C, */L, Common, nsuper, n, Lpi[nsuper]-Lpi[0], &gpu_p[vdevice]) ;
+        }
+    else
+    {
+        useGPU = 0;
+    }
+    /* fprintf (stderr, "local useGPU %d\n", useGPU) ; */
+#endif
 
 #ifdef GPU_BLAS
     if ( useGPU )
@@ -1253,35 +1214,27 @@ static int TEMPLATE (cholmod_super_numeric)
 #pragma omp critical
             {
                 end_of_factorization = TRUE;
-                for (s = t, t = nsuper ; s < nsuper; s++)
+                for (s = t, t = nsuper; s < nsuper; s++)
                 {
-                    if (!FrontBusy[s])
+                    if (front_status[s] == FRONT_IDLE)
                     {
-                        if (front_col[s] < Super[s+1])
+                        end_of_factorization = FALSE;
+                        if (t >= nsuper)
+                            t = s;
+                        if (pending[s] <= 0)
                         {
-                            end_of_factorization = FALSE;
-                            if (t >= nsuper)
-                                t = s;
-                            if (pending[s] <= 0)
-                                break;
+                            front_status[s] = FRONT_FACTORIZE;
+                            break;
                         }
                     }
-                }
-                if (s < nsuper)
-                {
-                    FrontBusy[s] = TRUE;
-                    rear_col[s] = Super[s+1];
                 }
             }
             if (s < nsuper)
             {
                 thread_args[vdevice].A = A;
                 thread_args[vdevice].F = F;
-                thread_args[vdevice].zero = zero;
-                thread_args[vdevice].one = one;
                 thread_args[vdevice].beta = beta;
                 thread_args[vdevice].L = L;
-                thread_args[vdevice].Cwork = Cwork;
                 thread_args[vdevice].Common = Common;
 #ifdef GPU_BLAS
                 if (useGPU && vdevice < Common->cuda_vgpu_num)
@@ -1300,7 +1253,7 @@ static int TEMPLATE (cholmod_super_numeric)
                 thread_args[vdevice].repeat_supernode = FALSE;
                 thread_args[vdevice].to_return_p = &to_return;;
 
-                TEMPLATE (cholmod_super_numeric_threaded) (&thread_args[vdevice]);
+                TEMPLATE (cholmod_super_numeric_threaded) (&(thread_args[vdevice]));
 
                 if (to_return)
                 {
@@ -1315,14 +1268,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
-
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
-    {
-        thread_args[vdevice].Map = CHOLMOD(free) (n, sizeof(Int), thread_args[vdevice].Map, Common);
-        thread_args[vdevice].RelativeMap = CHOLMOD(free) (n, sizeof(Int), thread_args[vdevice].RelativeMap, Common);
-        thread_args[vdevice].C = CHOLMOD(free) (L->maxcsize, sizeof(double), thread_args[vdevice].C, Common);
-    }
-
 
     /* success; matrix is positive definite */
     L->minor = n ;

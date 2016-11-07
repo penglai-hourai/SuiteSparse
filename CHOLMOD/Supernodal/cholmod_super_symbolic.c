@@ -187,6 +187,7 @@ int CHOLMOD(super_symbolic2)
 #ifdef GPU_BLAS
     int device;
 #endif
+    Int *pending, *front_status;
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -326,7 +327,10 @@ int CHOLMOD(super_symbolic2)
         Common->cuda_gpu_num = 0;
 #endif
         Common->cuda_vgpu_num = Common->cuda_gpu_num * CUDA_GPU_PARALLEL;
-        Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num + CPU_THREAD_NUM;
+        if (Common->cuda_vgpu_num > 0)
+            Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
+        else
+            Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */
@@ -961,6 +965,24 @@ int CHOLMOD(super_symbolic2)
     L->maxesize = maxesize ;
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
+
+    pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
+    front_status    = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
+
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+    for (s = 0; s < nsuper; s++)
+        front_status[s] = FRONT_IDLE;
+
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+    for (s = 0; s < nsuper; s++)
+        pending[s] = 0;
+
+    for (s = 0; s < nsuper; s++)
+    {
+        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
+        if (sparent > s && sparent < nsuper)
+            pending[sparent]++;
+    }
 
     /* ---------------------------------------------------------------------- */
     /* supernodal symbolic factorization is complete */
