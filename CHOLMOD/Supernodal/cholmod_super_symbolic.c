@@ -327,10 +327,7 @@ int CHOLMOD(super_symbolic2)
         Common->cuda_gpu_num = 0;
 #endif
         Common->cuda_vgpu_num = Common->cuda_gpu_num * CUDA_GPU_PARALLEL;
-        if (Common->cuda_vgpu_num > 0)
-            Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
-        else
-            Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
+        Common->cholmod_parallel_num_threads = MAX (Common->cuda_vgpu_num, CPU_THREAD_NUM);
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */

@@ -495,11 +495,11 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         skips--;
                     }
                     else {
-#if 1
+                        if (*cpu_free_p > 0)
                         cuErr = cudaEventQuery
-#else
+                            ( Common->updateCBuffersFree[vdevice][iHostBuff] );
+                        else
                         cuErr = cudaEventSynchronize
-#endif
                             ( Common->updateCBuffersFree[vdevice][iHostBuff] );
                         if ( cuErr == cudaSuccess ) {
                             /* buffers are available, so assemble a large
@@ -511,33 +511,26 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                             skips = 0;
                         }
                         else {
-#pragma omp critical
-                            {
-                                if (*cpu_free_p > 0)
-                                {
-                                    /* buffers are not available, so the GPU is busy,
-                                     * so assemble a small descendant (anticipating
-                                     * that it will be assembled on the host) */
-                                    d = dsmall;
-                                    dsmall = Previous[dsmall];
-                                    GPUavailable = 0;
+                            /* buffers are not available, so the GPU is busy,
+                             * so assemble a small descendant (anticipating
+                             * that it will be assembled on the host) */
+                            d = dsmall;
+                            dsmall = Previous[dsmall];
+                            GPUavailable = 0;
 
-                                    /* if the GPUs are busy, then do this many
-                                     * supernodes on the CPU before querying GPUs
-                                     * again. */
-                                    skips = CHOLMOD_GPU_SKIP;
-                                    *cpu_free_p--;
-                                }
-                                else
-                                    GPUavailable = 1;
-                            }
-                            if (GPUavailable == 1)
-                                continue;
+                            /* if the GPUs are busy, then do this many
+                             * supernodes on the CPU before querying GPUs
+                             * again. */
+                            skips = CHOLMOD_GPU_SKIP;
                         }
                     }
                 }
 
                 idescendant++;
+
+                if (GPUavailable != 1)
+#pragma omp critical
+                    *cpu_free_p--;
 
             }
             else
@@ -632,6 +625,8 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                         /* we've reached the limit of GPU-eligible descendants
                          * flag to stop stop performing cudaEventQueries */
                         GPUavailable = -1;
+#pragma omp critical
+                        *cpu_free_p--;
                     }
 #else
                         if ( ! mapCreatedOnGpu ) {
@@ -788,7 +783,8 @@ static void * TEMPLATE (cholmod_super_numeric_threaded) (void *void_args)
                 }
             }
 #ifdef GPU_BLAS
-            if (useGPU && GPUavailable == 0)
+            if (useGPU && GPUavailable != 1)
+#pragma omp critical
                 *cpu_free_p++;
 #endif
         }  /* end of descendant supernode loop */
@@ -1083,7 +1079,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Int *globalMap, *globalRelativeMap;
     double *globalC;
 
-    int to_return = FALSE, end_of_factorization = FALSE, front_ready;
+    int to_return = FALSE, end_of_factorization = FALSE;
 
     double *Lx;
     Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
