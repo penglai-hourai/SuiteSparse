@@ -309,7 +309,8 @@ enum {
 #include <magma.h>
 #endif
 
-#define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 6
+#define CHOLMOD_DEVICE_MAP_BUFFERS 2
+#define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5
 #define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 #define CHOLMOD_DEVICE_STREAMS 2
 
@@ -1035,10 +1036,6 @@ typedef struct cholmod_common_struct
     int    ibuffer[CUDA_VGPU_NUM];
 
     double syrkStart[CUDA_VGPU_NUM];          /* time syrk started */
-
-    void * globalMap;
-    void * globalRelativeMap;
-    void * globalC;
 
     /* run times of the different parts of CHOLMOD (GPU and CPU) */
     double cholmod_cpu_gemm_time ;

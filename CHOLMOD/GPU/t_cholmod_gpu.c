@@ -127,17 +127,20 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_C      = Common->dev_mempool[device] + 2 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_A[0]   = Common->dev_mempool[device] + 3 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_A[1]   = Common->dev_mempool[device] + 4 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Map = gpu_p->d_Ls + (nls+1)*sizeof(Int) ;
-    gpu_p->d_RelativeMap = gpu_p->d_Map + (n+1)*sizeof(Int) ;
+    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * CUDA_GPU_PARALLEL * Common->devBuffSize;
+    gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
+    gpu_p->d_RelativeMap    = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 1) * (n + 1) * sizeof(Int);
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as
      * well do it now.   */
 
+    if (voffset == 0)
+    {
     cudaErr = cudaMemcpy ( gpu_p->d_Ls, L->s, nls*sizeof(Int),
                            cudaMemcpyHostToDevice );
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
+    }
 
     if (!(Common->gpuStream[vdevice][0])) {
 
@@ -895,9 +898,10 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     /* ---------------------------------------------------------------------- */
 
     nb = CHOLMOD_POTRF_LIMIT;
+    if (nscol2 >= 64) nb = 64;
     if (nscol2 >= 128) nb = 128;
-    if (nscol2 >= 4096) nb = 256;
-    if (nscol2 >= 8192) nb = 384;
+    if (nscol2 >= 256) nb = 256;
+    if (nscol2 >= 384) nb = 384;
     n  = nscol2 ;
     gpu_lda = ((nscol2+31)/32)*32 ;
     lda = nsrow ;

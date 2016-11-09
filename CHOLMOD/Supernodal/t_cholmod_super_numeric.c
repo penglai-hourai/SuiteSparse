@@ -1076,9 +1076,6 @@ static int TEMPLATE (cholmod_super_numeric)
 {
     TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PARALLEL_NUM_THREADS];
 
-    Int *globalMap, *globalRelativeMap;
-    double *globalC;
-
     int to_return = FALSE, end_of_factorization = FALSE;
 
     double *Lx;
@@ -1143,10 +1140,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Lx = L->x ;
 
-    globalMap = Common->globalMap;
-    globalRelativeMap = Common->globalRelativeMap;
-    globalC = Cwork->x;
-
 #ifndef NTIMER
     /* clear GPU / CPU statistics */
     Common->CHOLMOD_CPU_GEMM_CALLS  = 0 ;
@@ -1169,12 +1162,11 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
     for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        thread_args[vdevice].Map = globalMap + vdevice * n;
-        thread_args[vdevice].RelativeMap = globalRelativeMap + vdevice * n;
-        thread_args[vdevice].C = globalC + vdevice * L->maxcsize;
+        thread_args[vdevice].Map = CHOLMOD (malloc) (n, sizeof(Int), Common);
+        thread_args[vdevice].RelativeMap = CHOLMOD (malloc) (n, sizeof(Int), Common);
+        thread_args[vdevice].C = CHOLMOD (malloc) (L->maxcsize, sizeof(double), Common);
     }
 
 #ifdef GPU_BLAS
@@ -1281,6 +1273,13 @@ static int TEMPLATE (cholmod_super_numeric)
 
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
+
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    {
+        thread_args[vdevice].Map = CHOLMOD (free) (n, sizeof(Int), thread_args[vdevice].Map, Common);
+        thread_args[vdevice].RelativeMap = CHOLMOD (free) (n, sizeof(Int), thread_args[vdevice].RelativeMap, Common);
+        thread_args[vdevice].C = CHOLMOD (free) (L->maxcsize, sizeof(double), thread_args[vdevice].C, Common);
+    }
 
     /* success; matrix is positive definite */
     L->minor = n ;

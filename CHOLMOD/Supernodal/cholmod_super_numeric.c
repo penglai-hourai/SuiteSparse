@@ -232,7 +232,7 @@ int CHOLMOD(super_numeric)
     /* get more workspace */
     /* ---------------------------------------------------------------------- */
 
-    C = CHOLMOD(allocate_dense) (maxcsize, CHOLMOD_PARALLEL_NUM_THREADS, maxcsize, L->xtype, Common) ;
+    C = CHOLMOD(allocate_dense) (maxcsize, 1, maxcsize, L->xtype, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	int status = Common->status ;
