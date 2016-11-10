@@ -79,10 +79,11 @@ SUITESPARSE_VERSION = 4.5.3
         BLAS = -lrefblas -lgfortran -lstdc++
         LAPACK = -llapack
 	CFLAGS += --coverage
-	#CFLAGS += -DMAGMA
 	OPTIMIZATION = -g
 	LDFLAGS += --coverage
     endif
+
+	#CFLAGS += -DMAGMA
 
     #---------------------------------------------------------------------------
     # CFLAGS for the C/C++ compiler
@@ -158,7 +159,7 @@ SUITESPARSE_VERSION = 4.5.3
             #   $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
             #   -Wl,--end-group -lm
             # using dynamic linking:
-            BLAS = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lm -lmagma
+            BLAS = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lm# -lmagma
             LAPACK =
         else
             # use the OpenBLAS at http://www.openblas.net
@@ -207,6 +208,7 @@ SUITESPARSE_VERSION = 4.5.3
         GPU_CONFIG    =
         CUDART_LIB    =
         CUBLAS_LIB    =
+        CUSOLVER_LIB  =
         CUDA_INC_PATH =
         CUDA_INC      =
         NVCC          = echo
@@ -222,6 +224,7 @@ SUITESPARSE_VERSION = 4.5.3
         # GPU_CONFIG  = -DGPU_BLAS -DCHOLMOD_OMP_NUM_THREADS=10
         CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
         CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so
+        CUSOLVER_LIB  = $(CUDA_PATH)/lib64/libcusolver.so
         CUDA_INC_PATH = $(CUDA_PATH)/include/
         CUDA_INC      = -I$(CUDA_INC_PATH)
         NVCC          = $(CUDA_PATH)/bin/nvcc

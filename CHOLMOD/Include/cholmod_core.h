@@ -306,10 +306,12 @@ enum {
 /* Define buffering parameters for GPU processing */
 #ifdef GPU_BLAS
 #include <cublas_v2.h>
+#ifdef MAGMA
 #include <magma.h>
 #endif
+#endif
 
-#define CHOLMOD_DEVICE_MAP_BUFFERS 2
+#define CHOLMOD_DEVICE_MAP_BUFFERS 1
 #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5
 #define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 #define CHOLMOD_DEVICE_STREAMS 2

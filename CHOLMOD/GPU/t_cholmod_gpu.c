@@ -18,9 +18,6 @@
 #include <string.h>
 #include "cholmod_template.h"
 
-#include <magma.h>
-#include <magmablas_q.h>
-
 #undef L_ENTRY
 #ifdef REAL
 #define L_ENTRY 1
@@ -626,7 +623,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             ndrow2) ;
 #else
         magma_dgemm(
-            MagmaNoTrans, MagmaTrans
+            MagmaNoTrans, MagmaTrans,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
             alpha,                          /* ALPHA:  1 */
             devPtrLx + L_ENTRY*(ndrow1),    /* A, LDA: L2*/
@@ -870,11 +867,11 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     cudaError_t cudaStat ;
     cublasStatus_t cublasStatus ;
     Int j, nsrow2, nb, n, gpu_lda, lda, gpu_ldb ;
-    int ilda, ijb, iinfo ;
 #ifndef NTIMER
     double tstart ;
 #endif
 
+    int work_size;
     const int device = gpu_p->device;
     const int vdevice = gpu_p->vdevice;
 
@@ -1135,14 +1132,19 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         /* compute the Cholesky factorization of the jbxjb block on the CPU */
         /* ------------------------------------------------------------------ */
 
-        ilda = (int) lda ;
-        ijb  = jb ;
 #ifdef REAL
-        LAPACK_DPOTRF ("L", &ijb, A + L_ENTRY * (j + j*lda), &ilda, &iinfo) ;
+#ifndef MAGMA
+        LAPACK_DPOTRF ("L", &jb, A + L_ENTRY * (j + j*lda), &lda, info) ;
 #else
-        LAPACK_ZPOTRF ("L", &ijb, A + L_ENTRY * (j + j*lda), &ilda, &iinfo) ;
+        magma_dpotrf (MagmaLower, jb, A + L_ENTRY * (j + j*lda), lda, info) ;
 #endif
-        *info = iinfo ;
+#else
+#ifndef MAGMA
+        LAPACK_ZPOTRF ("L", &jb, A + L_ENTRY * (j + j*lda), &lda, info) ;
+#else
+        magma_zpotrf (MagmaLower, jb, A + L_ENTRY * (j + j*lda), lda, info) ;
+#endif
+#endif
 
         if (*info != 0)
         {
@@ -1394,7 +1396,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             MagmaRight,
             MagmaLower,
             MagmaTrans,
-            MagmanonUnit,
+            MagmaNonUnit,
             gpu_row_chunk,
             nscol2,
             alpha,
@@ -1423,7 +1425,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             MagmaRight,
             MagmaLower,
             MagmaConjTrans,
-            MagmanonUnit,
+            MagmaNonUnit,
             gpu_row_chunk,
             nscol2,
             calpha,

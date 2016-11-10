@@ -21,8 +21,6 @@
 #include "stdio.h"
 #ifdef GPU_BLAS
 #include <cuda_runtime.h>
-#include <magma.h>
-#include <magmablas_q.h>
 #endif
 
 #define MINSIZE (64 * 1024 * 1024)

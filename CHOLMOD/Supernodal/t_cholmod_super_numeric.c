@@ -1076,13 +1076,12 @@ static int TEMPLATE (cholmod_super_numeric)
 {
     TEMPLATE (CHOLMOD (thread_args)) thread_args[CHOLMOD_PARALLEL_NUM_THREADS];
 
-    int to_return = FALSE, end_of_factorization = FALSE;
+    int to_return = FALSE;
 
     double *Lx;
-    Int *Super, *Ls, *Lpi, *Lpx, *SuperMap, *Next,
-        *Lpos, *Iwork, *Next_save, *Lpos_save,
-        *Previous, *pending, *front_status;
-    Int nsuper, n, s, t, sparent;
+    Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *front_status,
+        *Super, *Ls, *Lpi, *Lpx;
+    Int n, nsuper, s, sparent, t;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -1170,6 +1169,9 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 
 #ifdef GPU_BLAS
+#ifdef MAGMA
+    magma_init();
+#endif
     for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
         device = vdevice / CUDA_GPU_PARALLEL;
@@ -1202,6 +1204,30 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) private (s) schedule (static)
+    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    {
+        thread_args[vdevice].A = A;
+        thread_args[vdevice].F = F;
+        thread_args[vdevice].beta = beta;
+        thread_args[vdevice].L = L;
+        thread_args[vdevice].Common = Common;
+#ifdef GPU_BLAS
+        thread_args[vdevice].cpu_free_p = &cpu_free;
+        if (useGPU && vdevice < Common->cuda_vgpu_num)
+        {
+            thread_args[vdevice].useGPU = TRUE;
+            thread_args[vdevice].gpu_p = &gpu_p[vdevice];
+        }
+        else
+        {
+            thread_args[vdevice].useGPU = FALSE;
+            thread_args[vdevice].gpu_p = NULL;
+        }
+#endif
+        thread_args[vdevice].to_return_p = &to_return;;
+    }
+
     printf ("init time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
@@ -1209,65 +1235,31 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-    t = 0;
+    t = Common->cholmod_parallel_num_threads;
 #pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s) schedule (static)
     for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        while (!end_of_factorization)
+        s = vdevice;
+        while (s < nsuper)
         {
 #pragma omp critical
             {
-                end_of_factorization = TRUE;
-                for (s = t, t = nsuper; s < nsuper; s++)
-                {
-                    if (front_status[s] == FRONT_IDLE)
-                    {
-                        end_of_factorization = FALSE;
-                        if (t >= nsuper)
-                            t = s;
-                        if (pending[s] <= 0)
-                        {
-                            front_status[s] = FRONT_FACTORIZE;
-                            break;
-                        }
-                    }
-                }
+                while (s < nsuper && (pending[s] > 0 || front_status[s] != FRONT_IDLE))
+                    s++;
+                if (s < nsuper)
+                    front_status[s] = FRONT_FACTORIZE;
             }
             if (s < nsuper)
             {
-                thread_args[vdevice].A = A;
-                thread_args[vdevice].F = F;
-                thread_args[vdevice].beta = beta;
-                thread_args[vdevice].L = L;
-                thread_args[vdevice].Common = Common;
-#ifdef GPU_BLAS
-                thread_args[vdevice].cpu_free_p = &cpu_free;
-                if (useGPU && vdevice < Common->cuda_vgpu_num)
-                {
-                    thread_args[vdevice].useGPU = TRUE;
-                    thread_args[vdevice].gpu_p = &gpu_p[vdevice];
-                }
-                else
-                {
-                    thread_args[vdevice].useGPU = FALSE;
-                    thread_args[vdevice].gpu_p = NULL;
-                }
-#endif
                 thread_args[vdevice].s = s;
                 thread_args[vdevice].nscol_new = 0;
                 thread_args[vdevice].repeat_supernode = FALSE;
-                thread_args[vdevice].to_return_p = &to_return;;
 
                 TEMPLATE (cholmod_super_numeric_threaded) (&(thread_args[vdevice]));
 
                 if (to_return)
-                {
-                    end_of_factorization = TRUE;
-                    break;
-                }
+                    s = nsuper;
             }
-            else
-                break;
         }
     }
 
@@ -1290,6 +1282,9 @@ static int TEMPLATE (cholmod_super_numeric)
         for (device = 0; device < Common->cuda_gpu_num; device++)
             CHOLMOD (gpu_end) (Common, device) ;
     }
+#ifdef MAGMA
+    magma_finalize();
+#endif
 #endif
 
     printf ("cleanup time = %lf\n", SuiteSparse_time() - timestamp);
