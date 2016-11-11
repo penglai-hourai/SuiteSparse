@@ -187,7 +187,7 @@ int CHOLMOD(super_symbolic2)
 #ifdef GPU_BLAS
     int device;
 #endif
-    Int *pending, *front_status;
+    Int *pending;
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -964,11 +964,6 @@ int CHOLMOD(super_symbolic2)
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
 
     pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
-    front_status    = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
-
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
-    for (s = 0; s < nsuper; s++)
-        front_status[s] = FRONT_IDLE;
 
 #pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
     for (s = 0; s < nsuper; s++)
