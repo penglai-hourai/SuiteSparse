@@ -290,7 +290,7 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 4
+#define CPU_THREAD_NUM 8
 #endif
 
 #ifndef CHOLMOD_PARALLEL_NUM_THREADS

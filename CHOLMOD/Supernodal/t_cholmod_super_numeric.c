@@ -257,7 +257,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* local copy of useGPU */
     if ((Common->useGPU == 1) && L->useGPU)
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
         for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
             /* Initialize the GPU.  If not found, don't use it. */
@@ -281,7 +281,7 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_init_lock(&front_lock[s]);
 
@@ -292,56 +292,56 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s, device, vdevice) schedule (static)
+//#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s, device, vdevice) schedule (static)
     for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-    Int * const Map = Map_queue[vdevice];
-    Int * const RelativeMap = RelativeMap_queue[vdevice];
-    double * const C = C_queue[vdevice];
-    Int ss, sparent;
-    Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
-    Int pf, pfend;
-    Int d, dnext, dancestor;
-    Int kd1, kd2, pdi, pdend, ndcol, pdi1, pdi2, ndrow, ndrow1, ndrow2, pdx, pdx1;
-    Int i, j, k, t, imap, tail;
+        Int * const Map = Map_queue[vdevice];
+        Int * const RelativeMap = RelativeMap_queue[vdevice];
+        double * const C = C_queue[vdevice];
+        Int ss, sparent;
+        Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
+        Int pf, pfend;
+        Int d, dnext, dancestor;
+        Int kd1, kd2, pdi, pdend, ndcol, pdi1, pdi2, ndrow, ndrow1, ndrow2, pdx, pdx1;
+        Int i, j, k, t, imap, tail;
 
-    Int info;
+        Int info;
 
-    Int repeat_supernode;
+        Int repeat_supernode;
 
-    double tstart;
+        double tstart;
 
-    /* ---------------------------------------------------------------------- */
-    /* declarations for the GPU */
-    /* ---------------------------------------------------------------------- */
+        /* ---------------------------------------------------------------------- */
+        /* declarations for the GPU */
+        /* ---------------------------------------------------------------------- */
 
-    /* these variables are not used if the GPU module is not installed */
+        /* these variables are not used if the GPU module is not installed */
 
 #ifdef GPU_BLAS
-    int useGPU;
-    cholmod_gpu_pointers *gpu_p ;
+        int useGPU;
+        cholmod_gpu_pointers *gpu_p ;
 #endif
 
 #ifdef GPU_BLAS
-    Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
-        idescendant, dlarge, dsmall, skips ;
-    int iHostBuff, iDevBuff, GPUavailable ;
+        Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
+            idescendant, dlarge, dsmall, skips ;
+        int iHostBuff, iDevBuff, GPUavailable ;
 #endif
 
 #ifdef GPU_BLAS
-      if (vdevice < Common->cuda_vgpu_num && useGPU_queue[vdevice])
-      {
-          useGPU = TRUE;
-          gpu_p = &gpu_p_queue[vdevice];
-          device = gpu_p->device;
-          vdevice = gpu_p->vdevice;
-          cudaSetDevice(device);
-      }
-      else
-      {
-          useGPU = FALSE;
-          gpu_p = NULL;
-      }
+        if (vdevice < Common->cuda_vgpu_num && useGPU_queue[vdevice])
+        {
+            useGPU = TRUE;
+            gpu_p = &gpu_p_queue[vdevice];
+            device = gpu_p->device;
+            vdevice = gpu_p->vdevice;
+            cudaSetDevice(device);
+        }
+        else
+        {
+            useGPU = FALSE;
+            gpu_p = NULL;
+        }
 #endif
 
         t = vdevice;
@@ -1193,7 +1193,7 @@ ret:
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
 
