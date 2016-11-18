@@ -120,7 +120,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *leaf;
     Int *Head;
-    Int s, sparent, t_max;
+    Int s, t_max;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -1168,7 +1168,11 @@ label:
                     to_return = TRUE;
                 }
 
-                sparent = SuperMap [Ls [psi + nscol]] ;
+                k = Ls [psi + nscol];
+                if (k < n)
+                    sparent = SuperMap [Ls [psi + nscol]];
+                else
+                    sparent = nsuper;
                 if (sparent > s && sparent < nsuper)
 #pragma omp atomic
                     pending[sparent]--;
