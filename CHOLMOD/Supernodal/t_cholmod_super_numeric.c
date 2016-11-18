@@ -257,7 +257,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* local copy of useGPU */
     if ((Common->useGPU == 1) && L->useGPU)
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
+//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
         for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
             /* Initialize the GPU.  If not found, don't use it. */
@@ -281,7 +281,7 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
+//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_init_lock(&front_lock[s]);
 
@@ -292,7 +292,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-//#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s, device, vdevice) schedule (static)
+#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s, device, vdevice) schedule (static)
     for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
         Int * const Map = Map_queue[vdevice];
@@ -344,6 +344,16 @@ static int TEMPLATE (cholmod_super_numeric)
         }
 #endif
 
+                /* clear the Map so that changes in the pattern of A can be detected */
+
+#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
+                if ( n > 128 ) schedule (static)
+
+                for (i = 0 ; i < n ; i++)
+                {
+                    Map [i] = EMPTY ;
+                }
+
         t = vdevice;
         if (t < t_max)
             s = leaf[t];
@@ -355,16 +365,6 @@ static int TEMPLATE (cholmod_super_numeric)
                 info = 0;
                 repeat_supernode = FALSE;
 label:
-                /* clear the Map so that changes in the pattern of A can be detected */
-
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
-                if ( n > 128 ) schedule (static)
-
-                for (i = 0 ; i < n ; i++)
-                {
-                    Map [i] = EMPTY ;
-                }
-
                 /* ------------------------------------------------------------------ */
                 /* get the size of supernode s */
                 /* ------------------------------------------------------------------ */
@@ -1193,7 +1193,7 @@ ret:
     printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
+//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
 
