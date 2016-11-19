@@ -333,8 +333,6 @@ static int TEMPLATE (cholmod_super_numeric)
         {
             useGPU = TRUE;
             gpu_p = &gpu_p_queue[vdevice];
-            device = gpu_p->device;
-            vdevice = gpu_p->vdevice;
             cudaSetDevice(device);
         }
         else

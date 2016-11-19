@@ -105,7 +105,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
         */
 
     /* make sure the assumed buffer sizes are large enough */
-    if ( (nls+2*n+4)*sizeof(Int) > Common->devBuffSize ) {
+    if ( (nls+2)*sizeof(Int) > CHOLMOD_DEVICE_LS_BUFFERS * Common->devBuffSize ) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
                "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
                "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -121,12 +121,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     /* divvy up the memory in dev_mempool */
     gpu_p->d_Lx[0]  = Common->dev_mempool[device] + 0 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_Lx[1]  = Common->dev_mempool[device] + 1 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_C      = Common->dev_mempool[device] + 2 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[0]   = Common->dev_mempool[device] + 3 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[1]   = Common->dev_mempool[device] + 4 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[0]   = Common->dev_mempool[device] + 2 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[1]   = Common->dev_mempool[device] + 3 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_C      = Common->dev_mempool[device] + 4 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * CUDA_GPU_PARALLEL * Common->devBuffSize;
-    gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
-    gpu_p->d_RelativeMap    = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 1) * (n + 1) * sizeof(Int);
+    gpu_p->d_Map            = (void *) gpu_p->d_C + Common->devBuffSize - 2 * (n+1) * sizeof(Int) ;
+    gpu_p->d_RelativeMap    = (void *) gpu_p->d_C + Common->devBuffSize - 1 * (n+1) * sizeof(Int) ;
+    //gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
+    //gpu_p->d_RelativeMap    = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 1) * (n + 1) * sizeof(Int);
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as
