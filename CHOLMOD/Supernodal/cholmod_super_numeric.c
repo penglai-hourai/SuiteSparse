@@ -60,7 +60,9 @@
 #include "cholmod_supernodal.h"
 
 #ifdef GPU_BLAS
+#ifdef MAGMA
 #include <magmablas_v2.h>
+#endif
 #include "cholmod_gpu.h"
 #endif
 

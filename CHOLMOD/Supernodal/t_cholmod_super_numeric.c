@@ -237,7 +237,8 @@ static int TEMPLATE (cholmod_super_numeric)
         if (pending[s] <= 0)
             leaf[t_max++] = s;
 
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
         Map_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
         RelativeMap_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
@@ -248,7 +249,8 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef MAGMA
     magma_init();
 #endif
-    for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
         device = vdevice / CUDA_GPU_PARALLEL;
         gpu_p_queue[vdevice].device = device;
@@ -258,7 +260,8 @@ static int TEMPLATE (cholmod_super_numeric)
     /* local copy of useGPU */
     if ((Common->useGPU == 1) && L->useGPU)
 //#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
-        for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+        //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
             /* Initialize the GPU.  If not found, don't use it. */
             useGPU_queue[vdevice] = TEMPLATE2 (CHOLMOD (gpu_init))
@@ -266,8 +269,9 @@ static int TEMPLATE (cholmod_super_numeric)
         }
     else
     {
-        for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
-        useGPU_queue[vdevice] = FALSE;
+        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+        //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
+            useGPU_queue[vdevice] = FALSE;
     }
     /* fprintf (stderr, "local useGPU[%d] %d\n", vdevice, useGPU[vdevice]) ; */
 #endif
@@ -292,8 +296,9 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-#pragma omp parallel for num_threads(CHOLMOD_PARALLEL_NUM_THREADS) private (s, device, vdevice) schedule (static)
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+#pragma omp parallel for private (s, device, vdevice) schedule (static)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
         Int * const Map = Map_queue[vdevice];
         Int * const RelativeMap = RelativeMap_queue[vdevice];
@@ -333,7 +338,6 @@ static int TEMPLATE (cholmod_super_numeric)
         {
             useGPU = TRUE;
             gpu_p = &gpu_p_queue[vdevice];
-            cudaSetDevice(device);
         }
         else
         {
@@ -1199,7 +1203,8 @@ ret:
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
 
-    for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
         Map_queue[vdevice] = CHOLMOD (free) (n, sizeof(Int), Map_queue[vdevice], Common);
         RelativeMap_queue[vdevice] = CHOLMOD (free) (n, sizeof(Int), RelativeMap_queue[vdevice], Common);
