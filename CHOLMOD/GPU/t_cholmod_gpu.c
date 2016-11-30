@@ -90,7 +90,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     const int device = gpu_p->device;
     const int vdevice = gpu_p->vdevice;
-    const int voffset = vdevice % CUDA_GPU_PARALLEL;
+    const int voffset = vdevice % Common->cuda_gpu_parallel;
 
     cudaSetDevice(device);
 
@@ -119,12 +119,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     /* divvy up the memory in dev_mempool */
-    gpu_p->d_Lx[0]  = Common->dev_mempool[device] + 0 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Lx[1]  = Common->dev_mempool[device] + 1 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[0]   = Common->dev_mempool[device] + 2 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[1]   = Common->dev_mempool[device] + 3 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_C      = Common->dev_mempool[device] + 4 * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * CUDA_GPU_PARALLEL * Common->devBuffSize;
+    gpu_p->d_Lx[0]  = Common->dev_mempool[device] + 0 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Lx[1]  = Common->dev_mempool[device] + 1 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[0]   = Common->dev_mempool[device] + 2 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[1]   = Common->dev_mempool[device] + 3 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_C      = Common->dev_mempool[device] + 4 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * Common->cuda_gpu_parallel * Common->devBuffSize;
     gpu_p->d_Map            = (void *) gpu_p->d_C + Common->devBuffSize - 2 * (n+1) * sizeof(Int) ;
     gpu_p->d_RelativeMap    = (void *) gpu_p->d_C + Common->devBuffSize - 1 * (n+1) * sizeof(Int) ;
     //gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
@@ -190,7 +190,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     for ( k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
-        gpu_p->h_Lx[k] = Common->host_pinned_mempool[device] + k * CUDA_GPU_PARALLEL * Common->devBuffSize + voffset * Common->devBuffSize;
+        gpu_p->h_Lx[k] = Common->host_pinned_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
     }
 
     return (1);  /* initialization successfull, useGPU = 1 */

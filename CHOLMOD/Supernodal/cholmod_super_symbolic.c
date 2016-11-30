@@ -186,6 +186,7 @@ int CHOLMOD(super_symbolic2)
     double max_fraction;
 #ifdef GPU_BLAS
     int device;
+    Int leaves;
 #endif
     Int *pending;
 
@@ -312,6 +313,21 @@ int CHOLMOD(super_symbolic2)
         }
         else
             Common->cuda_gpu_num = 0;
+#else
+        /* GPU acceleration is only supported for long int version */
+        Common->useGPU = 0;
+        Common->cuda_gpu_num = 0;
+#endif
+        if (Common->cuda_gpu_num > 0)
+        {
+            Common->cuda_gpu_parallel = (leaves - 1) / Common->cuda_gpu_num + 1;
+            if (Common->cuda_gpu_parallel > CUDA_GPU_PARALLEL)
+                Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
+            else if (Common->cuda_gpu_parallel <= 0)
+                Common->cuda_gpu_parallel = 1;
+        }
+        Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
+        Common->cholmod_parallel_num_threads = MAX (Common->cuda_vgpu_num, CPU_THREAD_NUM);
 
         if ( Common->useGPU == 1 )
         {
@@ -321,13 +337,6 @@ int CHOLMOD(super_symbolic2)
             CHOLMOD(gpu_allocate) ( Common, device );
             /* fprintf (stderr, "allocate GPU done\n") ; */
         }
-#else
-        /* GPU acceleration is only supported for long int version */
-        Common->useGPU = 0;
-        Common->cuda_gpu_num = 0;
-#endif
-        Common->cuda_vgpu_num = Common->cuda_gpu_num * CUDA_GPU_PARALLEL;
-        Common->cholmod_parallel_num_threads = MAX (Common->cuda_vgpu_num, CPU_THREAD_NUM);
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */
@@ -420,6 +429,13 @@ int CHOLMOD(super_symbolic2)
 	    Wi [parent]++ ;
 	}
     }
+
+#ifdef GPU_BLAS
+    leaves = 0;
+    for (j = 0; j < n; j++)
+        if (Wi[j] == 0)
+            leaves++;
+#endif
 
     Super = Head ;  /* use Head [0..nfsuper] as workspace for Super list ( */
 

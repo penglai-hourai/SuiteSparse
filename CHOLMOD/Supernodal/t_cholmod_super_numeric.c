@@ -252,7 +252,7 @@ static int TEMPLATE (cholmod_super_numeric)
     for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
     //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
-        device = vdevice / CUDA_GPU_PARALLEL;
+        device = vdevice / Common->cuda_gpu_parallel;
         gpu_p_queue[vdevice].device = device;
         gpu_p_queue[vdevice].vdevice = vdevice;
     }

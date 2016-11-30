@@ -1014,6 +1014,7 @@ typedef struct cholmod_common_struct
 #endif
 
     int cholmod_parallel_num_threads;
+    int cuda_gpu_parallel;
     int cuda_gpu_num;
     int cuda_vgpu_num;
 

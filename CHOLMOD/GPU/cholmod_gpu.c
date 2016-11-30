@@ -248,7 +248,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 #ifdef MAGMA
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
         if (Common->magmaQueue[vdevice] [k])
         {
             magma_queue_destroy(Common->magmaQueue[vdevice][k]) ;
@@ -261,7 +261,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
     /* destroy Cublas Handle */
     /* ------------------------------------------------------------------ */
 
-    for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+    for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
     if (Common->cublasHandle[vdevice])
     {
         /* fprintf (stderr, "destroy cublas[%d] %p\n", device, Common->cublasHandle[vdevice]) ; */
@@ -277,7 +277,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
         if (Common->gpuStream[vdevice] [k])
         {
             /* fprintf (stderr, "destroy gpuStream[%d] [%d] %p\n", vdevice, k,
@@ -294,7 +294,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     for (k = 0 ; k < 3 ; k++)
     {
-        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
         if (Common->cublasEventPotrf[vdevice] [k])
         {
             /* fprintf (stderr, "destroy cublasEnventPotrf[%d] [%d] %p\n", vdevice, k,
@@ -308,7 +308,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
     {
-        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
         if (Common->updateCBuffersFree[vdevice] [k])
         {
             /* fprintf (stderr, "destroy updateCBuffersFree[%d] [%d] %p\n", vdevice, k,
@@ -321,7 +321,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 
     if (Common->updateCKernelsComplete[device])
     {
-        for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+        for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
         {
             /* fprintf (stderr, "destroy updateCKernelsComplete[%d] %p\n", vdevice,
                Common->updateCKernelsComplete[vdevice]) ; */
@@ -450,7 +450,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     CHOLMOD(gpu_deallocate) (Common, device);
 
     /* create cuBlas handle */
-    for (vdevice = device * CUDA_GPU_PARALLEL; vdevice < (device + 1) * CUDA_GPU_PARALLEL; vdevice++)
+    for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
     if ( ! Common->cublasHandle[vdevice] ) {
         cublasErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
         if (cublasErr != CUBLAS_STATUS_SUCCESS) {
@@ -461,8 +461,8 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
 
     /* allocated corresponding pinned host memory */
     requestedHostMemory = requestedDeviceMemory
-        * (CUDA_GPU_PARALLEL * CHOLMOD_HOST_SUPERNODE_BUFFERS)
-        / (CHOLMOD_DEVICE_LS_BUFFERS + CUDA_GPU_PARALLEL * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
+        * (Common->cuda_gpu_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS)
+        / (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
 
     cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool[device]),
                                requestedHostMemory );
@@ -475,12 +475,12 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     Common->host_pinned_mempool_size[device] = requestedHostMemory;
 
     requestedDeviceMemory = requestedHostMemory
-        * (CHOLMOD_DEVICE_LS_BUFFERS + CUDA_GPU_PARALLEL * CHOLMOD_DEVICE_SUPERNODE_BUFFERS)
-        / (CUDA_GPU_PARALLEL * CHOLMOD_HOST_SUPERNODE_BUFFERS);
+        * (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS)
+        / (Common->cuda_gpu_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS);
 
     /* Split up the memory allocations into required device buffers. */
     devBuffSize = requestedDeviceMemory
-        / (CHOLMOD_DEVICE_LS_BUFFERS + CUDA_GPU_PARALLEL * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
+        / (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
     devBuffSize -= devBuffSize%0x20000;
     if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)
         Common->devBuffSize = devBuffSize;

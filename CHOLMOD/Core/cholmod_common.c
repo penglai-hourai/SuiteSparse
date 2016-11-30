@@ -174,6 +174,7 @@ int CHOLMOD(start)
     /* ---------------------------------------------------------------------- */
 
     Common->cholmod_parallel_num_threads = 0;
+    Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
     Common->cuda_gpu_num = 0;
     Common->cuda_vgpu_num = 0;
 
