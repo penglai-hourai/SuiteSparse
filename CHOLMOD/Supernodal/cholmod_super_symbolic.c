@@ -243,6 +243,94 @@ int CHOLMOD(super_symbolic2)
     ASSERT (CHOLMOD(dump_work) (TRUE, TRUE, 0, Common)) ;
 
     /* ---------------------------------------------------------------------- */
+    /* get inputs */
+    /* ---------------------------------------------------------------------- */
+
+    /* A is now either A or triu(A(p,p)) for the symmetric case.  It is either
+     * A or A(p,f) for the unsymmetric case (both in column form).  It can be
+     * either packed or unpacked, and either sorted or unsorted.  Entries in
+     * the lower triangular part may be present if A is symmetric, but these
+     * are ignored. */
+
+    Ap = A->p ;
+    Ai = A->i ;
+    Anz = A->nz ;
+
+    if (stype != 0)
+    {
+	/* F not accessed */
+	Fp = NULL ;
+	Fj = NULL ;
+	Fnz = NULL ;
+	packed = TRUE ;
+    }
+    else
+    {
+	/* F = A(:,f) or A(p,f) in packed row form, either sorted or unsorted */
+	Fp = F->p ;
+	Fj = F->i ;
+	Fnz = F->nz ;
+	packed = F->packed ;
+    }
+
+    ColCount = L->ColCount ;
+
+    nrelax0 = Common->nrelax [0] ;
+    nrelax1 = Common->nrelax [1] ;
+    nrelax2 = Common->nrelax [2] ;
+
+    zrelax0 = Common->zrelax [0] ;
+    zrelax1 = Common->zrelax [1] ;
+    zrelax2 = Common->zrelax [2] ;
+
+    zrelax0 = IS_NAN (zrelax0) ? 0 : zrelax0 ;
+    zrelax1 = IS_NAN (zrelax1) ? 0 : zrelax1 ;
+    zrelax2 = IS_NAN (zrelax2) ? 0 : zrelax2 ;
+
+    ASSERT (CHOLMOD(dump_parent) (Parent, n, "Parent", Common)) ;
+
+    /* ---------------------------------------------------------------------- */
+    /* get workspace */
+    /* ---------------------------------------------------------------------- */
+
+    /* Sparent, Snz, and Merged could be allocated later, of size nfsuper */
+
+    Iwork = Common->Iwork ;
+    Wi      = Iwork ;	    /* size n (i/l/l).  Lpi2 is i/l/l */
+    Wj      = Iwork + n ;   /* size n (i/l/l).  Zeros is i/l/l */
+    Sparent = Iwork + 2*((size_t) n) ; /* size nfsuper <= n [ */
+    Snz     = Iwork + 3*((size_t) n) ; /* size nfsuper <= n [ */
+    Merged  = Iwork + 4*((size_t) n) ; /* size nfsuper <= n [ */
+
+    Flag = Common->Flag ;   /* size n */
+    Head = Common->Head ;   /* size n+1 */
+
+    /* ---------------------------------------------------------------------- */
+    /* compute the number of elimination tree leaves */
+    /* ---------------------------------------------------------------------- */
+
+    /* count the number of children of each node, using Wi [ */
+    for (j = 0 ; j < n ; j++)
+    {
+	Wi [j] = 0 ;
+    }
+    for (j = 0 ; j < n ; j++)
+    {
+	parent = Parent [j] ;
+	if (parent != EMPTY)
+	{
+	    Wi [parent]++ ;
+	}
+    }
+
+#ifdef GPU_BLAS
+    leaves = 0;
+    for (j = 0; j < n; j++)
+        if (Wi[j] == 0)
+            leaves++;
+#endif
+
+    /* ---------------------------------------------------------------------- */
     /* allocate GPU workspace */
     /* ---------------------------------------------------------------------- */
 
@@ -350,92 +438,8 @@ int CHOLMOD(super_symbolic2)
 #endif
 
     /* ---------------------------------------------------------------------- */
-    /* get inputs */
-    /* ---------------------------------------------------------------------- */
-
-    /* A is now either A or triu(A(p,p)) for the symmetric case.  It is either
-     * A or A(p,f) for the unsymmetric case (both in column form).  It can be
-     * either packed or unpacked, and either sorted or unsorted.  Entries in
-     * the lower triangular part may be present if A is symmetric, but these
-     * are ignored. */
-
-    Ap = A->p ;
-    Ai = A->i ;
-    Anz = A->nz ;
-
-    if (stype != 0)
-    {
-	/* F not accessed */
-	Fp = NULL ;
-	Fj = NULL ;
-	Fnz = NULL ;
-	packed = TRUE ;
-    }
-    else
-    {
-	/* F = A(:,f) or A(p,f) in packed row form, either sorted or unsorted */
-	Fp = F->p ;
-	Fj = F->i ;
-	Fnz = F->nz ;
-	packed = F->packed ;
-    }
-
-    ColCount = L->ColCount ;
-
-    nrelax0 = Common->nrelax [0] ;
-    nrelax1 = Common->nrelax [1] ;
-    nrelax2 = Common->nrelax [2] ;
-
-    zrelax0 = Common->zrelax [0] ;
-    zrelax1 = Common->zrelax [1] ;
-    zrelax2 = Common->zrelax [2] ;
-
-    zrelax0 = IS_NAN (zrelax0) ? 0 : zrelax0 ;
-    zrelax1 = IS_NAN (zrelax1) ? 0 : zrelax1 ;
-    zrelax2 = IS_NAN (zrelax2) ? 0 : zrelax2 ;
-
-    ASSERT (CHOLMOD(dump_parent) (Parent, n, "Parent", Common)) ;
-
-    /* ---------------------------------------------------------------------- */
-    /* get workspace */
-    /* ---------------------------------------------------------------------- */
-
-    /* Sparent, Snz, and Merged could be allocated later, of size nfsuper */
-
-    Iwork = Common->Iwork ;
-    Wi      = Iwork ;	    /* size n (i/l/l).  Lpi2 is i/l/l */
-    Wj      = Iwork + n ;   /* size n (i/l/l).  Zeros is i/l/l */
-    Sparent = Iwork + 2*((size_t) n) ; /* size nfsuper <= n [ */
-    Snz     = Iwork + 3*((size_t) n) ; /* size nfsuper <= n [ */
-    Merged  = Iwork + 4*((size_t) n) ; /* size nfsuper <= n [ */
-
-    Flag = Common->Flag ;   /* size n */
-    Head = Common->Head ;   /* size n+1 */
-
-    /* ---------------------------------------------------------------------- */
     /* find the fundamental supernodes */
     /* ---------------------------------------------------------------------- */
-
-    /* count the number of children of each node, using Wi [ */
-    for (j = 0 ; j < n ; j++)
-    {
-	Wi [j] = 0 ;
-    }
-    for (j = 0 ; j < n ; j++)
-    {
-	parent = Parent [j] ;
-	if (parent != EMPTY)
-	{
-	    Wi [parent]++ ;
-	}
-    }
-
-#ifdef GPU_BLAS
-    leaves = 0;
-    for (j = 0; j < n; j++)
-        if (Wi[j] == 0)
-            leaves++;
-#endif
 
     Super = Head ;  /* use Head [0..nfsuper] as workspace for Super list ( */
 

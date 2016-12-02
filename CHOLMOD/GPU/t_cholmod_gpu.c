@@ -105,7 +105,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
         */
 
     /* make sure the assumed buffer sizes are large enough */
-    if ( (nls+2)*sizeof(Int) > CHOLMOD_DEVICE_LS_BUFFERS * Common->devBuffSize ) {
+    if ( (nls+2)*sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
                "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
                "devBuffSize.  It is not clear if this is due to insufficient\n"

@@ -460,9 +460,9 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     }
 
     /* allocated corresponding pinned host memory */
-    requestedHostMemory = requestedDeviceMemory
-        * (Common->cuda_gpu_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS)
-        / (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
+    requestedHostMemory = (requestedDeviceMemory - CHOLMOD_DEVICE_LS_SIZE_T)
+        * CHOLMOD_HOST_SUPERNODE_BUFFERS
+        / CHOLMOD_DEVICE_SUPERNODE_BUFFERS;
 
     cudaErr = cudaMallocHost ( (void**)&(Common->host_pinned_mempool[device]),
                                requestedHostMemory );
@@ -475,12 +475,13 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     Common->host_pinned_mempool_size[device] = requestedHostMemory;
 
     requestedDeviceMemory = requestedHostMemory
-        * (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS)
-        / (Common->cuda_gpu_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS);
+        * CHOLMOD_DEVICE_SUPERNODE_BUFFERS
+        / CHOLMOD_HOST_SUPERNODE_BUFFERS
+        + CHOLMOD_DEVICE_LS_SIZE_T;
 
     /* Split up the memory allocations into required device buffers. */
-    devBuffSize = requestedDeviceMemory
-        / (CHOLMOD_DEVICE_LS_BUFFERS + Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
+    devBuffSize = (requestedDeviceMemory - CHOLMOD_DEVICE_LS_SIZE_T)
+        / (Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
     devBuffSize -= devBuffSize%0x20000;
     if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)
         Common->devBuffSize = devBuffSize;
