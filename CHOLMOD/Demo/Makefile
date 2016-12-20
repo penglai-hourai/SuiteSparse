@@ -23,22 +23,11 @@ endif
 
 C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
-code: library cholmod_demo cholmod_l_demo cholmod_simple
+code: library cholmod_demo cholmod_l_demo cholmod_l_batched_demo cholmod_simple
 
 fortran: readhb readhb2 reade 
 
 all: code
-	./cholmod_demo < Matrix/bcsstk01.tri
-	./cholmod_l_demo < Matrix/bcsstk01.tri
-	./cholmod_demo < Matrix/lp_afiro.tri
-	./cholmod_l_demo < Matrix/lp_afiro.tri
-	./cholmod_demo < Matrix/can___24.mtx
-	./cholmod_l_demo < Matrix/can___24.mtx
-	./cholmod_demo < Matrix/c.tri
-	./cholmod_l_demo < Matrix/c.tri
-	./cholmod_simple < Matrix/c.tri
-	./cholmod_simple < Matrix/can___24.mtx
-	./cholmod_simple < Matrix/bcsstk01.tri
 
 # run on a big matrix.  This exercises the GPU, if compiled to exploit it
 big: code
@@ -47,7 +36,7 @@ big: code
 distclean: purge
 
 purge: clean
-	- $(RM) cholmod_demo cholmod_l_demo readhb readhb2 reade
+	- $(RM) cholmod_demo cholmod_l_demo cholmod_l_batched_demo readhb readhb2 reade
 	- $(RM) cholmod_simple
 	- $(RM) timelog.m
 	- $(RM) -r $(PURGE)
@@ -84,6 +73,9 @@ cholmod_simple: cholmod_simple.c
 
 cholmod_l_demo: cholmod_l_demo.c cholmod_demo.h
 	$(C) -o cholmod_l_demo $(I) cholmod_l_demo.c $(LIB2)
+
+cholmod_l_batched_demo: cholmod_l_batched_demo.c cholmod_demo.h
+	$(C) -o cholmod_l_batched_demo $(I) cholmod_l_batched_demo.c $(LIB2)
 
 readhb: readhb.f
 	$(F77) $(FFLAGS) -o readhb readhb.f

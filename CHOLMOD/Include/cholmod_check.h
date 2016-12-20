@@ -326,8 +326,10 @@ cholmod_sparse *cholmod_read_sparse
     /* --------------- */
     cholmod_common *Common
 ) ;
+cholmod_sparse *cholmod_read_sparse_batched (FILE *[], cholmod_common *) ;
 
 cholmod_sparse *cholmod_l_read_sparse (FILE *, cholmod_common *) ;
+cholmod_sparse *cholmod_l_read_sparse_batched (FILE *[], cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_read_triplet: read a triplet matrix from a file */
@@ -340,8 +342,10 @@ cholmod_triplet *cholmod_read_triplet
     /* --------------- */
     cholmod_common *Common
 ) ;
+cholmod_triplet *cholmod_read_triplet_batched (FILE *[], cholmod_common *) ;
 
 cholmod_triplet *cholmod_l_read_triplet (FILE *, cholmod_common *) ;
+cholmod_triplet *cholmod_l_read_triplet_batched (FILE *[], cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_read_dense: read a dense matrix from a file */
