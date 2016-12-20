@@ -298,7 +298,7 @@
 #endif
 
 #ifndef NMATRICES
-#define NMATRICES 64
+#define NMATRICES 16
 #endif
 
 enum {
@@ -315,7 +315,7 @@ enum {
 #endif
 #endif
 
-#define CHOLMOD_DEVICE_LS_GIBS 1 /* in GiBs */
+#define CHOLMOD_DEVICE_LS_GIBS 2 /* in GiBs */
 #define CHOLMOD_DEVICE_LS_SIZE_T ((size_t) 0x400 * 0x400 * 0x400 * CHOLMOD_DEVICE_LS_GIBS)
 #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5
 #define CHOLMOD_HOST_SUPERNODE_BUFFERS 4

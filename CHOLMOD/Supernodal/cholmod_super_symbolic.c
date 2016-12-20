@@ -458,7 +458,8 @@ int CHOLMOD(super_symbolic2)
 	    /* Data size of 16 bytes must be assumed for case of PATTERN */
 	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU && 
 		 (j-Super[nfsuper-1]+1) * 
-		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2 + 2 * (n+1) * sizeof(Int) >= 
+		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2
+         + (ColCount[Super[nfsuper-1]]+1) * sizeof(Int) >= 
 		 Common->devBuffSize)
 #endif
 	    )
@@ -618,7 +619,8 @@ int CHOLMOD(super_symbolic2)
 	  /* Ensure that the aggregated supernode fits in the device 
 	     supernode buffers */
 	  double xns = (double) ns;
-	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2 + 2 * (n+1) * sizeof(Int) >= 
+	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2
+              + ((xns+lnz1-nscol1)+1) * sizeof(Int) >= 
 	       Common->devBuffSize ) {
 	    merge = FALSE;
 	  }
