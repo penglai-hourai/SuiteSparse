@@ -74,7 +74,7 @@ cholmod_factor *CHOLMOD(allocate_factor)
     cholmod_common *Common
 )
 {
-    Int j ;
+    Int j, vdevice ;
     Int *Perm, *ColCount ;
     cholmod_factor *L ;
     int ok = TRUE ;
@@ -130,6 +130,15 @@ cholmod_factor *CHOLMOD(allocate_factor)
     L->px = NULL ;
     L->s = NULL ;
     L->useGPU = 0;
+
+    L->MapSize = 0 ;
+
+    for (vdevice = 0; vdevice < CHOLMOD_PARALLEL_NUM_THREADS; vdevice++)
+    {
+        L->Map_queue[vdevice] = NULL;
+        L->RelativeMap_queue[vdevice] = NULL;
+        L->C_queue[vdevice] = NULL;
+    }
 
     /* L has not been factorized */
     L->minor = n ;

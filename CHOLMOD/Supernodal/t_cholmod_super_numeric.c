@@ -108,9 +108,6 @@ static int TEMPLATE (cholmod_super_numeric)
     const double one  [2] = {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     const double zero [2] = {0, 0} ;    /* BETA for *syrk, *herk, and *gemm */
 
-    Int *Map_queue[CHOLMOD_PARALLEL_NUM_THREADS], *RelativeMap_queue[CHOLMOD_PARALLEL_NUM_THREADS];
-    double *C_queue[CHOLMOD_PARALLEL_NUM_THREADS];
-
     int to_return = FALSE;
 
     Int *Ap, *Ai, *Anz, *Az, Apacked, stype;
@@ -120,7 +117,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *leaf;
     Int *Head;
-    Int s, t_max;
+    Int s, t;
 
     /* ---------------------------------------------------------------------- */
     /* declarations for the GPU */
@@ -232,24 +229,11 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-    t_max = 0;
-    for (s = 0; s < nsuper; s++)
-        if (pending[s] <= 0)
-            leaf[t_max++] = s;
-
-    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
-    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
-    {
-        Map_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
-        RelativeMap_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
-        C_queue[vdevice] = CHOLMOD (malloc) (L->maxcsize, sizeof(double), Common);
-    }
-
 #ifdef GPU_BLAS
 #ifdef MAGMA
     magma_init();
 #endif
-    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
     //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
         device = vdevice / Common->cuda_gpu_parallel;
@@ -260,7 +244,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* local copy of useGPU */
     if ((Common->useGPU == 1) && L->useGPU)
 //#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
-        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
         //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
             /* Initialize the GPU.  If not found, don't use it. */
@@ -269,7 +253,7 @@ static int TEMPLATE (cholmod_super_numeric)
         }
     else
     {
-        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+        for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
         //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
             useGPU_queue[vdevice] = FALSE;
     }
@@ -296,19 +280,19 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-#pragma omp parallel for private (s, device, vdevice) schedule (static)
-    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+#pragma omp parallel for private (s, t, device, vdevice) schedule (static)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
     //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        Int * const Map = Map_queue[vdevice];
-        Int * const RelativeMap = RelativeMap_queue[vdevice];
-        double * const C = C_queue[vdevice];
+        Int * const Map = L->Map_queue[vdevice];
+        Int * const RelativeMap = L->RelativeMap_queue[vdevice];
+        double * const C = L->C_queue[vdevice];
         Int ss, sparent;
         Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
         Int pf, pfend;
         Int d, dnext, dancestor;
         Int kd1, kd2, pdi, pdend, ndcol, pdi1, pdi2, ndrow, ndrow1, ndrow2, pdx, pdx1;
-        Int i, j, k, t, imap, tail;
+        Int i, j, k, imap, tail;
 
         Int info;
 
@@ -348,18 +332,18 @@ static int TEMPLATE (cholmod_super_numeric)
 
                 /* clear the Map so that changes in the pattern of A can be detected */
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
-                if ( n > 128 ) schedule (static)
-
-                for (i = 0 ; i < n ; i++)
-                {
-                    Map [i] = EMPTY ;
-                }
+//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
+//                if ( L->MapSize > 128 ) schedule (static)
+//
+//                for (i = 0 ; i < L->MapSize ; i++)
+//                {
+//                    Map [i] = EMPTY ;
+//                }
 
         t = vdevice;
-        if (t < t_max)
+        if (t < nsuper)
             s = leaf[t];
-        while (t < t_max && s < nsuper)
+        while (t < nsuper && s < nsuper)
         {
             if (pending[s] <= 0 && omp_test_lock(&front_lock[s]))
             {
@@ -1184,13 +1168,13 @@ ret:
             else
             {
                 t++;
-                if (t < t_max)
+                if (t < nsuper)
                     s = leaf[t];
             }
 
             if (to_return)
             {
-                t = t_max;
+                t = nsuper;
                 s = nsuper;
             }
         }
@@ -1203,16 +1187,16 @@ ret:
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
 
-    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
-    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
-    {
-        Map_queue[vdevice] = CHOLMOD (free) (n, sizeof(Int), Map_queue[vdevice], Common);
-        RelativeMap_queue[vdevice] = CHOLMOD (free) (n, sizeof(Int), RelativeMap_queue[vdevice], Common);
-        C_queue[vdevice] = CHOLMOD (free) (L->maxcsize, sizeof(double), C_queue[vdevice], Common);
-    }
-
     /* success; matrix is positive definite */
     L->minor = n ;
+
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
+    //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
+    {
+        L->Map_queue[vdevice] = CHOLMOD (free) (L->MapSize, sizeof(Int), L->Map_queue[vdevice], Common);
+        L->RelativeMap_queue[vdevice] = CHOLMOD (free) (L->MapSize, sizeof(Int), L->RelativeMap_queue[vdevice], Common);
+        L->C_queue[vdevice] = CHOLMOD (free) (L->maxcsize, sizeof(double), L->C_queue[vdevice], Common);
+    }
 
 #ifdef GPU_BLAS
     if ((Common->useGPU == 1) && L->useGPU)

@@ -67,7 +67,8 @@ INC =   ../Include/cholmod.h \
 	../Include/cholmod_partition.h \
 	../Include/cholmod_supernodal.h \
 	../Include/cholmod_template.h \
-	../Include/cholmod_gpu.h
+	../Include/cholmod_gpu.h \
+	../Include/cholmod_super_utils.h
 
 #-------------------------------------------------------------------------------
 # The 7 CHOLMOD library modules (int, double)
@@ -97,7 +98,8 @@ PARTITION = cholmod_ccolamd.o cholmod_csymamd.o \
 MODIFY = cholmod_rowadd.o cholmod_rowdel.o cholmod_updown.o
 
 SUPERNODAL = cholmod_super_numeric.o cholmod_super_solve.o \
-	cholmod_super_symbolic.o
+	cholmod_super_symbolic.o cholmod_super_utils.o
+			
 
 ifneq ($(GPU_CONFIG),)
 GPU = cholmod_gpu.o cholmod_gpu_kernels.o
@@ -136,7 +138,7 @@ LPARTITION = cholmod_l_ccolamd.o cholmod_l_csymamd.o \
 LMODIFY = cholmod_l_rowadd.o cholmod_l_rowdel.o cholmod_l_updown.o
 
 LSUPERNODAL = cholmod_l_super_numeric.o cholmod_l_super_solve.o \
-	cholmod_l_super_symbolic.o
+	cholmod_l_super_symbolic.o cholmod_l_super_utils.o
 
 ifneq ($(GPU_CONFIG),)
 LGPU = cholmod_l_gpu.o cholmod_gpu_kernels.o
@@ -494,6 +496,9 @@ cholmod_l_updown.o: ../Modify/cholmod_updown.c \
 # Supernodal Module:
 #-------------------------------------------------------------------------------
 
+cholmod_super_utils.o: ../Supernodal/cholmod_super_utils.c
+	$(C) -c $(I) $<
+
 cholmod_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
         ../GPU/t_cholmod_gpu.c \
 	../Supernodal/t_cholmod_super_numeric.c
@@ -507,6 +512,9 @@ cholmod_super_solve.o: ../Supernodal/cholmod_super_solve.c \
 	$(C) -c $(I) $<
 
 #-------------------------------------------------------------------------------
+
+cholmod_l_super_utils.o: ../Supernodal/cholmod_super_utils.c
+	$(C) -DDLONG -c $(I) $< -o $@
 
 cholmod_l_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
 	../Supernodal/t_cholmod_super_numeric.c

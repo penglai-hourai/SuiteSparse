@@ -185,10 +185,11 @@ int CHOLMOD(super_symbolic2)
     const char* env_max_fraction;
     double max_fraction;
 #ifdef GPU_BLAS
-    int device;
+    Int device;
     Int leaves;
 #endif
-    Int *pending;
+    Int vdevice;
+    Int *height, *pending, *leaf;
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -522,7 +523,7 @@ int CHOLMOD(super_symbolic2)
 
     for (s = nfsuper-2 ; s >= 0 ; s--)
     {
-        double lnz1 ;
+        double lnz0, lnz1 ;
 
 	/* should supernodes s and s+1 merge into a new node s? */
 	PRINT1 (("\n========= Check relax of s "ID" and s+1 "ID"\n", s, s+1)) ;
@@ -559,6 +560,7 @@ int CHOLMOD(super_symbolic2)
 	PRINT2 (("ns "ID" nscol0 "ID" nscol1 "ID"\n", ns, nscol0, nscol1)) ;
 
 	totzeros = Zeros [s+1] ;	/* current # of zeros in s+1 */
+	lnz0 = (double) Snz [s] ;	/* # entries in leading column of s */
 	lnz1 = (double) (Snz [s+1]) ;	/* # entries in leading column of s+1 */
 
 	/* determine if supernodes s and s+1 should merge */
@@ -570,7 +572,6 @@ int CHOLMOD(super_symbolic2)
 	else
 	{
 	    /* use double to avoid integer overflow */
-	    double lnz0 = Snz [s] ;	/* # entries in leading column of s */
 	    double xnewzeros = nscol0 * (lnz1 + nscol0 - lnz0) ;
 
 	    /* use Int for the final update of Zeros [s] below */
@@ -620,7 +621,7 @@ int CHOLMOD(super_symbolic2)
 	     supernode buffers */
 	  double xns = (double) ns;
 	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2
-              + ((xns+lnz1-nscol1)+1) * sizeof(Int) >= 
+              + ((nscol0+lnz1)+1) * sizeof(Int) >= 
 	       Common->devBuffSize ) {
 	    merge = FALSE;
 	  }
@@ -985,9 +986,25 @@ int CHOLMOD(super_symbolic2)
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
 
+    height          = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
     pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
+    leaf            = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) schedule (static)
+    for (s = 0; s < nsuper; s++)
+        height[s] = 0;
+
+    for (s = nsuper - 1; s >= 0; s--)
+    {
+        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
+        if (sparent > s && sparent < nsuper)
+            height[s] = height[sparent] + 1;
+    }
+
+    for (s = 0; s < nsuper; s++)
+        leaf[s] = s;
+
+    CHOLMOD (qRevSort) (height, leaf, 0, nsuper - 1);
+
     for (s = 0; s < nsuper; s++)
         pending[s] = 0;
 
@@ -996,6 +1013,17 @@ int CHOLMOD(super_symbolic2)
         sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
         if (sparent > s && sparent < nsuper)
             pending[sparent]++;
+    }
+
+    for (s = 0; s < nsuper; s++)
+        if (L->MapSize < Lpi[s])
+            L->MapSize = Lpi[s];
+
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
+    {
+        L->Map_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
+        L->RelativeMap_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
+        L->C_queue[vdevice] = CHOLMOD (malloc) (L->maxcsize, sizeof(double), Common);
     }
 
     /* ---------------------------------------------------------------------- */
