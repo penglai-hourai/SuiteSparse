@@ -189,7 +189,8 @@ int CHOLMOD(super_symbolic2)
     Int leaves;
 #endif
     Int vdevice;
-    Int *height, *pending, *leaf;
+    //Int *height;
+    Int *pending, *leaf;
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -460,8 +461,8 @@ int CHOLMOD(super_symbolic2)
 	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU && 
 		 (j-Super[nfsuper-1]+1) * 
 		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2
-         + (ColCount[Super[nfsuper-1]]+1) * sizeof(Int) >= 
-		 Common->devBuffSize)
+         //+ (ColCount[Super[nfsuper-1]]+1) * sizeof(Int)
+         >= Common->devBuffSize)
 #endif
 	    )
 	{
@@ -621,8 +622,8 @@ int CHOLMOD(super_symbolic2)
 	     supernode buffers */
 	  double xns = (double) ns;
 	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2
-              + ((nscol0+lnz1)+1) * sizeof(Int) >= 
-	       Common->devBuffSize ) {
+              //+ ((nscol0+lnz1)+1) * sizeof(Int)
+              >= Common->devBuffSize ) {
 	    merge = FALSE;
 	  }
 	}
@@ -986,10 +987,11 @@ int CHOLMOD(super_symbolic2)
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
 
-    height          = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
+    //height          = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
     pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
     leaf            = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
 
+    /*
     for (s = 0; s < nsuper; s++)
         height[s] = 0;
 
@@ -1004,6 +1006,7 @@ int CHOLMOD(super_symbolic2)
         leaf[s] = s;
 
     CHOLMOD (qRevSort) (height, leaf, 0, nsuper - 1);
+    */
 
     for (s = 0; s < nsuper; s++)
         pending[s] = 0;
@@ -1014,6 +1017,12 @@ int CHOLMOD(super_symbolic2)
         if (sparent > s && sparent < nsuper)
             pending[sparent]++;
     }
+
+    L->nleaves = 0;
+
+    for (s = 0; s < nsuper; s++)
+        if (pending[s] <= 0)
+            leaf[L->nleaves++] = s;
 
     for (s = 0; s < nsuper; s++)
         if (L->MapSize < Lpi[s])

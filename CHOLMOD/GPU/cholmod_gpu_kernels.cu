@@ -22,7 +22,7 @@ extern "C" {
   {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if ( tid < nsrow ) {
-      d_Map[-1-d_Ls[psi+tid]] = ((Int) (tid));
+      d_Map[d_Ls[psi+tid]] = ((Int) (tid));
     }
   }
   
@@ -32,7 +32,7 @@ extern "C" {
   {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if ( tid < ndrow ) {
-      d_RelativeMap[-1-tid] = d_Map[-1-d_Ls[pdi1+tid]];
+      d_RelativeMap[tid] = d_Map[d_Ls[pdi1+tid]];
     }
   }
   
@@ -44,7 +44,7 @@ extern "C" {
     int idrow = blockIdx.x * blockDim.x + threadIdx.x;
     int idcol = blockIdx.y * blockDim.y + threadIdx.y;
     if ( idrow < ndrow2  && idcol < ndrow1 ) {
-      Int idx = d_RelativeMap[-1-idrow] + d_RelativeMap[-1-idcol] * nsrow;
+      Int idx = d_RelativeMap[idrow] + d_RelativeMap[idcol] * nsrow;
       d_A[idx] += devPtrC[idrow+ndrow2*idcol];
     }
   }
@@ -57,7 +57,7 @@ extern "C" {
     int idrow = blockIdx.x * blockDim.x + threadIdx.x;
     int idcol = blockIdx.y * blockDim.y + threadIdx.y;
     if ( idrow < ndrow2  && idcol < ndrow1 ) {
-      Int idx = d_RelativeMap[-1-idrow] + d_RelativeMap[-1-idcol] * nsrow;
+      Int idx = d_RelativeMap[idrow] + d_RelativeMap[idcol] * nsrow;
       d_A[idx*2] += devPtrC[(idrow+ndrow2*idcol)*2];
       d_A[idx*2+1] += devPtrC[(idrow+ndrow2*idcol)*2+1];
     }

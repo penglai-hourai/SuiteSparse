@@ -105,7 +105,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
         */
 
     /* make sure the assumed buffer sizes are large enough */
-    if ( (nls+2)*sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
+    if ( (nls + 2 * Common->cuda_gpu_parallel * L->MapSize) * sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
                "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
                "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -125,8 +125,8 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_A[1]   = Common->dev_mempool[device] + 3 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_C      = Common->dev_mempool[device] + 4 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * Common->cuda_gpu_parallel * Common->devBuffSize;
-    gpu_p->d_Map            = (void *) gpu_p->d_A[0] ;
-    gpu_p->d_RelativeMap    = (void *) gpu_p->d_A[1] ;
+    gpu_p->d_Map            = (void *) gpu_p->d_Ls + nls * sizeof (Int) + (2 * voffset + 0) * L->MapSize * sizeof (Int) ;
+    gpu_p->d_RelativeMap    = (void *) gpu_p->d_Ls + nls * sizeof (Int) + (2 * voffset + 1) * L->MapSize * sizeof (Int) ;
     //gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
     //gpu_p->d_RelativeMap    = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 1) * (n + 1) * sizeof(Int);
 

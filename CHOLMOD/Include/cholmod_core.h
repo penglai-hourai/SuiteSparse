@@ -277,7 +277,7 @@
 #endif
 
 #ifndef CUDA_GPU_PARALLEL
-#define CUDA_GPU_PARALLEL 8
+#define CUDA_GPU_PARALLEL 4
 #endif
 
 #ifndef CUDA_GPU_NUM
@@ -289,7 +289,7 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 12
+#define CPU_THREAD_NUM 4
 #endif
 
 #ifndef CHOLMOD_PARALLEL_NUM_THREADS
@@ -314,8 +314,8 @@ enum {
 #endif
 #endif
 
-#define CHOLMOD_DEVICE_LS_GIBS 1 /* in GiBs */
-#define CHOLMOD_DEVICE_LS_SIZE_T ((size_t) 0x400 * 0x400 * 0x400 * CHOLMOD_DEVICE_LS_GIBS)
+#define CHOLMOD_DEVICE_LS_GIBS 1.0 /* in GiBs */
+#define CHOLMOD_DEVICE_LS_SIZE_T ((size_t) ((size_t) 0x400 * 0x400 * 0x400 * CHOLMOD_DEVICE_LS_GIBS))
 #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5
 #define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 #define CHOLMOD_DEVICE_STREAMS 2
@@ -1712,8 +1712,6 @@ typedef struct cholmod_factor_struct
     void *px ;		/* size nsuper+1, pointers to real parts */
     void *s ;		/* size ssize, integer part of supernodes */
 
-    size_t MapSize;
-
     /* ---------------------------------------------------------------------- */
     /* factorization type */
     /* ---------------------------------------------------------------------- */
@@ -1777,6 +1775,10 @@ typedef struct cholmod_factor_struct
 
     int useGPU; /* Indicates the symbolic factorization supports
 		 * GPU acceleration */
+
+    size_t nleaves;
+
+    size_t MapSize;
 
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
     void *Map_queue[CHOLMOD_PARALLEL_NUM_THREADS], *RelativeMap_queue[CHOLMOD_PARALLEL_NUM_THREADS];

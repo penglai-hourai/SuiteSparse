@@ -131,6 +131,8 @@ cholmod_factor *CHOLMOD(allocate_factor)
     L->s = NULL ;
     L->useGPU = 0;
 
+    L->nleaves = 0;
+
     L->MapSize = 0 ;
 
     for (vdevice = 0; vdevice < CHOLMOD_PARALLEL_NUM_THREADS; vdevice++)
