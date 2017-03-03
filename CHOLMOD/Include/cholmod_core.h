@@ -277,11 +277,11 @@
 #endif
 
 #ifndef CUDA_GPU_PARALLEL
-#define CUDA_GPU_PARALLEL 4
+#define CUDA_GPU_PARALLEL 1
 #endif
 
 #ifndef CUDA_GPU_NUM
-#define CUDA_GPU_NUM 8
+#define CUDA_GPU_NUM 1
 #endif
 
 #ifndef CUDA_VGPU_NUM
@@ -316,9 +316,9 @@ enum {
 
 #define CHOLMOD_DEVICE_LS_GIBS 1.0 /* in GiBs */
 #define CHOLMOD_DEVICE_LS_SIZE_T ((size_t) ((size_t) 0x400 * 0x400 * 0x400 * CHOLMOD_DEVICE_LS_GIBS))
-#define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5
-#define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 #define CHOLMOD_DEVICE_STREAMS 2
+#define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3+CHOLMOD_DEVICE_STREAMS)
+#define CHOLMOD_HOST_SUPERNODE_BUFFERS 4
 
 /* ========================================================================== */
 /* === CHOLMOD objects ====================================================== */

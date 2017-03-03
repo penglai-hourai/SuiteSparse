@@ -1182,7 +1182,7 @@ ret:
         }
     }
 
-    printf ("threads set up time = %lf\n", SuiteSparse_time() - timestamp);
+    printf ("factorization time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
 //#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)

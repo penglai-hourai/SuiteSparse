@@ -119,16 +119,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     /* divvy up the memory in dev_mempool */
-    gpu_p->d_Lx[0]  = Common->dev_mempool[device] + 0 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Lx[1]  = Common->dev_mempool[device] + 1 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[0]   = Common->dev_mempool[device] + 2 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[1]   = Common->dev_mempool[device] + 3 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_C      = Common->dev_mempool[device] + 4 * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_Ls     = Common->dev_mempool[device] + 5 * Common->cuda_gpu_parallel * Common->devBuffSize;
-    gpu_p->d_Map            = (void *) gpu_p->d_Ls + nls * sizeof (Int) + (2 * voffset + 0) * L->MapSize * sizeof (Int) ;
-    gpu_p->d_RelativeMap    = (void *) gpu_p->d_Ls + nls * sizeof (Int) + (2 * voffset + 1) * L->MapSize * sizeof (Int) ;
-    //gpu_p->d_Map            = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 0) * (n + 1) * sizeof(Int);
-    //gpu_p->d_RelativeMap    = gpu_p->d_Ls + (nls+1) * sizeof(Int) + (2 * voffset + 1) * (n + 1) * sizeof(Int);
+    for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
+    gpu_p->d_Lx[k]  = Common->dev_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[0]   = Common->dev_mempool[device] + (0 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_A[1]   = Common->dev_mempool[device] + (1 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_C      = Common->dev_mempool[device] + (2 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Ls     = Common->dev_mempool[device] + (3 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize;
+    gpu_p->d_Map            = gpu_p->d_A[1];
+    gpu_p->d_RelativeMap    = (void *) (gpu_p->d_A[1]) +  L->MapSize * sizeof (Int);
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as
@@ -431,12 +429,16 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 )
 {
     double *devPtrLx, *devPtrC ;
-    double alpha, beta ;
     cublasStatus_t cublasStatus ;
     cudaError_t cudaStat [2] ;
     Int ndrow3 ;
     int icol, irow;
     int iHostBuff, iDevBuff ;
+
+    const double alpha = 1.0 ;
+    const double beta = 0.0 ;
+    const cuDoubleComplex calpha  = {1.0,0.0} ;
+    const cuDoubleComplex cbeta   = {0.0,0.0} ;
 
 #ifndef NTIMER
     double tstart = 0;
@@ -526,9 +528,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     }
 
-    alpha  = 1.0 ;
-    beta   = 0.0 ;
-
 #ifdef REAL
 #ifndef MAGMA
     cublasStatus = cublasDsyrk (Common->cublasHandle[vdevice],
@@ -609,8 +608,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         /* ------------------------------------------------------------------ */
 
 #ifdef REAL
-        alpha  = 1.0 ;
-        beta   = 0.0 ;
 #ifndef MAGMA
         cublasStatus = cublasDgemm (Common->cublasHandle[vdevice],
             CUBLAS_OP_N, CUBLAS_OP_T,
@@ -638,8 +635,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             Common->magmaQueue[vdevice][iDevBuff]);
 #endif
 #else
-        cuDoubleComplex calpha  = {1.0,0.0} ;
-        cuDoubleComplex cbeta   = {0.0,0.0} ;
 #ifndef MAGMA
         cublasStatus = cublasZgemm (Common->cublasHandle[vdevice],
             CUBLAS_OP_N, CUBLAS_OP_C,
@@ -865,10 +860,10 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 )
 {
     double *devPtrA, *devPtrB, *A ;
-    double alpha, beta ;
     cudaError_t cudaStat ;
     cublasStatus_t cublasStatus ;
     Int j, nsrow2, nb, n, gpu_lda, lda, gpu_ldb ;
+
 #ifndef NTIMER
     double tstart ;
 #endif
@@ -984,8 +979,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         /* do the CUDA BLAS dsyrk */
         /* ------------------------------------------------------------------ */
 
-        alpha = -1.0 ;
-        beta  = 1.0 ;
+        const double alpha = -1.0 ;
+        const double beta  = 1.0 ;
 #ifdef REAL
 #ifndef MAGMA
         cublasStatus = cublasDsyrk (Common->cublasHandle[vdevice],
@@ -1062,8 +1057,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         {
 
 #ifdef REAL
-            alpha = -1.0 ;
-            beta  = 1.0 ;
+            const double alpha = -1.0 ;
+            const double beta  = 1.0 ;
 #ifndef MAGMA
             cublasStatus = cublasDgemm (Common->cublasHandle[vdevice],
                 CUBLAS_OP_N, CUBLAS_OP_T,
@@ -1086,8 +1081,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 #endif
 
 #else
-            cuDoubleComplex calpha = {-1.0,0.0} ;
-            cuDoubleComplex cbeta  = { 1.0,0.0} ;
+            const cuDoubleComplex calpha = {-1.0,0.0} ;
+            const cuDoubleComplex cbeta  = { 1.0,0.0} ;
 #ifndef MAGMA
             cublasStatus = cublasZgemm (Common->cublasHandle[vdevice],
                 CUBLAS_OP_N, CUBLAS_OP_C,
@@ -1180,7 +1175,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         {
 
 #ifdef REAL
-            alpha  = 1.0 ;
+            const double alpha  = 1.0 ;
 #ifndef MAGMA
             cublasStatus = cublasDtrsm (Common->cublasHandle[vdevice],
                 CUBLAS_SIDE_RIGHT,
@@ -1202,7 +1197,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 Common->magmaQueue[vdevice][0]) ;
 #endif
 #else
-            cuDoubleComplex calpha  = {1.0,0.0};
+            const cuDoubleComplex calpha  = {1.0,0.0};
 #ifndef MAGMA
             cublasStatus = cublasZtrsm (Common->cublasHandle[vdevice],
                 CUBLAS_SIDE_RIGHT,
@@ -1325,10 +1320,10 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
 #endif
 
 #ifdef REAL
-    double alpha  = 1.0 ;
+    const double alpha  = 1.0 ;
     gpu_row_max_chunk = 768;
 #else
-    cuDoubleComplex calpha  = {1.0,0.0} ;
+    const cuDoubleComplex calpha  = {1.0,0.0} ;
     gpu_row_max_chunk = 256;
 #endif
 
