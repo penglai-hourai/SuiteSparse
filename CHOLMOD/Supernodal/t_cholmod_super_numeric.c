@@ -19,6 +19,8 @@
 #include <omp.h>
 #include "cholmod_template.h"
 
+#undef USE_CPU_FREE
+
 #undef L_ENTRY
 #undef L_CLEAR
 #undef L_ASSIGN
@@ -127,7 +129,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
     int device, vdevice;
 #ifdef GPU_BLAS
-    int cpu_free = CPU_THREAD_NUM, useGPU_queue[CUDA_VGPU_NUM];
+#ifdef USE_CPU_FREE
+    int cpu_free = CPU_THREAD_NUM;
+#endif
+    int useGPU_queue[CUDA_VGPU_NUM];
     cholmod_gpu_pointers gpu_p_queue[CUDA_VGPU_NUM];
 #endif
 
@@ -612,12 +617,16 @@ label:
                                         skips--;
                                     }
                                     else {
+#ifdef USE_CPU_FREE
                                         if (cpu_free > 0)
+#endif
                                             cuErr = cudaEventQuery
                                                 ( Common->updateCBuffersFree[vdevice][iHostBuff] );
+#ifdef USE_GPU_FREE
                                         else
                                             cuErr = cudaEventSynchronize
                                                 ( Common->updateCBuffersFree[vdevice][iHostBuff] );
+#endif
                                         if ( cuErr == cudaSuccess ) {
                                             /* buffers are available, so assemble a large
                                              * descendant (anticipating that this will be
@@ -644,10 +653,11 @@ label:
                                 }
 
                                 idescendant++;
-
+#ifdef USE_CPU_FREE
                                 if (GPUavailable != 1)
 #pragma omp atomic
                                     cpu_free--;
+#endif
 
                             }
                             else
@@ -742,8 +752,10 @@ label:
                                         /* we've reached the limit of GPU-eligible descendants
                                          * flag to stop stop performing cudaEventQueries */
                                         GPUavailable = -1;
+#ifdef USE_CPU_FREE
 #pragma omp atomic
                                         cpu_free--;
+#endif
                                     }
 #else
                                     if ( ! mapCreatedOnGpu ) {
@@ -900,9 +912,11 @@ label:
                                 }
                             }
 #ifdef GPU_BLAS
+#ifdef USE_CPU_FREE
                             if (useGPU && GPUavailable != 1)
 #pragma omp atomic
                                 cpu_free++;
+#endif
 #endif
                         }  /* end of descendant supernode loop */
 

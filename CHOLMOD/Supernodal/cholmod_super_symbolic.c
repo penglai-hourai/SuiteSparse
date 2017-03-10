@@ -179,17 +179,8 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    const char* env_use_gpu;
-    const char* env_max_bytes;
-    size_t max_bytes;
-    const char* env_max_fraction;
-    double max_fraction;
-#ifdef GPU_BLAS
-    Int device;
-    Int leaves;
-#endif
     Int vdevice;
-    //Int *height;
+    Int *height, *leaf_height;
     Int *pending, *leaf;
 
     /* ---------------------------------------------------------------------- */
@@ -326,121 +317,13 @@ int CHOLMOD(super_symbolic2)
     }
 
 #ifdef GPU_BLAS
-    leaves = 0;
+    L->nleaves = 0;
     for (j = 0; j < n; j++)
         if (Wi[j] == 0)
-            leaves++;
+            L->nleaves++;
 #endif
 
-    /* ---------------------------------------------------------------------- */
-    /* allocate GPU workspace */
-    /* ---------------------------------------------------------------------- */
-
-    L->useGPU = 0 ;     /* only used for Cholesky factorization, not QR */
-
-#ifdef GPU_BLAS
-
-    /* GPU module is installed */
-    if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY )
-    {
-        /* only allocate GPU workspace for supernodal Cholesky, and only when
-           the GPU is requested and available. */
-
-        max_bytes = 0;
-        max_fraction = 0;
-
-#ifdef DLONG
-        if ( Common->useGPU == EMPTY )
-        {
-            /* useGPU not explicity requested by the user, but not explicitly
-             * prohibited either.  Query OS environment variables for request.*/
-            env_use_gpu  = getenv("CHOLMOD_USE_GPU");
-
-            if ( env_use_gpu )
-            {
-                /* CHOLMOD_USE_GPU environment variable is set to something */
-                if ( atoi ( env_use_gpu ) == 0 )
-                {
-                    Common->useGPU = 0; /* don't use the gpu */
-                }
-                else
-                {
-                    Common->useGPU = 1; /* use the gpu */
-                    env_max_bytes = getenv("CHOLMOD_GPU_MEM_BYTES");
-                    env_max_fraction = getenv("CHOLMOD_GPU_MEM_FRACTION");
-                    if ( env_max_bytes )
-                    {
-                        max_bytes = atol(env_max_bytes);
-                        Common->maxGpuMemBytes = max_bytes;
-                    }
-                    if ( env_max_fraction )
-                    {
-                        max_fraction = atof (env_max_fraction);
-                        if ( max_fraction < 0 ) max_fraction = 0;
-                        if ( max_fraction > 1 ) max_fraction = 1;
-                        Common->maxGpuMemFraction = max_fraction;
-                    }	  
-                }
-            }
-            else
-            {
-                /* CHOLMOD_USE_GPU environment variable not set, so no GPU
-                 * acceleration will be used */
-                Common->useGPU = 0;
-            }
-            /* fprintf (stderr, "useGPU queried: %d\n", Common->useGPU) ; */
-        }
-
-        /* Ensure that a GPU is present */
-        if ( Common->useGPU == 1 )
-        {
-            /* fprintf (stderr, "\nprobe GPU:\n") ; */
-            Common->useGPU = CHOLMOD(gpu_probe) (Common); 
-            CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
-            if (Common->cuda_gpu_num > CUDA_GPU_NUM)
-                Common->cuda_gpu_num = CUDA_GPU_NUM;
-            /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
-        }
-        else
-            Common->cuda_gpu_num = 0;
-#else
-        /* GPU acceleration is only supported for long int version */
-        Common->useGPU = 0;
-        Common->cuda_gpu_num = 0;
-#endif
-        if (Common->cuda_gpu_num > 0)
-        {
-            Common->cuda_gpu_parallel = (leaves - 1) / Common->cuda_gpu_num + 1;
-            if (Common->cuda_gpu_parallel > CUDA_GPU_PARALLEL)
-                Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
-            else if (Common->cuda_gpu_parallel <= 0)
-                Common->cuda_gpu_parallel = 1;
-        }
-        Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
-        if (Common->cuda_vgpu_num > 0)
-            Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
-        else
-            Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
-
-        if ( Common->useGPU == 1 )
-        {
-            /* Cholesky + GPU, so allocate space */
-            for (device = 0; device < Common->cuda_gpu_num; device++)
-            /* fprintf (stderr, "allocate GPU:\n") ; */
-            CHOLMOD(gpu_allocate) ( Common, device );
-            /* fprintf (stderr, "allocate GPU done\n") ; */
-        }
-
-        /* Cache the fact that the symbolic factorization supports 
-         * GPU acceleration */
-        L->useGPU = Common->useGPU;
-
-    }
-
-#else
-    /* GPU module is not installed */
-    Common->useGPU = 0 ;
-#endif
+    CHOLMOD (init_gpus) (for_whom, L, Common);
 
     /* ---------------------------------------------------------------------- */
     /* find the fundamental supernodes */
@@ -631,6 +514,8 @@ int CHOLMOD(super_symbolic2)
 	  }
 	}
 #endif
+
+    //merge = FALSE;
 
 	if (merge)
 	{
@@ -990,33 +875,17 @@ int CHOLMOD(super_symbolic2)
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
 
-    //height          = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
+    height          = Iwork + 2*((size_t) n) + 2*((size_t) nsuper);
+    leaf_height     = Iwork + 2*((size_t) n) + 3*((size_t) nsuper);
     pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
     leaf            = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
-
-    /*
-    for (s = 0; s < nsuper; s++)
-        height[s] = 0;
-
-    for (s = nsuper - 1; s >= 0; s--)
-    {
-        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
-        if (sparent > s && sparent < nsuper)
-            height[s] = height[sparent] + 1;
-    }
-
-    for (s = 0; s < nsuper; s++)
-        leaf[s] = s;
-
-    CHOLMOD (qRevSort) (height, leaf, 0, nsuper - 1);
-    */
 
     for (s = 0; s < nsuper; s++)
         pending[s] = 0;
 
     for (s = 0; s < nsuper; s++)
     {
-        sparent = SuperMap[Ls[Lpi[s]+(Super[s+1]-Super[s])]];
+        sparent = Sparent[s];
         if (sparent > s && sparent < nsuper)
             pending[sparent]++;
     }
@@ -1027,11 +896,25 @@ int CHOLMOD(super_symbolic2)
         if (pending[s] <= 0)
             leaf[L->nleaves++] = s;
 
+    for (s = nsuper - 1; s >= 0; s--)
+    {
+        sparent = Sparent[s];
+        if (sparent > s && sparent < nsuper)
+            height[s] = height[sparent] + 1;
+        else
+            height[s] = 0;
+    }
+
+    for (s = 0; s < L->nleaves; s++)
+        leaf_height[s] = height[leaf[s]];
+
+    CHOLMOD (qRevSort) (leaf_height, leaf, 0, L->nleaves - 1);
+
     for (s = 0; s < nsuper; s++)
         if (L->MapSize < Lpi[s])
             L->MapSize = Lpi[s];
 
-    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, nsuper); vdevice++)
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, L->nleaves); vdevice++)
     {
         L->Map_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
         L->RelativeMap_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
