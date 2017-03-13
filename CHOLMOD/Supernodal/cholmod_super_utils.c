@@ -98,7 +98,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
     const char* env_max_fraction;
     double max_fraction;
 #ifdef GPU_BLAS
-    Int device;
+    int device;
 #endif
 
     double timestamp;
@@ -178,16 +178,18 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
             Common->cuda_gpu_num = 0;
         }
 
-            timestamp = SuiteSparse_time();
+        timestamp = SuiteSparse_time();
         if ( Common->useGPU == 1 )
         {
             /* Cholesky + GPU, so allocate space */
             for (device = 0; device < Common->cuda_gpu_num; device++)
+            {
                 /* fprintf (stderr, "allocate GPU:\n") ; */
                 CHOLMOD(gpu_allocate) ( Common, device );
-            /* fprintf (stderr, "allocate GPU done\n") ; */
+                /* fprintf (stderr, "allocate GPU done\n") ; */
+            }
         }
-            printf ("GPU memory allocation time = %lf\n", SuiteSparse_time() - timestamp);
+        printf ("GPU memory allocation time = %lf\n", SuiteSparse_time() - timestamp);
 #else
         /* GPU acceleration is only supported for long int version */
         Common->useGPU = 0;
@@ -203,18 +205,18 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
                 Common->cuda_gpu_parallel = 1;
         }
         else
+        {
+            Common->cuda_gpu_num = 0;
             Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
+        }
         printf ("Common-->cuda_gpu_parallel = %d\n", Common->cuda_gpu_parallel);
 
-#if 0
-        Common->cholmod_parallel_num_threads = MAX (Common->cuda_vgpu_num, CPU_THREAD_NUM);
-#else
         Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
         if (Common->cuda_vgpu_num > 0)
             Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
         else
             Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
-#endif
+
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */

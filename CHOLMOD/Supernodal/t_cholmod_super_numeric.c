@@ -19,7 +19,7 @@
 #include <omp.h>
 #include "cholmod_template.h"
 
-#undef USE_CPU_FREE
+#define USE_CPU_FREE
 
 #undef L_ENTRY
 #undef L_CLEAR
@@ -136,7 +136,6 @@ static int TEMPLATE (cholmod_super_numeric)
     cholmod_gpu_pointers gpu_p_queue[CUDA_VGPU_NUM];
 #endif
 
-    printf ("size of omp_lock_t = %d\n", sizeof(omp_lock_t));
     double timestamp;
 
     timestamp = SuiteSparse_time();

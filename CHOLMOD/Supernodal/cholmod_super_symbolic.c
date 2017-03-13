@@ -179,7 +179,7 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    Int vdevice;
+    int vdevice;
     Int *height, *leaf_height;
     Int *pending, *leaf;
 
