@@ -111,8 +111,6 @@ int main (int argc, char **argv)
     /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
      * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
-    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-
     /* ---------------------------------------------------------------------- */
     /* create basic scalars */
     /* ---------------------------------------------------------------------- */
@@ -135,6 +133,9 @@ int main (int argc, char **argv)
     printf ("cholmod version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
     SuiteSparse_version (ver) ;
     printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
+
+    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
+
     A = cholmod_l_read_sparse (f, cm) ;
     if (ff != NULL)
     {

@@ -125,6 +125,8 @@ SUITESPARSE_VERSION = 4.5.3
         endif
     endif
 
+	CHARMC = charmc
+
     #---------------------------------------------------------------------------
     # code formatting (for Tcov only)
     #---------------------------------------------------------------------------
@@ -578,6 +580,7 @@ config:
 	@echo 'pretty (for Tcov tests):  PRETTY=         ' '$(PRETTY)'
 	@echo 'C compiler:               CC=             ' '$(CC)'
 	@echo 'C++ compiler:             CXX=            ' '$(CXX)'
+	@echo 'Charm++ compiler:         CHARMC=         ' '$(CHARMC)'
 	@echo 'CUDA compiler:            NVCC=           ' '$(NVCC)'
 	@echo 'CUDA root directory:      CUDA_PATH=      ' '$(CUDA_PATH)'
 	@echo 'OpenMP flags:             CFOPENMP=       ' '$(CFOPENMP)'

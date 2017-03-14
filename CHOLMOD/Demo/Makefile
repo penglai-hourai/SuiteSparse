@@ -22,12 +22,15 @@ endif
 #-------------------------------------------------------------------------------
 
 C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
-code: library cholmod_demo cholmod_l_demo cholmod_l_batched_demo cholmod_simple
+code: library cholmod_demo cholmod_l_demo cholmod_simple
+	
+charm: cholmod_l_batched_demo
 
 fortran: readhb readhb2 reade 
 
-all: code
+all: code charm
 
 # run on a big matrix.  This exercises the GPU, if compiled to exploit it
 big: code
@@ -75,7 +78,7 @@ cholmod_l_demo: cholmod_l_demo.c cholmod_demo.h
 	$(C) -o cholmod_l_demo $(I) cholmod_l_demo.c $(LIB2)
 
 cholmod_l_batched_demo: cholmod_l_batched_demo.c cholmod_demo.h
-	$(C) -o cholmod_l_batched_demo $(I) cholmod_l_batched_demo.c $(LIB2)
+	$(CHARM) -language charm++ -o cholmod_l_batched_demo $(I) -c cholmod_l_batched_demo.c $(LIB2)
 
 readhb: readhb.f
 	$(F77) $(FFLAGS) -o readhb readhb.f
