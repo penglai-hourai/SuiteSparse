@@ -416,7 +416,8 @@ SUITESPARSE_VERSION = 4.5.3
 
     # remove object files, but keep compiled libraries via 'make clean'
     CLEAN = *.o *.obj *.ln *.bb *.bbg *.da *.tcov *.gcov gmon.out *.bak *.d \
-        *.gcda *.gcno *.aux *.bbl *.blg *.log *.toc *.dvi *.lof *.lot
+        *.gcda *.gcno *.aux *.bbl *.blg *.log *.toc *.dvi *.lof *.lot \
+		*.decl.h *.def.h
 
     # also remove compiled libraries, via 'make distclean'
     PURGE = *.so* *.a *.dll *.dylib *.dSYM

@@ -1,0 +1,4 @@
+mainmodule cholmod_l_batched_demo
+{
+    readonly int nMatrices;
+};
