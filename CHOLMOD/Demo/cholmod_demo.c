@@ -106,6 +106,8 @@ int main (int argc, char **argv)
     /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
      * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
+    cholmod_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
+
     /* ---------------------------------------------------------------------- */
     /* create basic scalars */
     /* ---------------------------------------------------------------------- */

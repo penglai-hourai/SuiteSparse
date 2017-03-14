@@ -135,7 +135,7 @@ cholmod_factor *CHOLMOD(analyze)
     cholmod_common *Common
 )
 {
-    return (CHOLMOD(analyze_p2) (TRUE, A, NULL, NULL, 0, Common)) ;
+    return (CHOLMOD(analyze_p2) (CHOLMOD_ANALYZE_FOR_CHOLESKY, A, NULL, NULL, 0, Common)) ;
 }
 
 
@@ -159,7 +159,7 @@ cholmod_factor *CHOLMOD(analyze_p)
     cholmod_common *Common
 )
 {
-    return (CHOLMOD(analyze_p2) (TRUE, A, UserPerm, fset, fsize, Common)) ;
+    return (CHOLMOD(analyze_p2) (CHOLMOD_ANALYZE_FOR_CHOLESKY, A, UserPerm, fset, fsize, Common)) ;
 }
 
 

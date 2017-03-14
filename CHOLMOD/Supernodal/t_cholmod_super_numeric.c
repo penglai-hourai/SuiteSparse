@@ -248,7 +248,7 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 
     /* local copy of useGPU */
-    if ((Common->useGPU == 1) && L->useGPU)
+    if (Common->useGPU == 1)
 //#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
         for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
         //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
@@ -267,7 +267,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
 
 #ifdef GPU_BLAS
-    if ((Common->useGPU == 1) && L->useGPU)
+    if (Common->useGPU == 1)
     {
         /* Case of GPU, zero all supernodes at one time for better performance*/
         TEMPLATE2 (CHOLMOD (gpu_clear_memory))(Lx, L->xsize,
@@ -1206,7 +1206,7 @@ ret:
     }
 
 #ifdef GPU_BLAS
-    if ((Common->useGPU == 1) && L->useGPU)
+    if (Common->useGPU == 1)
     {
         for (device = 0; device < Common->cuda_gpu_num; device++)
             CHOLMOD (gpu_end) (Common, device) ;

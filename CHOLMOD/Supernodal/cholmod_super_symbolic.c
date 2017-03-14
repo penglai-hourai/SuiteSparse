@@ -316,15 +316,6 @@ int CHOLMOD(super_symbolic2)
 	}
     }
 
-#ifdef GPU_BLAS
-    L->nleaves = 0;
-    for (j = 0; j < n; j++)
-        if (Wi[j] == 0)
-            L->nleaves++;
-#endif
-
-    CHOLMOD (init_gpus) (for_whom, L, Common);
-
     /* ---------------------------------------------------------------------- */
     /* find the fundamental supernodes */
     /* ---------------------------------------------------------------------- */
@@ -344,7 +335,7 @@ int CHOLMOD(super_symbolic2)
 #ifdef GPU_BLAS
 	    /* Ensure that the supernode will fit in the GPU buffers */
 	    /* Data size of 16 bytes must be assumed for case of PATTERN */
-	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU && 
+	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU && 
 		 (j-Super[nfsuper-1]+1) * 
 		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2
          //+ (ColCount[Super[nfsuper-1]]+1) * sizeof(Int)
@@ -503,7 +494,7 @@ int CHOLMOD(super_symbolic2)
 	}
 
 #ifdef GPU_BLAS
-	if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU ) {
+	if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU ) {
 	  /* Ensure that the aggregated supernode fits in the device 
 	     supernode buffers */
 	  double xns = (double) ns;

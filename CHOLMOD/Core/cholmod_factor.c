@@ -129,7 +129,6 @@ cholmod_factor *CHOLMOD(allocate_factor)
     L->pi = NULL ;
     L->px = NULL ;
     L->s = NULL ;
-    L->useGPU = 0;
 
     L->nleaves = 0;
 

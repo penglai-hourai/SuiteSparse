@@ -1773,9 +1773,6 @@ typedef struct cholmod_factor_struct
     int xtype ; /* pattern, real, complex, or zomplex */
     int dtype ; /* x and z double or float */
 
-    int useGPU; /* Indicates the symbolic factorization supports
-		 * GPU acceleration */
-
     size_t nleaves;
 
     size_t MapSize;

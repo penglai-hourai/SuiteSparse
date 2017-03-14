@@ -90,7 +90,7 @@ void CHOLMOD (qRevSort) (Int *key, Int *value, Int low, Int high)
     return;
 }
 
-void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Common)
+void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
 {
     const char* env_use_gpu;
     const char* env_max_bytes;
@@ -106,8 +106,6 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
     /* ---------------------------------------------------------------------- */
     /* allocate GPU workspace */
     /* ---------------------------------------------------------------------- */
-
-    L->useGPU = 0 ;     /* only used for Cholesky factorization, not QR */
 
 #ifdef GPU_BLAS
 
@@ -183,6 +181,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
         Common->cuda_gpu_num = 0;
 #endif
 
+        /*
         if (Common->cuda_gpu_num > 0)
         {
             Common->cuda_gpu_parallel = (L->nleaves - 1) / Common->cuda_gpu_num + 1;
@@ -192,21 +191,14 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_factor *L, cholmod_common *Commo
                 Common->cuda_gpu_parallel = 1;
         }
         else
-        {
-            Common->cuda_gpu_num = 0;
+        */
             Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
-        }
-        printf ("Common-->cuda_gpu_parallel = %d\n", Common->cuda_gpu_parallel);
 
         Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
         if (Common->cuda_vgpu_num > 0)
             Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
         else
             Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
-
-        /* Cache the fact that the symbolic factorization supports 
-         * GPU acceleration */
-        L->useGPU = Common->useGPU;
 
 #ifdef DLONG
         timestamp = SuiteSparse_time();
