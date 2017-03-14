@@ -105,7 +105,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
         */
 
     /* make sure the assumed buffer sizes are large enough */
-    if ( (nls + 2 * Common->cuda_gpu_parallel * L->MapSize) * sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
+    if ( nls * sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
                "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
                "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -126,7 +126,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_C      = Common->dev_mempool[device] + (2 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
     gpu_p->d_Ls     = Common->dev_mempool[device] + (3 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize;
     gpu_p->d_Map            = gpu_p->d_A[1];
-    gpu_p->d_RelativeMap    = (void *) (gpu_p->d_A[1]) +  L->MapSize * sizeof (Int);
+    gpu_p->d_RelativeMap    = (void *) (gpu_p->d_A[1]) +  n * sizeof (Int);
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as

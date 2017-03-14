@@ -911,12 +911,12 @@ int CHOLMOD(super_symbolic2)
     CHOLMOD (qRevSort) (leaf_height, leaf, 0, L->nleaves - 1);
 
     for (s = 0; s < nsuper; s++)
-        if (L->MapSize < Lpi[s])
-            L->MapSize = Lpi[s];
+        if (L->MapSize < Lpi[s+1] - Lpi[s])
+            L->MapSize = Lpi[s+1] - Lpi[s];
 
     for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, L->nleaves); vdevice++)
     {
-        L->Map_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
+        L->Map_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
         L->RelativeMap_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
         L->C_queue[vdevice] = CHOLMOD (malloc) (L->maxcsize, sizeof(double), Common);
     }

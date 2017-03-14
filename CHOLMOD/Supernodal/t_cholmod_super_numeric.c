@@ -336,15 +336,7 @@ static int TEMPLATE (cholmod_super_numeric)
         }
 #endif
 
-                /* clear the Map so that changes in the pattern of A can be detected */
-
-//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) \
-//                if ( L->MapSize > 128 ) schedule (static)
-//
-//                for (i = 0 ; i < L->MapSize ; i++)
-//                {
-//                    Map [i] = EMPTY ;
-//                }
+        /* clear the Map so that changes in the pattern of A can be detected */
 
         t = vdevice;
         if (t < t_max)
@@ -621,7 +613,7 @@ label:
 #endif
                                             cuErr = cudaEventQuery
                                                 ( Common->updateCBuffersFree[vdevice][iHostBuff] );
-#ifdef USE_GPU_FREE
+#ifdef USE_CPU_FREE
                                         else
                                             cuErr = cudaEventSynchronize
                                                 ( Common->updateCBuffersFree[vdevice][iHostBuff] );
@@ -1208,7 +1200,7 @@ ret:
     for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
     //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        L->Map_queue[vdevice] = CHOLMOD (free) (L->MapSize, sizeof(Int), L->Map_queue[vdevice], Common);
+        L->Map_queue[vdevice] = CHOLMOD (free) (n, sizeof(Int), L->Map_queue[vdevice], Common);
         L->RelativeMap_queue[vdevice] = CHOLMOD (free) (L->MapSize, sizeof(Int), L->RelativeMap_queue[vdevice], Common);
         L->C_queue[vdevice] = CHOLMOD (free) (L->maxcsize, sizeof(double), L->C_queue[vdevice], Common);
     }
