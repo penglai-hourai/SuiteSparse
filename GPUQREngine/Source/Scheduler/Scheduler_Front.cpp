@@ -202,7 +202,7 @@ void Scheduler::debugDumpFront(Front *front)
         printf ("\n") ;
     }
 
-    printf("----------\n", front->fidg);
+    printf("--- %g ---\n", (double) (front->fidg));
     wsFront->assign(wsFront->cpu(), NULL);
     wsFront = Workspace::destroy(wsFront);
 }

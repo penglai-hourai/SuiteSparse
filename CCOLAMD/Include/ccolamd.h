@@ -15,13 +15,10 @@
 #ifndef CCOLAMD_H
 #define CCOLAMD_H
 
-/* make it easy for C++ programs to include CCOLAMD */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* for size_t definition: */
 #include <stdlib.h>
+
+#include "SuiteSparse_config.h"
 
 /* ========================================================================== */
 /* === CCOLAMD version ====================================================== */
@@ -107,11 +104,14 @@ extern "C" {
 #define CCOLAMD_ERROR_invalid_cmember		(-11)
 #define CCOLAMD_ERROR_internal_error		(-999)
 
+/* make it easy for C++ programs to include CCOLAMD */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ========================================================================== */
 /* === Prototypes of user-callable routines ================================= */
 /* ========================================================================== */
-
-#include "SuiteSparse_config.h"
 
 size_t ccolamd_recommended	/* returns recommended value of Alen, */
 				/* or 0 if input arguments are erroneous */

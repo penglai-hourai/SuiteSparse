@@ -88,12 +88,12 @@
 #ifndef _BTF_H
 #define _BTF_H
 
+#include "SuiteSparse_config.h"
+
 /* make it easy for C++ programs to include BTF */
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "SuiteSparse_config.h"
 
 int btf_maxtrans    /* returns # of columns matched */
 (

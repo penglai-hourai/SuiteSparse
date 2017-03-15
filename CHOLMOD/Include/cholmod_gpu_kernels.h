@@ -15,12 +15,12 @@
 #ifndef CHOLMODGPUKERNELS_H
 #define CHOLMODGPUKERNELS_H
 
+#include "SuiteSparse_config.h"
+
 /* make it easy for C++ programs to include CHOLMOD */
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "SuiteSparse_config.h"
 
 int createMapOnDevice ( Int *d_Map, Int *d_Ls, Int psi, Int nsrow ); 
 

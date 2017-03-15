@@ -22,10 +22,6 @@
 /* Make it easy for C++ programs to include UMFPACK */
 /* -------------------------------------------------------------------------- */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "SuiteSparse_config.h"
 
 /* -------------------------------------------------------------------------- */
@@ -37,6 +33,10 @@ extern "C" {
 
 #define UMFPACK_INFO 90
 #define UMFPACK_CONTROL 20
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* User-callable routines */

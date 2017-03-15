@@ -38,10 +38,6 @@
 #ifndef SUITESPARSE_CONFIG_H
 #define SUITESPARSE_CONFIG_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <limits.h>
 #include <stdlib.h>
 
@@ -65,6 +61,10 @@ extern "C" {
 
 #endif
 #define SuiteSparse_long_id "%" SuiteSparse_long_idd
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /* ========================================================================== */

@@ -71,7 +71,7 @@
 /* Prototypes for the various versions of the BLAS.  */
 
 /* Determine if the 64-bit Sun Performance BLAS is to be used */
-#if defined (DLONG) || defined(CHOLMOD_SOL2) && !defined(NSUNPERF) && defined(BLAS64)
+#if defined(CHOLMOD_SOL2) && !defined(NSUNPERF) && defined(BLAS64)
 #define SUN64
 #endif
 
@@ -163,6 +163,10 @@
 /* ========================================================================== */
 /* === BLAS and LAPACK prototypes and macros ================================ */
 /* ========================================================================== */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void BLAS_DGEMV (const char * const trans, BLAS_INT *m, BLAS_INT *n, const double * const alpha,
 	double *A, BLAS_INT *lda, double *X, BLAS_INT *incx, const double * const beta,
@@ -443,5 +447,9 @@ void BLAS_ZGER (BLAS_INT *m, BLAS_INT *n, const double * const alpha,
 	BLAS_ZGER (&M, &N, alpha, X, &INCX, Y, &INCY, A, &LDA) ; \
     } \
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

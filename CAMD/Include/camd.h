@@ -23,15 +23,15 @@
 #ifndef CAMD_H
 #define CAMD_H
 
-/* make it easy for C++ programs to include CAMD */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* get the definition of size_t: */
 #include <stddef.h>
 
 #include "SuiteSparse_config.h"
+
+/* make it easy for C++ programs to include CAMD */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int camd_order              /* returns CAMD_OK, CAMD_OK_BUT_JUMBLED,
                              * CAMD_INVALID, or CAMD_OUT_OF_MEMORY */

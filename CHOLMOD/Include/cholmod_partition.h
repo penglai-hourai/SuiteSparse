@@ -37,6 +37,10 @@
 #include "cholmod_core.h"
 #include "cholmod_camd.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_nested_dissection */
 /* -------------------------------------------------------------------------- */
@@ -164,5 +168,9 @@ SuiteSparse_long cholmod_collapse_septree
 
 SuiteSparse_long cholmod_l_collapse_septree (size_t, size_t, double, size_t,
     SuiteSparse_long *, SuiteSparse_long *, cholmod_common *) ;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

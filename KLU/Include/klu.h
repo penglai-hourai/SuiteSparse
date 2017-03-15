@@ -7,14 +7,14 @@
 #ifndef _KLU_H
 #define _KLU_H
 
+#include "amd.h"
+#include "colamd.h"
+#include "btf.h"
+
 /* make it easy for C++ programs to include KLU */
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "amd.h"
-#include "colamd.h"
-#include "btf.h"
 
 /* -------------------------------------------------------------------------- */
 /* Symbolic object - contains the pre-ordering computed by klu_analyze */

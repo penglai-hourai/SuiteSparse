@@ -36,16 +36,13 @@
 #ifndef COLAMD_H
 #define COLAMD_H
 
-/* make it easy for C++ programs to include COLAMD */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* ========================================================================== */
 /* === Include files ======================================================== */
 /* ========================================================================== */
 
 #include <stdlib.h>
+
+#include "SuiteSparse_config.h"
 
 /* ========================================================================== */
 /* === COLAMD version ======================================================= */
@@ -122,12 +119,14 @@ extern "C" {
 #define COLAMD_ERROR_out_of_memory		(-10)
 #define COLAMD_ERROR_internal_error		(-999)
 
+/* make it easy for C++ programs to include COLAMD */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ========================================================================== */
 /* === Prototypes of user-callable routines ================================= */
 /* ========================================================================== */
-
-#include "SuiteSparse_config.h"
 
 size_t colamd_recommended	/* returns recommended value of Alen, */
 				/* or 0 if input arguments are erroneous */
