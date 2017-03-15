@@ -114,6 +114,7 @@ extern "C" {
 
 #ifndef NSUPERNODAL
 #include "cholmod_supernodal.h"
+#include "cholmod_super_utils.h"
 #endif
 
 #ifdef GPU_BLAS

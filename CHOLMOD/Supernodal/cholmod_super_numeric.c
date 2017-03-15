@@ -210,7 +210,7 @@ int CHOLMOD(super_numeric)
     /* get the current factor L and allocate numerical part, if needed */
     /* ---------------------------------------------------------------------- */
 
-    Super = L->super ;
+    Super = (Int *) (L->super) ;
     symbolic = (L->xtype == CHOLMOD_PATTERN) ;
     if (symbolic)
     {
@@ -254,8 +254,8 @@ int CHOLMOD(super_numeric)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    SuperMap = Common->Iwork ;		/* size n (i/i/l) */
-    Map = Common->Flag ;    /* size n, use Flag as workspace for Map array */
+    SuperMap = (Int *) (Common->Iwork) ;		/* size n (i/i/l) */
+    Map = (Int *) (Common->Flag) ;    /* size n, use Flag as workspace for Map array */
     for (i = 0 ; i < n ; i++)
     {
 	Map [i] = EMPTY ;

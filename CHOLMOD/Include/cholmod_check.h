@@ -66,6 +66,10 @@
 #include "cholmod_core.h"
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_check_common:  check the Common object */
 /* -------------------------------------------------------------------------- */
@@ -425,4 +429,9 @@ int cholmod_write_dense
 
 int cholmod_l_write_dense (FILE *, cholmod_dense *, const char *,
     cholmod_common *) ;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -34,17 +34,17 @@ static void TEMPLATE (cholmod_super_lsolve)
     /* ---------------------------------------------------------------------- */
 
     nrhs = X->ncol ;
-    Ex = E->x ;
-    Xx = X->x ;
+    Ex = (double *) (E->x) ;
+    Xx = (double *) (X->x) ;
     n = L->n ;
     d = X->d ;
 
     nsuper = L->nsuper ;
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
-    Super = L->super ;
-    Lx = L->x ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
+    Super = (Int *) (L->super) ;
+    Lx = (double *) (L->x) ;
     minus_one [0] = -1.0 ;
     minus_one [1] = 0 ;
     one [0] = 1.0 ;
@@ -242,17 +242,17 @@ static void TEMPLATE (cholmod_super_ltsolve)
     /* ---------------------------------------------------------------------- */
 
     nrhs = X->ncol ;
-    Ex = E->x ;
-    Xx = X->x ;
+    Ex = (double *) (E->x) ;
+    Xx = (double *) (X->x) ;
     n = L->n ;
     d = X->d ;
 
     nsuper = L->nsuper ;
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
-    Super = L->super ;
-    Lx = L->x ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
+    Super = (Int *) (L->super) ;
+    Lx = (double *) (L->x) ;
     minus_one [0] = -1.0 ;
     minus_one [1] = 0 ;
     one [0] = 1.0 ;

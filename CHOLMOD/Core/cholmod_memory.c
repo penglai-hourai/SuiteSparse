@@ -527,8 +527,8 @@ int CHOLMOD(realloc_multiple)
 	/* New space was allocated.  Clear the first entry so that valgrind
 	 * doesn't complain about its access in change_complexity
 	 * (Core/cholmod_complex.c). */
-	xx = *Xblock ;
-	zz = *Zblock ;
+	xx = (double *) (*Xblock) ;
+	zz = (double *) (*Zblock) ;
 	switch (xtype)
 	{
 	    case CHOLMOD_REAL:

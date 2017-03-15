@@ -87,10 +87,10 @@ static cholmod_sparse *band		/* returns C, or NULL if failure */
 
 
     PRINT1 (("k1 %ld k2 %ld\n", k1, k2)) ;
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     sorted = A->sorted ;
 
 
@@ -187,9 +187,9 @@ static cholmod_sparse *band		/* returns C, or NULL if failure */
 	}
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* construct C */

@@ -1,6 +1,7 @@
 #ifndef NGPL
 #ifndef NSUPERNODAL
 
+#include <cuda_runtime.h>
 #include "cholmod_internal.h"
 #include "cholmod_supernodal.h"
 #include "cholmod_gpu.h"

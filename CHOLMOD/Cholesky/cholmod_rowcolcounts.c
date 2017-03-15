@@ -261,9 +261,9 @@ int CHOLMOD(rowcolcounts)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;	/* size ncol+1, column pointers for A */
-    Ai = A->i ;	/* the row indices of A, of size nz=Ap[ncol+1] */
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;	/* size ncol+1, column pointers for A */
+    Ai = (Int *) (A->i) ;	/* the row indices of A, of size nz=Ap[ncol+1] */
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ASSERT (IMPLIES (!packed, Anz != NULL)) ;
 
@@ -271,12 +271,12 @@ int CHOLMOD(rowcolcounts)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     SetParent = Iwork ;		    /* size nrow (i/i/l) */
     PrevNbr   = Iwork + nrow ;	    /* size nrow (i/i/l) */
     Anext     = Iwork + 2*((size_t) nrow) ;    /* size ncol (i/i/l) (unsym only) */
-    PrevLeaf  = Common->Flag ;	    /* size nrow */
-    Head      = Common->Head ;	    /* size nrow+1 (unsym only)*/
+    PrevLeaf  = (Int *) (Common->Flag) ;	    /* size nrow */
+    Head      = (Int *) (Common->Head) ;	    /* size nrow+1 (unsym only)*/
 
     /* ---------------------------------------------------------------------- */
     /* find the first descendant and level of each node in the tree */

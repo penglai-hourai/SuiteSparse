@@ -35,18 +35,18 @@ static size_t TEMPLATE (cholmod_triplet_to_sparse)
     /* ---------------------------------------------------------------------- */
 
     /* Wj contains a copy of Rp on input [ */
-    Wj = Common->Iwork ;	/* size MAX (nrow,ncol). (i/l/l) */
+    Wj = (Int *) (Common->Iwork) ;	/* size MAX (nrow,ncol). (i/l/l) */
 
-    Rp = R->p ;
-    Ri = R->i ;
-    Rnz = R->nz ;
-    Rx = R->x ;
-    Rz = R->z ;
+    Rp = (Int *) (R->p) ;
+    Ri = (Int *) (R->i) ;
+    Rnz = (Int *) (R->nz) ;
+    Rx = (double *) (R->x) ;
+    Rz = (double *) (R->z) ;
 
-    Ti = T->i ;
-    Tj = T->j ;
-    Tx = T->x ;
-    Tz = T->z ;
+    Ti = (Int *) (T->i) ;
+    Tj = (Int *) (T->j) ;
+    Tx = (double *) (T->x) ;
+    Tz = (double *) (T->z) ;
     nz = T->nnz ;
     nrow = T->nrow ;
     ncol = T->ncol ;

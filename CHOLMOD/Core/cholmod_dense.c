@@ -108,7 +108,7 @@ cholmod_dense *CHOLMOD(allocate_dense)
     /* allocate header */
     /* ---------------------------------------------------------------------- */
 
-    X = CHOLMOD(malloc) (sizeof (cholmod_dense), 1, Common) ;
+    X = (cholmod_dense *) CHOLMOD(malloc) (sizeof (cholmod_dense), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -175,8 +175,8 @@ cholmod_dense *CHOLMOD(zeros)
 	return (NULL) ;	    /* NULL Common, out of memory, or inputs invalid */
     }
 
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
     nz = MAX (1, X->nzmax) ;
 
     switch (xtype)
@@ -242,8 +242,8 @@ cholmod_dense *CHOLMOD(ones)
 	return (NULL) ;	    /* NULL Common, out of memory, or inputs invalid */
     }
 
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
     nz = MAX (1, X->nzmax) ;
 
     switch (xtype)
@@ -311,8 +311,8 @@ cholmod_dense *CHOLMOD(eye)
     }
 
     nz = MAX (1, nrow*ncol) ;
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
 
     n = MIN (nrow, ncol) ;
 
@@ -386,7 +386,7 @@ int CHOLMOD(free_dense)
 	    break ;
     }
 
-    *XHandle = CHOLMOD(free) (1, sizeof (cholmod_dense), (*XHandle), Common) ;
+    *XHandle = (cholmod_dense *) CHOLMOD(free) (1, sizeof (cholmod_dense), (*XHandle), Common) ;
     return (TRUE) ;
 }
 

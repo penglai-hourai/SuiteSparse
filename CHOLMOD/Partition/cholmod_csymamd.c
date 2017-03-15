@@ -83,7 +83,7 @@ int CHOLMOD(csymamd)
     /* order the matrix (does not affect A->p or A->i) */
     /* ---------------------------------------------------------------------- */
 
-    perm = Common->Head ;	/* size nrow+1 (i/l/l) */
+    perm = (Int *) (Common->Head) ;	/* size nrow+1 (i/l/l) */
 
     /* get parameters */
 #ifdef LONG
@@ -99,12 +99,12 @@ int CHOLMOD(csymamd)
     }
     {
 #ifdef LONG
-	csymamd_l (nrow, A->i, A->p, perm, knobs, stats,
+	csymamd_l (nrow, (Int *) (A->i), (Int *) (A->p), perm, knobs, stats,
                 SuiteSparse_config.calloc_func,
                 SuiteSparse_config.free_func,
                 Cmember, A->stype) ;
 #else
-	csymamd (nrow, A->i, A->p, perm, knobs, stats,
+	csymamd (nrow, (Int *) (A->i), (Int *) (A->p), perm, knobs, stats,
                 SuiteSparse_config.calloc_func,
                 SuiteSparse_config.free_func,
                 Cmember, A->stype) ;
@@ -129,7 +129,7 @@ int CHOLMOD(csymamd)
     }
 
     /* clear Head workspace (used for perm, in csymamd): */
-    Head = Common->Head ;
+    Head = (Int *) (Common->Head) ;
     for (i = 0 ; i <= nrow ; i++)
     {
 	Head [i] = EMPTY ;

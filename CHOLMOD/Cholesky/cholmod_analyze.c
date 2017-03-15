@@ -529,7 +529,7 @@ cholmod_factor *CHOLMOD(analyze_p2)
      * are an exception.  They can use all 6n + ncol space, since the contents
      * of Parent, First, Level, and Post are not needed across calls to those
      * routines. */
-    Work4n = Common->Iwork ;
+    Work4n = (Int *) (Common->Iwork) ;
     Work4n += 2*((size_t) n) + uncol ;
     Parent = Work4n ;
     First  = Work4n + n ;
@@ -547,16 +547,16 @@ cholmod_factor *CHOLMOD(analyze_p2)
     /* ---------------------------------------------------------------------- */
 
     L = CHOLMOD(allocate_factor) (n, Common) ;
-    Lparent  = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
-    Perm     = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
-    ColCount = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    Lparent  = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    Perm     = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    ColCount = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	/* out of memory */
 	FREE_WORKSPACE_AND_RETURN ;
     }
-    Lperm = L->Perm ;
-    Lcolcount = L->ColCount ;
+    Lperm = (Int *) (L->Perm) ;
+    Lcolcount = (Int *) (L->ColCount) ;
     Common->anz = EMPTY ;
 
     /* ---------------------------------------------------------------------- */

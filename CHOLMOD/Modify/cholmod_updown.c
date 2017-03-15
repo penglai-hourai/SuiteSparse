@@ -468,8 +468,8 @@ int CHOLMOD(updown_mask2)
     {
 	RETURN_IF_XTYPE_INVALID (X, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
 	RETURN_IF_XTYPE_INVALID (DeltaB, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
-	Xx = X->x ;
-	Nx = DeltaB->x ;
+	Xx = (double *) (X->x) ;
+	Nx = (double *) (DeltaB->x) ;
 	if (X->nrow != L->n || X->ncol != 1 || DeltaB->nrow != L->n ||
 		DeltaB->ncol != 1 || Xx == NULL || Nx == NULL)
 	{
@@ -550,9 +550,9 @@ int CHOLMOD(updown_mask2)
     DEBUG (CHOLMOD(dump_factor) (L, "input L for updown", Common)) ;
     ASSERT (CHOLMOD(dump_sparse) (C, "input C for updown", Common) >= 0) ;
 
-    Ci = C->i ;
-    Cp = C->p ;
-    Cnz = C->nz ;
+    Ci = (Int *) (C->i) ;
+    Cp = (Int *) (C->p) ;
+    Cnz = (Int *) (C->nz) ;
     packed = C->packed ;
     ASSERT (IMPLIES (!packed, Cnz != NULL)) ;
 
@@ -570,23 +570,23 @@ int CHOLMOD(updown_mask2)
     /* get L */
     /* ---------------------------------------------------------------------- */
 
-    Li = L->i ;
-    Lx = L->x ;
-    Lp = L->p ;
-    Lnz = L->nz ;
-    Lnext = L->next ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lnz = (Int *) (L->nz) ;
+    Lnext = (Int *) (L->next) ;
     ASSERT (Lnz != NULL) ;
 
     /* ---------------------------------------------------------------------- */
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag = Common->Flag ;	/* size n, Flag [i] <= mark must hold */
-    Head = Common->Head ;	/* size n, Head [i] == EMPTY must hold */
-    W = Common->Xwork ;		/* size n-by-wdim, zero on input and output*/
+    Flag = (Int *) (Common->Flag) ;	/* size n, Flag [i] <= mark must hold */
+    Head = (Int *) (Common->Head) ;	/* size n, Head [i] == EMPTY must hold */
+    W = (double *) (Common->Xwork) ;		/* size n-by-wdim, zero on input and output*/
 
     /* note that Iwork [n .. 2*n-1] (i/i/l) may be in use in rowadd/rowdel: */
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Stack = Iwork ;		/* size n, uninitialized (i/i/l) */
 
     /* ---------------------------------------------------------------------- */
@@ -953,8 +953,8 @@ int CHOLMOD(updown_mask2)
 		    return (FALSE) ;
 		}
 		/* L->i and L->x may have moved.  Column j has moved too */
-		Li = L->i ;
-		Lx = L->x ;
+		Li = (Int *) (L->i) ;
+		Lx = (double *) (L->x) ;
 		p1 = Lp [j] ;
 		p2 = p1 + Lnz [j] ;
 		p3 = p1 + newlnz ;

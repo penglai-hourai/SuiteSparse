@@ -1095,6 +1095,10 @@ typedef struct cholmod_common_struct
 #define CHOLMOD_ANALYZE_FOR_CHOLESKY 1
 #define CHOLMOD_ANALYZE_FOR_SPQRGPU  2
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_start:  first call to CHOLMOD */
 /* -------------------------------------------------------------------------- */
@@ -2425,6 +2429,10 @@ int cholmod_l_version (int version [3]) ;
    v = CHOLMOD_VERSION ;
    #endif
 */
+
+#ifdef __cplusplus
+}
+#endif
 
 /* ========================================================================== */
 /* === symmetry types ======================================================= */

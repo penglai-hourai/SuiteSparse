@@ -97,8 +97,8 @@ double CHOLMOD(norm_dense)
 
     nrow = X->nrow ;
     d = X->d ;
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
     xtype = X->xtype ;
 
     /* ---------------------------------------------------------------------- */
@@ -110,7 +110,7 @@ double CHOLMOD(norm_dense)
     if (use_workspace)
     {
 	CHOLMOD(allocate_work) (0, 0, nrow, Common) ;
-	W = Common->Xwork ;
+	W = (double *) (Common->Xwork) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    /* oops, no workspace */
@@ -285,11 +285,11 @@ double CHOLMOD(norm_sparse)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     xtype = A->xtype ;
 
@@ -301,7 +301,7 @@ double CHOLMOD(norm_sparse)
     if (A->stype || norm == 0)
     {
 	CHOLMOD(allocate_work) (0, 0, nrow, Common) ;
-	W = Common->Xwork ;
+	W = (double *) (Common->Xwork) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    /* out of memory */

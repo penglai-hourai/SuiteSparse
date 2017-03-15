@@ -213,11 +213,11 @@ int CHOLMOD(symmetry)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ncol = A->ncol ;
     nrow = A->nrow ;
@@ -251,7 +251,7 @@ int CHOLMOD(symmetry)
 	return (EMPTY) ;
     }
 
-    munch = Common->Iwork ;	    /* the munch array is size ncol */
+    munch = (Int *) (Common->Iwork) ;	    /* the munch array is size ncol */
 
     /* ---------------------------------------------------------------------- */
     /* determine symmetry of a square matrix */

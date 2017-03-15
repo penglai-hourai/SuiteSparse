@@ -21,7 +21,7 @@ LIB2 += $(CUDART_LIB) $(CUBLAS_LIB)
 endif
 #-------------------------------------------------------------------------------
 
-C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+C = $(CXX) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
 code: library cholmod_demo cholmod_l_demo cholmod_simple
@@ -77,8 +77,8 @@ cholmod_simple: cholmod_simple.c
 cholmod_l_demo: cholmod_l_demo.c cholmod_demo.h
 	$(C) -o cholmod_l_demo $(I) cholmod_l_demo.c $(LIB2)
 
-cholmod_l_batched_demo: cholmod_l_batched_demo.c cholmod_l_batched_demo.decl.h cholmod_demo.h
-	$(CHARM) -language charm++ -o cholmod_l_batched_demo $(I) -c cholmod_l_batched_demo.c $(LIB2)
+cholmod_l_batched_demo: cholmod_l_batched_demo.C cholmod_l_batched_demo.decl.h cholmod_demo.h
+	$(CHARM) -language charm++ -o cholmod_l_batched_demo $(I) -c cholmod_l_batched_demo.C $(LIB2)
 
 cholmod_l_batched_demo.decl.h:
 	$(CHARM) cholmod_l_batched_demo.ci

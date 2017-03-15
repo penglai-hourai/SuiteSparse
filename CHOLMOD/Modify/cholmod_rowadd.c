@@ -154,18 +154,18 @@ int CHOLMOD(rowadd_mark)
 	ERROR (CHOLMOD_INVALID, "R invalid") ;
 	return (FALSE) ;
     }
-    Rj = R->i ;
-    Rx = R->x ;
-    Rp = R->p ;
-    Rnz = R->nz ;
+    Rp = (Int *) (R->p) ;
+    Rj = (Int *) (R->i) ;
+    Rx = (double *) (R->x) ;
+    Rnz = (Int *) (R->nz) ;
     rnz = (R->packed) ? (Rp [1]) : (Rnz [0]) ;
     do_solve = (X != NULL) && (DeltaB != NULL) ;
     if (do_solve)
     {
 	RETURN_IF_XTYPE_INVALID (X, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
 	RETURN_IF_XTYPE_INVALID (DeltaB, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
-	Xx = X->x ;
-	Nx = DeltaB->x ;
+	Xx = (double *) (X->x) ;
+	Nx = (double *) (DeltaB->x) ;
 	if (X->nrow != L->n || X->ncol != 1 || DeltaB->nrow != L->n ||
 		DeltaB->ncol != 1 || Xx == NULL || Nx == NULL)
 	{
@@ -220,13 +220,13 @@ int CHOLMOD(rowadd_mark)
     /* ---------------------------------------------------------------------- */
 
     /* inputs, not modified on output: */
-    Lp = L->p ;		/* size n+1.  input, not modified on output */
+    Lp = (Int *) (L->p) ;		/* size n+1.  input, not modified on output */
 
     /* outputs, contents defined on input for incremental case only: */
-    Lnz = L->nz ;	/* size n */
-    Li = L->i ;		/* size L->nzmax.  Can change in size. */
-    Lx = L->x ;		/* size L->nzmax.  Can change in size. */
-    Lnext = L->next ;	/* size n+2 */
+    Lnz = (Int *) (L->nz) ;	/* size n */
+    Li = (Int *) (L->i) ;		/* size L->nzmax.  Can change in size. */
+    Lx = (double *) (L->x) ;		/* size L->nzmax.  Can change in size. */
+    Lnext = (Int *) (L->next) ;	/* size n+2 */
 
     ASSERT (L->nz != NULL) ;
 
@@ -245,10 +245,10 @@ int CHOLMOD(rowadd_mark)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag = Common->Flag ;   /* size n */
-    W = Common->Xwork ;     /* size n */
+    Flag = (Int *) (Common->Flag) ;   /* size n */
+    W = (double *) (Common->Xwork) ;     /* size n */
     Cx = W + n ;	    /* size n (use 2nd column of Xwork for C) */
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Stack = Iwork ;	    /* size n (i/i/l), also in cholmod_updown */
     Ci = Iwork + n ;	    /* size n (i/i/l) */
     /* NOTE: cholmod_updown uses Iwork [0..n-1] (i/i/l) as Stack as well */
@@ -354,8 +354,8 @@ int CHOLMOD(rowadd_mark)
 		return (FALSE) ;
 	    }
 	    /* L->i and L->x may have moved */
-	    Li = L->i ;
-	    Lx = L->x ;
+	    Li = (Int *) (L->i) ;
+	    Lx = (double *) (L->x) ;
 	}
 	ASSERT (Lp [j] + Lnz [j] < Lp [Lnext [j]]
 	    || (Lp [Lnext [j]] - Lp [j] == n-j)) ;
@@ -555,8 +555,8 @@ int CHOLMOD(rowadd_mark)
 	    return (FALSE) ;
 	}
 	/* L->i and L->x may have moved */
-	Li = L->i ;
-	Lx = L->x ;
+	Li = (Int *) (L->i) ;
+	Lx = (double *) (L->x) ;
     }
     ASSERT (Lp [k] + lnz + 1 <= Lp [Lnext [k]]) ;
 

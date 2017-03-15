@@ -124,7 +124,7 @@ int CHOLMOD(etree)
     }
 
     ASSERT (CHOLMOD(dump_sparse) (A, "etree", Common) >= 0) ;
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
 
     /* ---------------------------------------------------------------------- */
     /* get inputs */
@@ -132,9 +132,9 @@ int CHOLMOD(etree)
 
     ncol = A->ncol ;	/* the number of columns of A */
     nrow = A->nrow ;	/* the number of rows of A */
-    Ap = A->p ;		/* size ncol+1, column pointers for A */
-    Ai = A->i ;		/* the row indices of A */
-    Anz = A->nz ;	/* number of nonzeros in each column of A */
+    Ap = (Int *) (A->p) ;		/* size ncol+1, column pointers for A */
+    Ai = (Int *) (A->i) ;		/* the row indices of A */
+    Anz = (Int *) (A->nz) ;	/* number of nonzeros in each column of A */
     packed = A->packed ;
     Ancestor = Iwork ;	/* size ncol (i/i/l) */
 

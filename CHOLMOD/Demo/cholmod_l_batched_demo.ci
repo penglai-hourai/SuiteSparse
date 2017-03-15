@@ -1,4 +1,7 @@
 mainmodule cholmod_l_batched_demo
 {
-    readonly int nMatrices;
+    mainchare main
+    {
+        entry main (CkArgMsg *msg);
+    };
 };

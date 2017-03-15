@@ -82,10 +82,10 @@ static cholmod_sparse *copy_sym_to_unsym
 
     nrow = A->nrow ;
     ncol = A->ncol ;
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     packed = A->packed ;
     values = (mode > 0) && (A->xtype != CHOLMOD_PATTERN) ;
     diag = (mode >= 0) ;
@@ -99,7 +99,7 @@ static cholmod_sparse *copy_sym_to_unsym
     /* create an unsymmetric copy of a symmetric matrix */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Wj = Iwork ;		    /* size ncol (i/i/l) */
 
     /* In MATLAB notation, for converting a symmetric/upper matrix:
@@ -162,9 +162,9 @@ static cholmod_sparse *copy_sym_to_unsym
 	return (NULL) ;
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* construct the column pointers for C */
     p = 0 ;

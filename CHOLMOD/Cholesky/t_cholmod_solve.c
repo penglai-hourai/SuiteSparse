@@ -70,10 +70,10 @@ static void TEMPLATE (ldl_dsolve)
 
     nrhs = Y->nrow ;
     n = L->n ;
-    Lp = L->p ;
-    Lx = L->x ;
-    Yx = Y->x ;
-    Yz = Y->z ;
+    Lp = (Int *) (L->p) ;
+    Lx = (double *) (L->x) ;
+    Yx = (double *) (Y->x) ;
+    Yz = (double *) (Y->z) ;
     kkiters = Yseti ? ysetlen : n ;
     for (kk = 0 ; kk < kkiters ; kk++)
     {

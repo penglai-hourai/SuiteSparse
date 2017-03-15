@@ -167,8 +167,8 @@ static void natural_list (cholmod_factor *L)
 {
     Int head, tail, n, j ;
     Int *Lnext, *Lprev ;
-    Lnext = L->next ;
-    Lprev = L->prev ;
+    Lnext = (Int *) (L->next) ;
+    Lprev = (Int *) (L->prev) ;
     ASSERT (Lprev != NULL && Lnext != NULL) ;
     n = L->n ;
     head = n+1 ;
@@ -218,10 +218,10 @@ static int allocate_simplicial_numeric
     n1 = ((size_t) n) + 1 ;
     n2 = ((size_t) n) + 2 ;
 
-    Lp = CHOLMOD(malloc) (n1, sizeof (Int), Common) ;
-    Lnz = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
-    Lprev = CHOLMOD(malloc) (n2, sizeof (Int), Common) ;
-    Lnext = CHOLMOD(malloc) (n2, sizeof (Int), Common) ;
+    Lp = (Int *) CHOLMOD(malloc) (n1, sizeof (Int), Common) ;
+    Lnz = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    Lprev = (Int *) CHOLMOD(malloc) (n2, sizeof (Int), Common) ;
+    Lnext = (Int *) CHOLMOD(malloc) (n2, sizeof (Int), Common) ;
 
     if (Common->status < CHOLMOD_OK)
     {
@@ -274,12 +274,12 @@ static int simplicial_symbolic_to_super_symbolic
 	" status %d\n", ssize, xsize, nsuper, Common->status)) ;
 
     /* O(nsuper) arrays, where nsuper <= n */
-    Lsuper = CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
-    Lpi    = CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
-    Lpx    = CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
+    Lsuper = (Int *) CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
+    Lpi    = (Int *) CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
+    Lpx    = (Int *) CHOLMOD(malloc) (nsuper1, sizeof (Int), Common) ;
 
     /* O(ssize) array, where ssize <= nnz(L), and usually much smaller */
-    Ls = CHOLMOD(malloc) (ssize, sizeof (Int), Common) ;
+    Ls = (Int *) CHOLMOD(malloc) (ssize, sizeof (Int), Common) ;
 
     if (Common->status < CHOLMOD_OK)
     {
@@ -426,9 +426,9 @@ static void simplicial_symbolic_to_simplicial_numeric
     ASSERT (L->ColCount != NULL && L->nz != NULL && L->p != NULL) ;
     ASSERT (L->x == NULL && L->z == NULL && L->i == NULL) ;
 
-    ColCount = L->ColCount ;
-    Lnz = L->nz ;
-    Lp = L->p ;
+    ColCount = (Int *) (L->ColCount) ;
+    Lnz = (Int *) (L->nz) ;
+    Lp = (Int *) (L->p) ;
     ok = TRUE ;
     n = L->n ;
 
@@ -561,9 +561,9 @@ static void simplicial_symbolic_to_simplicial_numeric
     L->dtype = DTYPE ;
     L->minor = n ;
 
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
 
 #if 0
     if (lnz == 1)
@@ -688,11 +688,11 @@ static void change_simplicial_numeric
     make_ldl = (!to_ll && L->is_ll) ;
 
     n = L->n ;
-    Lp = L->p ;
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
-    Lnz = L->nz ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
+    Lnz = (Int *) (L->nz) ;
 
     grow = FALSE ;
     grow0 = Common->grow0 ;
@@ -783,19 +783,19 @@ static void change_simplicial_numeric
 
 	case CHOLMOD_REAL:
 	    r_change_simplicial_numeric (L, to_ll, to_packed,
-		    newLi, newLx, newLz, lnz, grow, grow1, grow2,
+		    (Int *) newLi, (double *) newLx, (double *) newLz, lnz, grow, grow1, grow2,
 		    make_ll, make_monotonic, make_ldl, Common) ;
 	    break ;
 
 	case CHOLMOD_COMPLEX:
 	    c_change_simplicial_numeric (L, to_ll, to_packed,
-		    newLi, newLx, newLz, lnz, grow, grow1, grow2,
+		    (Int *) newLi, (double *) newLx, (double *) newLz, lnz, grow, grow1, grow2,
 		    make_ll, make_monotonic, make_ldl, Common) ;
 	    break ;
 
 	case CHOLMOD_ZOMPLEX:
 	    z_change_simplicial_numeric (L, to_ll, to_packed,
-		    newLi, newLx, newLz, lnz, grow, grow1, grow2,
+		    (Int *) newLi, (double *) newLx, (double *) newLz, lnz, grow, grow1, grow2,
 		    make_ll, make_monotonic, make_ldl, Common) ;
 	    break ;
     }
@@ -830,10 +830,10 @@ static void ll_super_to_simplicial_numeric
 
     n = L->n ;
     nsuper = L->nsuper ;
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
-    Super = L->super ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
+    Super = (Int *) (L->super) ;
 
     /* Int overflow cannot occur since supernodal L already exists */
 
@@ -881,7 +881,7 @@ static void ll_super_to_simplicial_numeric
     PRINT1 (("simplicial lnz = "ID"  to_packed: %d  to_ll: %d L->xsize %g\n",
 		lnz, to_ll, to_packed, (double) L->xsize)) ;
 
-    Li = CHOLMOD(malloc) (lnz, sizeof (Int), Common) ;
+    Li = (Int *) CHOLMOD(malloc) (lnz, sizeof (Int), Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return ;	/* out of memory */
@@ -954,7 +954,7 @@ static int super_symbolic_to_ll_super
     Int wentry = (to_xtype == CHOLMOD_REAL) ? 1 : 2 ;
     PRINT1 (("convert super sym to num\n")) ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_super) ;
-    Lx = CHOLMOD(malloc) (L->xsize, wentry * sizeof (double), Common) ;
+    Lx = (double *) CHOLMOD(malloc) (L->xsize, wentry * sizeof (double), Common) ;
     PRINT1 (("xsize %g\n", (double) L->xsize)) ;
     if (Common->status < CHOLMOD_OK)
     {

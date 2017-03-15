@@ -56,10 +56,10 @@ int CHOLMOD(drop)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ncol = A->ncol ;
     nrow = A->nrow ;

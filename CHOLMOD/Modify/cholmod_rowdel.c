@@ -147,8 +147,8 @@ int CHOLMOD(rowdel_mark)
 	    ERROR (CHOLMOD_INVALID, "R invalid") ;
 	    return (FALSE) ;
 	}
-	Rj = R->i ;
-	Rp = R->p ;
+	Rj = (Int *) (R->i) ;
+	Rp = (Int *) (R->p) ;
 	rnz = Rp [1] ;
     }
     do_solve = (X != NULL) && (DeltaB != NULL) ;
@@ -156,8 +156,8 @@ int CHOLMOD(rowdel_mark)
     {
 	RETURN_IF_XTYPE_INVALID (X, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
 	RETURN_IF_XTYPE_INVALID (DeltaB, CHOLMOD_REAL, CHOLMOD_REAL, FALSE) ;
-	Xx = X->x ;
-	Nx = DeltaB->x ;
+	Xx = (double *) (X->x) ;
+	Nx = (double *) (DeltaB->x) ;
 	if (X->nrow != L->n || X->ncol != 1 || DeltaB->nrow != L->n ||
 		DeltaB->ncol != 1 || Xx == NULL || Nx == NULL)
 	{
@@ -212,12 +212,12 @@ int CHOLMOD(rowdel_mark)
     /* ---------------------------------------------------------------------- */
 
     /* inputs, not modified on output: */
-    Lp = L->p ;		/* size n+1 */
+    Lp = (Int *) (L->p) ;		/* size n+1 */
 
     /* outputs, contents defined on input for incremental case only: */
-    Lnz = L->nz ;	/* size n */
-    Li = L->i ;		/* size L->nzmax.  Can change in size. */
-    Lx = L->x ;		/* size L->nzmax.  Can change in size. */
+    Lnz = (Int *) (L->nz) ;	/* size n */
+    Li = (Int *) (L->i) ;		/* size L->nzmax.  Can change in size. */
+    Lx = (double *) (L->x) ;		/* size L->nzmax.  Can change in size. */
 
     ASSERT (L->nz != NULL) ;
 
@@ -225,9 +225,9 @@ int CHOLMOD(rowdel_mark)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    W = Common->Xwork ; 	/* size n, used only in cholmod_updown */
+    W = (double *) (Common->Xwork) ; 	/* size n, used only in cholmod_updown */
     Cx = W + n ;		/* use 2nd column of Xwork for C (size n) */
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Ci = Iwork + n ;		/* size n (i/i/l) */
     /* NOTE: cholmod_updown uses Iwork [0..n-1] (i/i/l) as Stack */
 

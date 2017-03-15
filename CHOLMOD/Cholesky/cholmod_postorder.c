@@ -184,8 +184,8 @@ SuiteSparse_long CHOLMOD(postorder)	/* return # of nodes postordered */
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Head  = Common->Head ;	/* size n+1, initially all EMPTY */
-    Iwork = Common->Iwork ;
+    Head  = (Int *) (Common->Head) ;	/* size n+1, initially all EMPTY */
+    Iwork = (Int *) (Common->Iwork) ;
     Next  = Iwork ;		/* size n (i/i/l) */
     Pstack = Iwork + n ;	/* size n (i/i/l) */
 

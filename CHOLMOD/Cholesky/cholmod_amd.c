@@ -104,7 +104,7 @@ int CHOLMOD(amd)
 	return (FALSE) ;
     }
 
-    Iwork  = Common->Iwork ;
+    Iwork  = (Int *) (Common->Iwork) ;
     Degree = Iwork ;			/* size n */
     Wi     = Iwork + n ;		/* size n */
     Len    = Iwork + 2*((size_t) n) ;	/* size n */
@@ -112,7 +112,7 @@ int CHOLMOD(amd)
     Next   = Iwork + 4*((size_t) n) ;   /* size n */
     Elen   = Iwork + 5*((size_t) n) ;   /* size n */
 
-    Head = Common->Head ;   /* size n+1, but only n is used */
+    Head = (Int *) (Common->Head) ;   /* size n+1, but only n is used */
 
     /* ---------------------------------------------------------------------- */
     /* construct the input matrix for AMD */
@@ -137,7 +137,7 @@ int CHOLMOD(amd)
 	return (FALSE) ;
     }
 
-    Cp = C->p ;
+    Cp = (Int *) (C->p) ;
     for (j = 0 ; j < n ; j++)
     {
 	Len [j] = Cp [j+1] - Cp [j] ;
@@ -166,10 +166,10 @@ int CHOLMOD(amd)
     }
 
 #ifdef LONG
-    amd_l2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    amd_l2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info) ;
 #else
-    amd_2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    amd_2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info) ;
 #endif
 

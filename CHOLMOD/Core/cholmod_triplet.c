@@ -160,7 +160,7 @@ cholmod_triplet *CHOLMOD(allocate_triplet)
     /* allocate header */
     /* ---------------------------------------------------------------------- */
 
-    T = CHOLMOD(malloc) (sizeof (cholmod_triplet), 1, Common) ;
+    T = (cholmod_triplet *) CHOLMOD(malloc) (sizeof (cholmod_triplet), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -252,7 +252,7 @@ int CHOLMOD(free_triplet)
 	T->x = CHOLMOD(free) (nz, sizeof (double), T->x, Common) ;
 	T->z = CHOLMOD(free) (nz, sizeof (double), T->z, Common) ;
     }
-    *THandle = CHOLMOD(free) (1, sizeof (cholmod_triplet), (*THandle), Common) ;
+    *THandle = (cholmod_triplet *) CHOLMOD(free) (1, sizeof (cholmod_triplet), (*THandle), Common) ;
     return (TRUE) ;
 }
 
@@ -348,8 +348,8 @@ cholmod_sparse *CHOLMOD(triplet_to_sparse)
 
     RETURN_IF_NULL_COMMON (NULL) ;
     RETURN_IF_NULL (T, NULL) ;
-    Ti = T->i ;
-    Tj = T->j ;
+    Ti = (Int *) (T->i) ;
+    Tj = (Int *) (T->j) ;
     RETURN_IF_NULL (Ti, NULL) ;
     RETURN_IF_NULL (Tj, NULL) ;
     RETURN_IF_XTYPE_INVALID (T, CHOLMOD_PATTERN, CHOLMOD_ZOMPLEX, NULL) ;
@@ -393,9 +393,9 @@ cholmod_sparse *CHOLMOD(triplet_to_sparse)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Rp = R->p ;
-    Ri = R->i ;
-    Rnz = R->nz ;
+    Rp = (Int *) (R->p) ;
+    Ri = (Int *) (R->i) ;
+    Rnz = (Int *) (R->nz) ;
 
     /* ---------------------------------------------------------------------- */
     /* count the entries in each row of A (also counting duplicates) */
@@ -476,7 +476,7 @@ cholmod_sparse *CHOLMOD(triplet_to_sparse)
     Rp [nrow] = p ;
 
     /* use Wj (i/l/l) as temporary row pointers */
-    Wj = Common->Iwork ;	/* size MAX (nrow,ncol) FUTURE WORK: (i/l/l) */
+    Wj = (Int *) (Common->Iwork) ;	/* size MAX (nrow,ncol) FUTURE WORK: (i/l/l) */
     for (i = 0 ; i < nrow ; i++)
     {
 	Wj [i] = Rp [i] ;
@@ -580,8 +580,8 @@ cholmod_triplet *CHOLMOD(sparse_to_triplet)
 	ERROR (CHOLMOD_INVALID, "matrix invalid") ;
 	return (NULL) ;
     }
-    Ax = A->x ;
-    Az = A->z ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
     xtype = A->xtype ;
     Common->status = CHOLMOD_OK ;
 
@@ -603,15 +603,15 @@ cholmod_triplet *CHOLMOD(sparse_to_triplet)
     /* convert to a sparse matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
 
-    Ti = T->i ;
-    Tj = T->j ;
-    Tx = T->x ;
-    Tz = T->z ;
+    Ti = (Int *) (T->i) ;
+    Tj = (Int *) (T->j) ;
+    Tx = (double *) (T->x) ;
+    Tz = (double *) (T->z) ;
     T->stype = A->stype ;
 
     both = (A->stype == 0) ;
@@ -695,10 +695,10 @@ cholmod_triplet *CHOLMOD(copy_triplet)
     RETURN_IF_NULL (T, NULL) ;
     RETURN_IF_XTYPE_INVALID (T, CHOLMOD_PATTERN, CHOLMOD_ZOMPLEX, NULL) ;
     nz = T->nnz ;
-    Ti = T->i ;
-    Tj = T->j ;
-    Tx = T->x ;
-    Tz = T->z ;
+    Ti = (Int *) (T->i) ;
+    Tj = (Int *) (T->j) ;
+    Tx = (double *) (T->x) ;
+    Tz = (double *) (T->z) ;
     xtype = T->xtype ;
     RETURN_IF_NULL (Ti, NULL) ;
     RETURN_IF_NULL (Tj, NULL) ;
@@ -721,10 +721,10 @@ cholmod_triplet *CHOLMOD(copy_triplet)
     /* copy the triplet matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ci = C->i ;
-    Cj = C->j ;
-    Cx = C->x ;
-    Cz = C->z ;
+    Ci = (Int *) (C->i) ;
+    Cj = (Int *) (C->j) ;
+    Cx = (double *) (C->x) ;
+    Cz = (double *) (C->z) ;
     C->nnz = nz ;
 
     for (k = 0 ; k < nz ; k++)

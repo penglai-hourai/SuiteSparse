@@ -117,16 +117,16 @@ cholmod_sparse *CHOLMOD(vertcat)
 	B = B2 ;
     }
 
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     apacked = A->packed ;
 
-    Bp  = B->p ;
-    Bnz = B->nz ;
-    Bi  = B->i ;
-    Bx  = B->x ;
+    Bp  = (Int *) (B->p) ;
+    Bnz = (Int *) (B->nz) ;
+    Bi  = (Int *) (B->i) ;
+    Bx  = (double *) (B->x) ;
     bpacked = B->packed ;
 
     /* ---------------------------------------------------------------------- */
@@ -147,9 +147,9 @@ cholmod_sparse *CHOLMOD(vertcat)
 	CHOLMOD(free_sparse) (&B2, Common) ;
 	return (NULL) ;
     }
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* C = [A ; B] */

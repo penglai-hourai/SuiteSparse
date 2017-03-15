@@ -88,15 +88,15 @@ cholmod_sparse *CHOLMOD(aat)
     ASSERT (CHOLMOD(dump_sparse) (A, "A", Common) >= 0) ;
 
     /* get the A matrix */
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     packed = A->packed ;
 
     /* get workspace */
-    W = Common->Xwork ;		/* size n, unused if values is FALSE */
-    Flag = Common->Flag ;	/* size n, Flag [0..n-1] < mark on input*/
+    W = (double *) (Common->Xwork) ;		/* size n, unused if values is FALSE */
+    Flag = (Int *) (Common->Flag) ;	/* size n, Flag [0..n-1] < mark on input*/
 
     /* ---------------------------------------------------------------------- */
     /* F = A' or A(:,f)' */
@@ -109,9 +109,9 @@ cholmod_sparse *CHOLMOD(aat)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Fp = F->p ;
-    Fi = F->i ;
-    Fx = F->x ;
+    Fp = (Int *) (F->p) ;
+    Fi = (Int *) (F->i) ;
+    Fx = (double *) (F->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* count the number of entries in the result C */
@@ -185,9 +185,9 @@ cholmod_sparse *CHOLMOD(aat)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* C = A*A' */

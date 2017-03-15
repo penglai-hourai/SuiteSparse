@@ -241,8 +241,8 @@ SuiteSparse_long CHOLMOD(metis_bisector)	/* returns separator size */
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
     nz = Ap [n] ;
 
     if (Anw != NULL) DEBUG (for (j = 0 ; j < n ; j++) ASSERT (Anw [j] > 0)) ;
@@ -262,10 +262,10 @@ SuiteSparse_long CHOLMOD(metis_bisector)	/* returns separator size */
     else
     {
 	/* idx_t and Int differ; copy the graph into the METIS idx_t */
-	Mi    = CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
-	Mp    = CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
-	Mnw   = Anw ? (CHOLMOD(malloc) (n,  sizeof (idx_t), Common)) : NULL ;
-	Mpart = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mi    = (idx_t *) CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
+	Mp    = (idx_t *) CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
+	Mnw   = Anw ? (idx_t *) (CHOLMOD(malloc) (n,  sizeof (idx_t), Common)) : NULL ;
+	Mpart = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    CHOLMOD(free) (nz, sizeof (idx_t), Mi,    Common) ;
@@ -588,11 +588,11 @@ int CHOLMOD(metis)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Iperm = Iwork ;		/* size n (i/i/l) */
 
-    Bp = B->p ;
-    Bi = B->i ;
+    Bp = (Int *) (B->p) ;
+    Bi = (Int *) (B->i) ;
     nz = Bp [n] ;
 
     /* B does not include the diagonal, and both upper and lower parts.
@@ -614,10 +614,10 @@ int CHOLMOD(metis)
     else
     {
 	/* allocate graph for METIS only if Int and idx_t differ */
-	Miperm = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
-	Mperm  = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
-	Mp     = CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
-	Mi     = CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
+	Miperm = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mperm  = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mp     = (idx_t *) CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
+	Mi     = (idx_t *) CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    /* out of memory */

@@ -34,6 +34,10 @@
 
 #include "cholmod_core.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_drop:  drop entries with small absolute value */
 /* -------------------------------------------------------------------------- */
@@ -230,5 +234,9 @@ int cholmod_symmetry
 int cholmod_l_symmetry (cholmod_sparse *, int, SuiteSparse_long *,
     SuiteSparse_long *, SuiteSparse_long *, SuiteSparse_long *,
     cholmod_common *) ;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

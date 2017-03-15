@@ -38,7 +38,7 @@ I = -I../../AMD/Include -I../../AMD/Source -I../../COLAMD/Include \
 
 #-------------------------------------------------------------------------------
 
-C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+C = $(CXX) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
 all: library
 
@@ -549,7 +549,7 @@ $(INSTALL_LIB)/$(SO_TARGET): $(OBJ)
 	@mkdir -p $(INSTALL_LIB)
 	@mkdir -p $(INSTALL_INCLUDE)
 	@mkdir -p $(INSTALL_DOC)
-	$(CC) $(SO_OPTS) $^ -o $@ $(LDLIBS)
+	$(CXX) $(SO_OPTS) $^ -o $@ $(LDLIBS)
 	( cd $(INSTALL_LIB) ; ln -sf $(SO_TARGET) $(SO_PLAIN) )
 	( cd $(INSTALL_LIB) ; ln -sf $(SO_TARGET) $(SO_MAIN) )
 	$(CP) ../Include/cholmod*.h $(INSTALL_INCLUDE)

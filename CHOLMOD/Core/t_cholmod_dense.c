@@ -36,11 +36,11 @@ static cholmod_dense *TEMPLATE (cholmod_sparse_to_dense)
     nrow = A->nrow ;
     ncol = A->ncol ;
     packed = A->packed ;
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
 
     /* ---------------------------------------------------------------------- */
     /* allocate result */
@@ -51,8 +51,8 @@ static cholmod_dense *TEMPLATE (cholmod_sparse_to_dense)
     {
 	return (NULL) ;	    /* out of memory */
     }
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
 
     /* ---------------------------------------------------------------------- */
     /* copy into dense matrix */
@@ -142,8 +142,8 @@ static cholmod_sparse *TEMPLATE (cholmod_dense_to_sparse)
     nrow = X->nrow ;
     ncol = X->ncol ;
     d = X->d ;
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
 
     /* ---------------------------------------------------------------------- */
     /* count the number of nonzeros in the result */
@@ -171,10 +171,10 @@ static cholmod_sparse *TEMPLATE (cholmod_dense_to_sparse)
     {
 	return (NULL) ;	    /* out of memory */
     }
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
-    Cz = C->z ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
+    Cz = (double *) (C->z) ;
 
     /* ---------------------------------------------------------------------- */
     /* copy the dense matrix X into the sparse matrix C */
@@ -230,10 +230,10 @@ static int TEMPLATE (cholmod_copy_dense2)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Xx = X->x ;
-    Xz = X->z ;
-    Yx = Y->x ;
-    Yz = Y->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
+    Yx = (double *) (Y->x) ;
+    Yz = (double *) (Y->z) ;
     dx = X->d ;
     dy = Y->d ;
     nrow = X->nrow ;

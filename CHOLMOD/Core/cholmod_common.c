@@ -495,7 +495,7 @@ int CHOLMOD(allocate_work)
 	/* initialize Flag and Head */
 	Common->mark = EMPTY ;
 	CHOLMOD(clear_flag) (Common) ;
-	Head = Common->Head ;
+	Head = (Int *) (Common->Head) ;
 	for (i = 0 ; i <= (Int) (nrow) ; i++)
 	{
 	    Head [i] = EMPTY ;
@@ -565,7 +565,7 @@ int CHOLMOD(allocate_work)
 	}
 
 	/* initialize Xwork */
-	W = Common->Xwork ;
+	W = (double *) (Common->Xwork) ;
 	for (i = 0 ; i < (Int) xworksize ; i++)
 	{
 	    W [i] = 0. ;
@@ -639,7 +639,7 @@ SuiteSparse_long CHOLMOD(clear_flag)
     if (Common->mark <= 0)
     {
 	nrow = Common->nrow ;
-	Flag = Common->Flag ;
+	Flag = (Int *) (Common->Flag) ;
 	PRINT2 (("reset Flag: nrow "ID"\n", nrow)) ;
 	PRINT2 (("reset Flag: mark %ld\n", Common->mark)) ;
 	for (i = 0 ; i < nrow ; i++)

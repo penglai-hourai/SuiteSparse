@@ -42,6 +42,7 @@
 
 #include "cholmod_internal.h"
 #include "cholmod_supernodal.h"
+#include "cholmod_super_utils.h"
 
 #ifdef GPU_BLAS
 #include <cuda_runtime.h>
@@ -245,9 +246,9 @@ int CHOLMOD(super_symbolic2)
      * the lower triangular part may be present if A is symmetric, but these
      * are ignored. */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Anz = (Int *) (A->nz) ;
 
     if (stype != 0)
     {
@@ -260,13 +261,13 @@ int CHOLMOD(super_symbolic2)
     else
     {
 	/* F = A(:,f) or A(p,f) in packed row form, either sorted or unsorted */
-	Fp = F->p ;
-	Fj = F->i ;
-	Fnz = F->nz ;
+	Fp = (Int *) (F->p) ;
+	Fj = (Int *) (F->i) ;
+	Fnz = (Int *) (F->nz) ;
 	packed = F->packed ;
     }
 
-    ColCount = L->ColCount ;
+    ColCount = (Int *) (L->ColCount) ;
 
     nrelax0 = Common->nrelax [0] ;
     nrelax1 = Common->nrelax [1] ;
@@ -288,15 +289,15 @@ int CHOLMOD(super_symbolic2)
 
     /* Sparent, Snz, and Merged could be allocated later, of size nfsuper */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Wi      = Iwork ;	    /* size n (i/l/l).  Lpi2 is i/l/l */
     Wj      = Iwork + n ;   /* size n (i/l/l).  Zeros is i/l/l */
     Sparent = Iwork + 2*((size_t) n) ; /* size nfsuper <= n [ */
     Snz     = Iwork + 3*((size_t) n) ; /* size nfsuper <= n [ */
     Merged  = Iwork + 4*((size_t) n) ; /* size nfsuper <= n [ */
 
-    Flag = Common->Flag ;   /* size n */
-    Head = Common->Head ;   /* size n+1 */
+    Flag = (Int *) (Common->Flag) ;   /* size n */
+    Head = (Int *) (Common->Head) ;   /* size n+1 */
 
     /* ---------------------------------------------------------------------- */
     /* compute the number of elimination tree leaves */
@@ -628,11 +629,11 @@ int CHOLMOD(super_symbolic2)
     DEBUG (CHOLMOD(dump_factor) (L, "L to symbolic super", Common)) ;
     ASSERT (L->is_ll && L->xtype == CHOLMOD_PATTERN && L->is_super) ;
 
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
     Ls [0] = 0 ;    /* flag for cholmod_check_factor; supernodes are defined */
-    Lsuper = L->super ;
+    Lsuper = (Int *) (L->super) ;
 
     /* copy the list of relaxed supernodes into the final list in L */
     for (s = 0 ; s <= nsuper ; s++)

@@ -123,12 +123,12 @@ int CHOLMOD(scale)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     packed = A->packed ;
-    s = S->x ;
+    s = (double *) (S->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* scale the matrix */

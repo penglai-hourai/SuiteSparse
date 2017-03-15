@@ -148,12 +148,12 @@ int CHOLMOD(colamd)
     {
 	Int *Cp ;
 	Int stats [COLAMD_STATS] ;
-	Cp = C->p ;
+	Cp = (Int *) (C->p) ;
 
 #ifdef LONG
-	colamd_l (ncol, nrow, alen, C->i, Cp, knobs, stats) ;
+	colamd_l (ncol, nrow, alen, (Int *) (C->i), Cp, knobs, stats) ;
 #else
-	colamd (ncol, nrow, alen, C->i, Cp, knobs, stats) ;
+	colamd (ncol, nrow, alen, (Int *) (C->i), Cp, knobs, stats) ;
 #endif
 
 	ok = stats [COLAMD_STATUS] ;
@@ -174,7 +174,7 @@ int CHOLMOD(colamd)
     if (postorder)
     {
 	/* use the last 2*n space in Iwork for Parent and Post */
-	Work2n = Common->Iwork ;
+	Work2n = (Int *) (Common->Iwork) ;
 	Work2n += 2*((size_t) nrow) + ncol ;
 	Parent = Work2n ;		/* size nrow (i/i/l) */
 	Post   = Work2n + nrow ;	/* size nrow (i/i/l) */
@@ -186,7 +186,7 @@ int CHOLMOD(colamd)
 	/* combine the colamd permutation with its postordering */
 	if (ok)
 	{
-	    NewPerm = Common->Iwork ;		/* size nrow (i/i/l) */
+	    NewPerm = (Int *) (Common->Iwork) ;		/* size nrow (i/i/l) */
 	    for (k = 0 ; k < nrow ; k++)
 	    {
 		NewPerm [k] = Perm [Post [k]] ;

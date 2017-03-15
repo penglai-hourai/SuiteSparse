@@ -790,7 +790,7 @@ static cholmod_triplet *read_triplet
     }
 
     CHOLMOD(allocate_work) (0, s, 0, Common) ;
-    Rdeg = Common->Iwork ;	/* size nrow */
+    Rdeg = (Int *) (Common->Iwork) ;	/* size nrow */
     Cdeg = Rdeg + nrow ;	/* size ncol */
 
     /* ---------------------------------------------------------------------- */
@@ -881,9 +881,9 @@ static cholmod_triplet *read_triplet
 		/* out of memory */
 		return (NULL) ;
 	    }
-	    Ti = T->i ;
-	    Tj = T->j ;
-	    Tx = T->x ;
+	    Ti = (Int *) (T->i) ;
+	    Tj = (Int *) (T->j) ;
+	    Tx = (double *) (T->x) ;
 	    T->nnz = nnz ;
 	}
 
@@ -1170,7 +1170,7 @@ static cholmod_triplet *read_triplet_batched
     }
 
     CHOLMOD(allocate_work) (0, s, 0, Common) ;
-    Rdeg = Common->Iwork ;	/* size nrow */
+    Rdeg = (Int *) (Common->Iwork) ;	/* size nrow */
     Cdeg = Rdeg + nrow ;	/* size ncol */
 
     /* ---------------------------------------------------------------------- */
@@ -1279,9 +1279,9 @@ static cholmod_triplet *read_triplet_batched
 		/* out of memory */
 		return (NULL) ;
 	    }
-	    Ti = T->i ;
-	    Tj = T->j ;
-	    Tx = T->x ;
+	    Ti = (Int *) (T->i) ;
+	    Tj = (Int *) (T->j) ;
+	    Tx = (double *) (T->x) ;
 	    T->nnz = nnz ;
 	}
 
@@ -1626,7 +1626,7 @@ static cholmod_dense *read_dense
 		    /* out of memory */
 		    return (NULL) ;
 		}
-		Xx = X->x ;
+		Xx = (double *) (X->x) ;
 	    }
 
 	    /* -------------------------------------------------------------- */

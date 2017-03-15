@@ -149,17 +149,17 @@ cholmod_sparse *CHOLMOD(ssmult)
     ASSERT (CHOLMOD(dump_sparse) (B, "B", Common) >= 0) ;
 
     /* get the A matrix */
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     apacked = A->packed ;
 
     /* get the B matrix */
-    Bp  = B->p ;
-    Bnz = B->nz ;
-    Bi  = B->i ;
-    Bx  = B->x ;
+    Bp  = (Int *) (B->p) ;
+    Bnz = (Int *) (B->nz) ;
+    Bi  = (Int *) (B->i) ;
+    Bx  = (double *) (B->x) ;
     bpacked = B->packed ;
 
     /* get the size of C */
@@ -167,8 +167,8 @@ cholmod_sparse *CHOLMOD(ssmult)
     ncol = B->ncol ;
 
     /* get workspace */
-    W = Common->Xwork ;		/* size nrow, unused if values is FALSE */
-    Flag = Common->Flag ;	/* size nrow, Flag [0..nrow-1] < mark on input*/
+    W = (double *) (Common->Xwork) ;		/* size nrow, unused if values is FALSE */
+    Flag = (Int *) (Common->Flag) ;	/* size nrow, Flag [0..nrow-1] < mark on input*/
 
     /* ---------------------------------------------------------------------- */
     /* count the number of entries in the result C */
@@ -279,17 +279,17 @@ cholmod_sparse *CHOLMOD(ssmult)
 	    B = A2 ;
 
 	    /* get the new A matrix */
-	    Ap  = A->p ;
-	    Anz = A->nz ;
-	    Ai  = A->i ;
-	    Ax  = A->x ;
+	    Ap  = (Int *) (A->p) ;
+	    Anz = (Int *) (A->nz) ;
+	    Ai  = (Int *) (A->i) ;
+	    Ax  = (double *) (A->x) ;
 	    apacked = A->packed ;
 
 	    /* get the new B matrix */
-	    Bp  = B->p ;
-	    Bnz = B->nz ;
-	    Bi  = B->i ;
-	    Bx  = B->x ;
+	    Bp  = (Int *) (B->p) ;
+	    Bnz = (Int *) (B->nz) ;
+	    Bi  = (Int *) (B->i) ;
+	    Bx  = (double *) (B->x) ;
 	    bpacked = B->packed ;
 
 	    /* get the size of C' */
@@ -313,9 +313,9 @@ cholmod_sparse *CHOLMOD(ssmult)
 	return (NULL) ;
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* C = A*B */

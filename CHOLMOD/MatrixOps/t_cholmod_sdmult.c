@@ -66,16 +66,16 @@ static void TEMPLATE (cholmod_sdmult)
     nrow = A->nrow ;
     ncol = A->ncol ;
 
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
-    Az  = A->z ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
+    Az  = (double *) (A->z) ;
     packed = A->packed ;
-    Xx = X->x ;
-    Xz = X->z ;
-    Yx = Y->x ;
-    Yz = Y->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
+    Yx = (double *) (Y->x) ;
+    Yz = (double *) (Y->z) ;
     kcol = X->ncol ;
     dy = Y->d ;
     dx = X->d ;
@@ -123,8 +123,8 @@ static void TEMPLATE (cholmod_sdmult)
     /* Y += alpha * op(A) * X, where op(A)=A or A' */
     /* ---------------------------------------------------------------------- */
 
-    Yx = Y->x ;
-    Yz = Y->z ;
+    Yx = (double *) (Y->x) ;
+    Yz = (double *) (Y->z) ;
 
     k = 0 ;
 

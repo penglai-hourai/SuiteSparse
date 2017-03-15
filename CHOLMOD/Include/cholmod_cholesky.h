@@ -64,6 +64,10 @@
 #include "cholmod_supernodal.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_analyze:  order and analyze (simplicial or supernodal) */
 /* -------------------------------------------------------------------------- */
@@ -582,5 +586,9 @@ SuiteSparse_long cholmod_postorder	/* return # of nodes postordered */
 
 SuiteSparse_long cholmod_l_postorder (SuiteSparse_long *, size_t,
     SuiteSparse_long *, SuiteSparse_long *, cholmod_common *) ;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

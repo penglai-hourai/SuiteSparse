@@ -112,10 +112,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
     int to_return = FALSE;
 
-    Int *Ap, *Ai, *Anz, *Az, Apacked, stype;
-    Int *Fp, *Fi, *Fnz, *Fz, Fpacked;
+    Int *Ap, *Ai, *Anz, Apacked, stype;
+    Int *Fp, *Fi, *Fnz, Fpacked;
     Int n, nsuper, *Super, *Lpi, *Lpx, *Ls;
-    double *Ax, *Fx, *Lx;
+    double *Ax, *Az, *Fx, *Fz, *Lx;
 
     Int *Iwork, *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *leaf;
     Int *Head;
@@ -162,7 +162,7 @@ static int TEMPLATE (cholmod_super_numeric)
      * in size. */
 
     /* allocate integer workspace */
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     SuperMap        = Iwork ;                                   /* size n (i/i/l) */
     Next            = Iwork + 2*((size_t) n) ;                  /* size nsuper*/
     Lpos            = Iwork + 2*((size_t) n) + nsuper ;         /* size nsuper*/
@@ -172,16 +172,16 @@ static int TEMPLATE (cholmod_super_numeric)
     pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper) ;/* size nsuper*/
     leaf            = Iwork + 2*((size_t) n) + 6*((size_t) nsuper) ;/* size nsuper*/
 
-    Head = Common->Head ;   /* size n+1, only Head [0..nsuper-1] used */
-    front_lock = Common->Flag ;                  /* size nsuper*/
+    Head = (Int *) (Common->Head) ;   /* size n+1, only Head [0..nsuper-1] used */
+    front_lock = (omp_lock_t *) (Common->Flag) ;                  /* size nsuper*/
 
     stype = A->stype ;
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
     Apacked = A->packed ;
 
     if (stype != 0)
@@ -196,20 +196,20 @@ static int TEMPLATE (cholmod_super_numeric)
     }
     else
     {
-        Fp = F->p ;
-        Fi = F->i ;
-        Fx = F->x ;
-        Fz = F->z ;
-        Fnz = F->nz ;
+        Fp = (Int *) (F->p) ;
+        Fi = (Int *) (F->i) ;
+        Fx = (double *) (F->x) ;
+        Fz = (double *) (F->z) ;
+        Fnz = (Int *) (F->nz) ;
         Fpacked = F->packed ;
     }
 
-    Super = L->super ;
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
+    Super = (Int *) (L->super) ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
 
-    Lx = L->x ;
+    Lx = (double *) (L->x) ;
 
 #ifndef NTIMER
     /* clear GPU / CPU statistics */
@@ -290,9 +290,9 @@ static int TEMPLATE (cholmod_super_numeric)
     for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
     //for (vdevice = 0; vdevice < Common->cholmod_parallel_num_threads; vdevice++)
     {
-        Int * const Map = L->Map_queue[vdevice];
-        Int * const RelativeMap = L->RelativeMap_queue[vdevice];
-        double * const C = L->C_queue[vdevice];
+        Int * const Map = (Int *) (L->Map_queue[vdevice]);
+        Int * const RelativeMap = (Int *) (L->RelativeMap_queue[vdevice]);
+        double * const C = (double *) (L->C_queue[vdevice]);
         Int ss, sparent;
         Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
         Int pf, pfend;

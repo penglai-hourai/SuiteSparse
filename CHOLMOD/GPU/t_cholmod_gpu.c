@@ -15,8 +15,12 @@
 
 #ifdef GPU_BLAS
 
+#include <cuda_runtime.h>
+#include <cusolverDn.h>
+
 #include <string.h>
 #include "cholmod_template.h"
+#include "cholmod_gpu_kernels.h"
 
 #undef L_ENTRY
 #ifdef REAL
@@ -120,13 +124,13 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* divvy up the memory in dev_mempool */
     for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
-    gpu_p->d_Lx[k]  = Common->dev_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[0]   = Common->dev_mempool[device] + (0 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_A[1]   = Common->dev_mempool[device] + (1 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
-    gpu_p->d_C      = Common->dev_mempool[device] + (2 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+    gpu_p->d_Lx[k]  = (double *) (Common->dev_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
+    gpu_p->d_A[0]   = (double *) (Common->dev_mempool[device] + (0 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
+    gpu_p->d_A[1]   = (double *) (Common->dev_mempool[device] + (1 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
+    gpu_p->d_C      = (double *) (Common->dev_mempool[device] + (2 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
     gpu_p->d_Ls     = Common->dev_mempool[device] + (3 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize;
     gpu_p->d_Map            = gpu_p->d_A[1];
-    gpu_p->d_RelativeMap    = (void *) (gpu_p->d_A[1]) +  n * sizeof (Int);
+    gpu_p->d_RelativeMap    = gpu_p->d_A[1] + n * sizeof(Int);
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as
@@ -188,7 +192,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     for ( k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
-        gpu_p->h_Lx[k] = Common->host_pinned_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize;
+        gpu_p->h_Lx[k] = (double *) (Common->host_pinned_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
     }
 
     return (1);  /* initialization successfull, useGPU = 1 */
@@ -680,11 +684,11 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 
 #ifdef REAL
     addUpdateOnDevice ( gpu_p->d_A[0], devPtrC,
-        gpu_p->d_RelativeMap, ndrow1, ndrow2, nsrow,
+        (Int *) (gpu_p->d_RelativeMap), ndrow1, ndrow2, nsrow,
         &(Common->gpuStream[vdevice][iDevBuff]) );
 #else
     addComplexUpdateOnDevice ( gpu_p->d_A[0], devPtrC,
-        gpu_p->d_RelativeMap, ndrow1, ndrow2, nsrow,
+        (Int *) (gpu_p->d_RelativeMap), ndrow1, ndrow2, nsrow,
         &(Common->gpuStream[vdevice][iDevBuff]) );
 #endif
 

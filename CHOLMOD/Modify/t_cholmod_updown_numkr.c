@@ -388,10 +388,10 @@ static void NUMERIC (WDIM, RANK)
     Int j1, j2, j3, p0, p1, p2, p3, parent, lnz, pend, k ;
     Int use_dbound = IS_GT_ZERO (Common->dbound) ;
 
-    Li = L->i ;
-    Lx = L->x ;
-    Lp = L->p ;
-    Lnz = L->nz ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lnz = (Int *) (L->nz) ;
 
     /* walk up the etree from node j to its ancestor e */
     for ( ; j <= e ; j = parent)

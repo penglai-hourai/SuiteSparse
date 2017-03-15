@@ -125,22 +125,22 @@ cholmod_sparse *CHOLMOD(add)
     up = (A->stype > 0) ;
     lo = (A->stype < 0) ;
 
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     apacked = A->packed ;
 
     /* get the B matrix */
-    Bp  = B->p ;
-    Bnz = B->nz ;
-    Bi  = B->i ;
-    Bx  = B->x ;
+    Bp  = (Int *) (B->p) ;
+    Bnz = (Int *) (B->nz) ;
+    Bi  = (Int *) (B->i) ;
+    Bx  = (double *) (B->x) ;
     bpacked = B->packed ;
 
     /* get workspace */
-    W = Common->Xwork ;	    /* size nrow, used if values is TRUE */
-    Flag = Common->Flag ;   /* size nrow, Flag [0..nrow-1] < mark on input */
+    W = (double *) (Common->Xwork) ;	    /* size nrow, used if values is TRUE */
+    Flag = (Int *) (Common->Flag) ;   /* size nrow, Flag [0..nrow-1] < mark on input */
 
     /* ---------------------------------------------------------------------- */
     /* allocate the result C */
@@ -160,9 +160,9 @@ cholmod_sparse *CHOLMOD(add)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* compute C = alpha*A + beta*B */

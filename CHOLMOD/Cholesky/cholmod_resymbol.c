@@ -121,7 +121,7 @@ int CHOLMOD(resymbol)
 	{
 	    /* F = triu(A(p,p))' */
 	    /* workspace: Iwork (2*nrow) */
-	    G = CHOLMOD(ptranspose) (A, 0, L->Perm, NULL, 0, Common) ;
+	    G = CHOLMOD(ptranspose) (A, 0, (Int *) (L->Perm), NULL, 0, Common) ;
 	}
 	F = G ;
     }
@@ -135,7 +135,7 @@ int CHOLMOD(resymbol)
 	{
 	    /* G = triu(A(p,p))' */
 	    /* workspace: Iwork (2*nrow) */
-	    G = CHOLMOD(ptranspose) (A, 0, L->Perm, NULL, 0, Common) ;
+	    G = CHOLMOD(ptranspose) (A, 0, (Int *) (L->Perm), NULL, 0, Common) ;
 	    /* H = G' */
 	    /* workspace: Iwork (nrow) */
 	    H = CHOLMOD(ptranspose) (G, 0, NULL, NULL, 0, Common) ;
@@ -152,7 +152,7 @@ int CHOLMOD(resymbol)
 	{
 	    /* G = A(p,f)' */
 	    /* workspace: Iwork (nrow if no fset; MAX (nrow,ncol) if fset)*/
-	    G = CHOLMOD(ptranspose) (A, 0, L->Perm, fset, fsize, Common) ;
+	    G = CHOLMOD(ptranspose) (A, 0, (Int *) (L->Perm), fset, fsize, Common) ;
 	    /* H = G' */
 	    /* workspace: Iwork (ncol) */
 	    H = CHOLMOD(ptranspose) (G, 0, NULL, NULL, 0, Common) ;
@@ -303,17 +303,17 @@ int CHOLMOD(resymbol_noperm)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ai = A->i ;
-    Ap = A->p ;
-    Anz = A->nz ;
+    Ai = (Int *) (A->i) ;
+    Ap = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
     apacked = A->packed ;
     sorted = A->sorted ;
 
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
-    Lp = L->p ;
-    Lnz = L->nz ;
+    Li = (Int *) (L->i) ;
+    Lp = (Int *) (L->p) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
+    Lnz = (Int *) (L->nz) ;
     xtype = L->xtype ;
 
     /* If L is monotonic on input, then it can be packed or
@@ -338,9 +338,9 @@ int CHOLMOD(resymbol_noperm)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag  = Common->Flag ;	/* size nrow */
-    Head  = Common->Head ;	/* size nrow+1 */
-    Iwork = Common->Iwork ;
+    Flag  = (Int *) (Common->Flag) ;	/* size nrow */
+    Head  = (Int *) (Common->Head) ;	/* size nrow+1 */
+    Iwork = (Int *) (Common->Iwork) ;
     Link  = Iwork ;		/* size nrow (i/i/l) [ */
     Lnz   = Iwork + nrow ;	/* size nrow (i/i/l), if L not packed */
     Anext = Iwork + 2*((size_t) nrow) ;	/* size ncol (i/i/l), unsym. only */
@@ -350,7 +350,7 @@ int CHOLMOD(resymbol_noperm)
     }
 
     /* use Lnz in L itself */
-    Lnz = L->nz ;
+    Lnz = (Int *) (L->nz) ;
     ASSERT (Lnz != NULL) ;
 
     /* ---------------------------------------------------------------------- */

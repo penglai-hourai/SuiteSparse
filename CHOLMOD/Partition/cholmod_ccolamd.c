@@ -91,16 +91,16 @@ static int ccolamd_interface
     {
 
 #ifdef LONG
-	ccolamd_l (ncol, nrow, alen, C->i, C->p, knobs, stats, Cmember) ;
+	ccolamd_l (ncol, nrow, alen, (Int *) (C->i), (Int *) (C->p), knobs, stats, Cmember) ;
 #else
-	ccolamd (ncol, nrow, alen, C->i, C->p, knobs, stats, Cmember) ;
+	ccolamd (ncol, nrow, alen, (Int *) (C->i), (Int *) (C->p), knobs, stats, Cmember) ;
 #endif
 
 	ok = stats [CCOLAMD_STATUS] ;
 
 	ok = (ok == CCOLAMD_OK || ok == CCOLAMD_OK_BUT_JUMBLED) ;
 	/* permutation returned in C->p, if the ordering succeeded */
-	Cp = C->p ;
+	Cp = (Int *) (C->p) ;
 	for (k = 0 ; k < nrow ; k++)
 	{
 	    Perm [k] = Cp [k] ;

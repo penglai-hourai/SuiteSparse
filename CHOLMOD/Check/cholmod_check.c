@@ -521,8 +521,8 @@ static int check_common
 
     mark = Common->mark ;
     nrow = Common->nrow ;
-    Flag = Common->Flag ;
-    Head = Common->Head ;
+    Flag = (Int *) (Common->Flag) ;
+    Head = (Int *) (Common->Head) ;
     if (nrow > 0)
     {
 	if (mark < 0 || Flag == NULL || Head == NULL)
@@ -547,7 +547,7 @@ static int check_common
 	}
     }
     xworksize = Common->xworksize ;
-    Xwork = Common->Xwork ;
+    Xwork = (double *) (Common->Xwork) ;
     if (xworksize > 0)
     {
 	if (Xwork == NULL)
@@ -694,11 +694,11 @@ static SuiteSparse_long check_sparse
     sorted = A->sorted ;
     packed = A->packed ;
     xtype = A->xtype ;
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
     nz = CHOLMOD(nnz) (A, Common) ;
 
     P3 (" "ID"", nrow) ;
@@ -809,7 +809,7 @@ static SuiteSparse_long check_sparse
 	if (Wi == NULL)
 	{
 	    CHOLMOD(allocate_work) (0, nrow, 0, Common) ;
-	    Wi = Common->Iwork ;	/* size nrow, (i/i/l) */
+	    Wi = (Int *) (Common->Iwork) ;	/* size nrow, (i/i/l) */
 	}
 	if (Common->status < CHOLMOD_OK)
 	{
@@ -976,8 +976,8 @@ static int check_dense
     ncol = X->ncol ;
     nzmax = X->nzmax ;
     d = X->d ;
-    Xx = X->x ;
-    Xz = X->z ;
+    Xx = (double *) (X->x) ;
+    Xz = (double *) (X->z) ;
     xtype = X->xtype ;
 
     P3 (" "ID"", nrow) ;
@@ -1252,7 +1252,7 @@ static int check_perm
     {
 	/* use the Common->Flag array if it's big enough */
 	mark = CHOLMOD(clear_flag) (Common) ;
-	Flag = Common->Flag ;
+	Flag = (Int *) (Common->Flag) ;
 	ASSERT (CHOLMOD(dump_work) (TRUE, FALSE, 0, Common)) ;
 	if (print >= 4)
 	{
@@ -1292,7 +1292,7 @@ static int check_perm
 	{
 	    /* use Common->Iwork instead, but initialize it first */
 	    CHOLMOD(allocate_work) (0, n, 0, Common) ;
-	    Wi = Common->Iwork ;		    /* size n, (i/i/i) is OK */
+	    Wi = (Int *) (Common->Iwork) ;		    /* size n, (i/i/i) is OK */
 	}
 	if (Common->status < CHOLMOD_OK)
 	{
@@ -1525,8 +1525,8 @@ static int check_factor
     ordering = L->ordering ;
     xtype = L->xtype ;
 
-    Perm = L->Perm ;
-    ColCount = L->ColCount ;
+    Perm = (Int *) (L->Perm) ;
+    ColCount = (Int *) (L->ColCount) ;
     lnz = 0 ;
 
     precise = Common->precise ;
@@ -1667,13 +1667,13 @@ static int check_factor
 	nzmax = L->nzmax ;
 	P3 (" nzmax "ID".", nzmax) ;
 	P4 ("%s", "\n") ;
-	Lp = L->p ;
-	Li = L->i ;
-	Lx = L->x ;
-	Lz = L->z ;
-	Lnz = L->nz ;
-	Lnext = L->next ;
-	Lprev = L->prev ;
+	Lp = (Int *) (L->p) ;
+	Li = (Int *) (L->i) ;
+	Lx = (double *) (L->x) ;
+	Lz = (double *) (L->z) ;
+	Lnz = (Int *) (L->nz) ;
+	Lnext = (Int *) (L->next) ;
+	Lprev = (Int *) (L->prev) ;
 
 	/* check for existence of Lp, Li, Lnz, Lnext, Lprev, and Lx arrays */
 	if (Lp == NULL)
@@ -1831,11 +1831,11 @@ static int check_factor
 	xsize = L->xsize ;
 	maxcsize = L->maxcsize ;
 	maxesize = L->maxesize ;
-	Ls = L->s ;
-	Lpi = L->pi ;
-	Lpx = L->px ;
-	Super = L->super ;
-	Lx = L->x ;
+	Ls = (Int *) (L->s) ;
+	Lpi = (Int *) (L->pi) ;
+	Lpx = (Int *) (L->px) ;
+	Super = (Int *) (L->super) ;
+	Lx = (double *) (L->x) ;
 	ETC_START (count, 8) ;
 
 	P4 ("  ssize "ID" ", ssize) ;
@@ -2086,10 +2086,10 @@ static int check_triplet
     ncol = T->ncol ;
     nzmax = T->nzmax ;
     nz = T->nnz ;
-    Ti = T->i ;
-    Tj = T->j ;
-    Tx = T->x ;
-    Tz = T->z ;
+    Ti = (Int *) (T->i) ;
+    Tj = (Int *) (T->j) ;
+    Tx = (double *) (T->x) ;
+    Tz = (double *) (T->z) ;
     xtype = T->xtype ;
 
 

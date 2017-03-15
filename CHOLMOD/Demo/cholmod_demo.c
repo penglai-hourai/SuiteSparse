@@ -161,7 +161,7 @@ int main (int argc, char **argv)
 
     n = A->nrow ;
     B = cholmod_zeros (n, 1, xtype, cm) ;
-    Bx = B->x ;
+    Bx = (double *) (B->x) ;
 
 #if GHS
     {
@@ -324,12 +324,12 @@ int main (int argc, char **argv)
             if (timelog) fprintf (timelog, "results = [\n") ;
 
             B2 = cholmod_zeros (n, 1, xtype, cm) ;
-            B2x = B2->x ;
+            B2x = (double *) (B2->x) ;
 
             Bset = cholmod_allocate_sparse (n, 1, 1, FALSE, TRUE, 0,
                 CHOLMOD_PATTERN, cm) ;
-            Bsetp = Bset->p ;
-            Bseti = Bset->i ;
+            Bsetp = (int *) (Bset->p) ;
+            Bseti = (int *) (Bset->i) ;
             Bsetp [0] = 0 ;     /* nnz(B) is 1 (it can be anything) */
             Bsetp [1] = 1 ;
             resid [3] = 0 ;
@@ -378,12 +378,12 @@ int main (int argc, char **argv)
                 t = MAX (t, 0) / NTRIALS ;
 
                 /* check the solution and log the time */
-                Xsetp = Xset->p ;
-                Xseti = Xset->i ;
+                Xsetp = (int *) (Xset->p) ;
+                Xseti = (int *) (Xset->i) ;
                 xlen = Xsetp [1] ;
-                X1x = X->x ;
-                X2x = X2->x ;
-                Lnz = L->nz ;
+                X1x = (double *) (X->x) ;
+                X2x = (double *) (X2->x) ;
+                Lnz = (int *) (L->nz) ;
 
                 /*
                 printf ("\ni %d xlen %d  (%p %p)\n", i, xlen, X1x, X2x) ;
@@ -469,8 +469,8 @@ int main (int argc, char **argv)
                 /* R = B - beta*X */
                 cholmod_free_dense (&R, cm) ;
                 R = cholmod_zeros (n, 1, xtype, cm) ;
-                Rx = R->x ;
-                Xx = X->x ;
+                Rx = (double *) (R->x) ;
+                Xx = (double *) (X->x) ;
                 if (xtype == CHOLMOD_REAL)
                 {
                     for (i = 0 ; i < n ; i++)
@@ -525,8 +525,8 @@ int main (int argc, char **argv)
 	/* R2 = A\(B-A*X) */
 	R2 = cholmod_solve (CHOLMOD_A, L, R, cm) ;
 	/* compute X = X + A\(B-A*X) */
-	Xx = X->x ;
-	Rx = R2->x ;
+	Xx = (double *) (X->x) ;
+	Rx = (double *) (R2->x) ;
 	for (i = 0 ; i < n ; i++)
 	{
 	    Xx [i] = Xx [i] + Rx [i] ;

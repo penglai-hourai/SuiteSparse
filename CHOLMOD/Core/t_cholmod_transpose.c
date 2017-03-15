@@ -62,21 +62,21 @@ static int TEMPLATE (cholmod_transpose_unsym)
     nrow = A->nrow ;
     ncol = A->ncol ;
 
-    Ap = A->p ;		/* size A->ncol+1, column pointers of A */
-    Ai = A->i ;		/* size nz = Ap [A->ncol], row indices of A */
-    Ax = A->x ;		/* size nz, real values of A */
-    Az = A->z ;		/* size nz, imag values of A */
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;		/* size A->ncol+1, column pointers of A */
+    Ai = (Int *) (A->i) ;		/* size nz = Ap [A->ncol], row indices of A */
+    Ax = (double *) (A->x) ;		/* size nz, real values of A */
+    Az = (double *) (A->z) ;		/* size nz, imag values of A */
+    Anz = (Int *) (A->nz) ;
     Apacked = A->packed ;
     ASSERT (IMPLIES (!Apacked, Anz != NULL)) ;
 
     permute = (Perm != NULL) ;
 
-    Fp = F->p ;		/* size A->nrow+1, row pointers of F */
-    Fj = F->i ;		/* size nz, column indices of F */
-    Fx = F->x ;		/* size nz, real values of F */
-    Fz = F->z ;		/* size nz, imag values of F */
-    Fnz = F->nz ;
+    Fp = (Int *) (F->p) ;		/* size A->nrow+1, row pointers of F */
+    Fj = (Int *) (F->i) ;		/* size nz, column indices of F */
+    Fx = (double *) (F->x) ;		/* size nz, real values of F */
+    Fz = (double *) (F->z) ;		/* size nz, imag values of F */
+    Fnz = (Int *) (F->nz) ;
     Fpacked = F->packed ;
     ASSERT (IMPLIES (!Fpacked, Fnz != NULL)) ;
 
@@ -86,7 +86,7 @@ static int TEMPLATE (cholmod_transpose_unsym)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Wi = Iwork ;		/* size nrow (i/l/l) */
 
     /* ---------------------------------------------------------------------- */
@@ -157,25 +157,25 @@ static int TEMPLATE (cholmod_transpose_sym)
 
     permute = (Perm != NULL) ;
     n = A->nrow ;
-    Ap = A->p ;		/* size A->ncol+1, column pointers of A */
-    Ai = A->i ;		/* size nz = Ap [A->ncol], row indices of A */
-    Ax = A->x ;		/* size nz, real values of A */
-    Az = A->z ;		/* size nz, imag values of A */
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;		/* size A->ncol+1, column pointers of A */
+    Ai = (Int *) (A->i) ;		/* size nz = Ap [A->ncol], row indices of A */
+    Ax = (double *) (A->x) ;		/* size nz, real values of A */
+    Az = (double *) (A->z) ;		/* size nz, imag values of A */
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ASSERT (IMPLIES (!packed, Anz != NULL)) ;
     upper = (A->stype > 0) ;
 
-    Fp = F->p ;		/* size A->nrow+1, row pointers of F */
-    Fj = F->i ;		/* size nz, column indices of F */
-    Fx = F->x ;		/* size nz, real values of F */
-    Fz = F->z ;		/* size nz, imag values of F */
+    Fp = (Int *) (F->p) ;		/* size A->nrow+1, row pointers of F */
+    Fj = (Int *) (F->i) ;		/* size nz, column indices of F */
+    Fx = (double *) (F->x) ;		/* size nz, real values of F */
+    Fz = (double *) (F->z) ;		/* size nz, imag values of F */
 
     /* ---------------------------------------------------------------------- */
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Wi = Iwork ;	/* size n (i/l/l) */
     Pinv = Iwork + n ;	/* size n (i/i/l) , unused if Perm NULL */
 

@@ -95,7 +95,7 @@ cholmod_sparse *CHOLMOD(allocate_sparse)
     /* allocate header */
     /* ---------------------------------------------------------------------- */
 
-    A = CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
+    A = (cholmod_sparse *) CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -149,14 +149,14 @@ cholmod_sparse *CHOLMOD(allocate_sparse)
     /* initialize A->p and A->nz so that A is an empty matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
+    Ap = (Int *) (A->p) ;
     for (j = 0 ; j <= (Int) ncol ; j++)
     {
 	Ap [j] = 0 ;
     }
     if (!packed)
     {
-	Anz = A->nz ;
+	Anz = (Int *) (A->nz) ;
 	for (j = 0 ; j < (Int) ncol ; j++)
 	{
 	    Anz [j] = 0 ;
@@ -221,7 +221,7 @@ int CHOLMOD(free_sparse)
 	    break ;
     }
 
-    *AHandle = CHOLMOD(free) (1, sizeof (cholmod_sparse), (*AHandle), Common) ;
+    *AHandle = (cholmod_sparse *) CHOLMOD(free) (1, sizeof (cholmod_sparse), (*AHandle), Common) ;
     return (TRUE) ;
 }
 
@@ -315,10 +315,10 @@ cholmod_sparse *CHOLMOD(speye)
     /* create the identity matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
 
     for (j = 0 ; j < n ; j++)
     {
@@ -438,13 +438,13 @@ SuiteSparse_long CHOLMOD(nnz)
     ncol = A->ncol ;
     if (A->packed)
     {
-	Ap = A->p ;
+	Ap = (Int *) (A->p) ;
 	RETURN_IF_NULL (Ap, EMPTY) ;
 	nz = Ap [ncol] ;
     }
     else
     {
-	Anz = A->nz ;
+	Anz = (Int *) (A->nz) ;
 	RETURN_IF_NULL (Anz, EMPTY) ;
 	nz = 0 ;
 	for (j = 0 ; j < ncol ; j++)
@@ -506,11 +506,11 @@ cholmod_sparse *CHOLMOD(copy_sparse)
     ncol = A->ncol ;
     nzmax = A->nzmax ;
     packed = A->packed ;
-    Ap = A->p ;
-    Ai = A->i ;
-    Ax = A->x ;
-    Az = A->z ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Ai = (Int *) (A->i) ;
+    Ax = (double *) (A->x) ;
+    Az = (double *) (A->z) ;
+    Anz = (Int *) (A->nz) ;
     xtype = A->xtype ;
 
     /* ---------------------------------------------------------------------- */
@@ -525,11 +525,11 @@ cholmod_sparse *CHOLMOD(copy_sparse)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
-    Cz = C->z ;
-    Cnz = C->nz ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
+    Cz = (double *) (C->z) ;
+    Cnz = (Int *) (C->nz) ;
 
     /* ---------------------------------------------------------------------- */
     /* copy the matrix */

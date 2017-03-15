@@ -39,11 +39,11 @@ static void TEMPLATE (change_simplicial_numeric)
     Int n, j, len, pnew, pold, k, p, pend ;
 
     n = L->n ;
-    Lp = L->p ;
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
-    Lnz = L->nz ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
+    Lnz = (Int *) (L->nz) ;
 
     if (make_ll)
     {
@@ -457,18 +457,18 @@ static void TEMPLATE (ll_super_to_simplicial_numeric)
 
     L->is_ll = to_ll ;
 
-    Lp = L->p ;
-    Li = L->i ;
-    Lx = L->x ;
-    Lnz = L->nz ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lnz = (Int *) (L->nz) ;
     lnz = L->nzmax ;
 
     n = L->n ;
     nsuper = L->nsuper ;
-    Lpi = L->pi ;
-    Lpx = L->px ;
-    Ls = L->s ;
-    Super = L->super ;
+    Lpi = (Int *) (L->pi) ;
+    Lpx = (Int *) (L->px) ;
+    Ls = (Int *) (L->s) ;
+    Super = (Int *) (L->super) ;
 
     p = 0 ;
 

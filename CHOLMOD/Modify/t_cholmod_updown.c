@@ -103,10 +103,10 @@ static void NUMERIC (WDIM, r)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ci = C->i ;
-    Cx = C->x ;
-    Cp = C->p ;
-    Cnz = C->nz ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
+    Cnz = (Int *) (C->nz) ;
     packed = C->packed ;
     ASSERT (IMPLIES (!packed, Cnz != NULL)) ;
     ASSERT (L->n == C->nrow) ;

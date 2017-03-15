@@ -90,7 +90,7 @@ cholmod_factor *CHOLMOD(allocate_factor)
 	return (NULL) ;
     }
 
-    L = CHOLMOD(malloc) (sizeof (cholmod_factor), 1, Common) ;
+    L = (cholmod_factor *) CHOLMOD(malloc) (sizeof (cholmod_factor), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -151,12 +151,12 @@ cholmod_factor *CHOLMOD(allocate_factor)
     }
 
     /* initialize Perm and ColCount */
-    Perm = L->Perm ;
+    Perm = (Int *) (L->Perm) ;
     for (j = 0 ; j < ((Int) n) ; j++)
     {
 	Perm [j] = j ;
     }
-    ColCount = L->ColCount ;
+    ColCount = (Int *) (L->ColCount) ;
     for (j = 0 ; j < ((Int) n) ; j++)
     {
 	ColCount [j] = 1 ;
@@ -239,7 +239,7 @@ int CHOLMOD(free_factor)
 	CHOLMOD(free) (xs, sizeof (double), L->z, Common) ;
     }
 
-    *LHandle = CHOLMOD(free) (1, sizeof (cholmod_factor), (*LHandle), Common) ;
+    *LHandle = (cholmod_factor *) CHOLMOD(free) (1, sizeof (cholmod_factor), (*LHandle), Common) ;
     return (TRUE) ;
 }
 
@@ -346,10 +346,10 @@ int CHOLMOD(reallocate_column)
 
     /* head = n+1 ; */
     tail = n ;
-    Lp = L->p ;
-    Lnz = L->nz ;
-    Lprev = L->prev ;
-    Lnext = L->next ;
+    Lp = (Int *) (L->p) ;
+    Lnz = (Int *) (L->nz) ;
+    Lprev = (Int *) (L->prev) ;
+    Lnext = (Int *) (L->next) ;
 
     ASSERT (Lnz != NULL) ;
     ASSERT (Lnext != NULL && Lprev != NULL) ;
@@ -415,9 +415,9 @@ int CHOLMOD(reallocate_column)
 
     Common->nrealloc_col++ ;
 
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
 
     /* remove j from its current position in the list */
     Lnext [Lprev [j]] = Lnext [j] ;
@@ -533,12 +533,12 @@ int CHOLMOD(pack_factor)
 
     pnew = 0 ;
     n = L->n ;
-    Lp = L->p ;
-    Li = L->i ;
-    Lx = L->x ;
-    Lz = L->z ;
-    Lnz = L->nz ;
-    Lnext = L->next ;
+    Lp = (Int *) (L->p) ;
+    Li = (Int *) (L->i) ;
+    Lx = (double *) (L->x) ;
+    Lz = (double *) (L->z) ;
+    Lnz = (Int *) (L->nz) ;
+    Lnext = (Int *) (L->next) ;
 
     head = n+1 ;
     tail = n ;
@@ -646,7 +646,7 @@ cholmod_sparse *CHOLMOD(factor_to_sparse)
     /* ---------------------------------------------------------------------- */
 
     /* allocate the header for Lsparse, the sparse matrix version of L */
-    Lsparse = CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
+    Lsparse = (cholmod_sparse *) CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;		/* out of memory */
@@ -737,10 +737,10 @@ cholmod_factor *CHOLMOD(copy_factor)
     }
     ASSERT (L2->xtype == CHOLMOD_PATTERN && !(L2->is_super)) ;
 
-    Perm = L->Perm ;
-    ColCount = L->ColCount ;
-    Perm2 = L2->Perm ;
-    ColCount2 = L2->ColCount ;
+    Perm = (Int *) (L->Perm) ;
+    ColCount = (Int *) (L->ColCount) ;
+    Perm2 = (Int *) (L2->Perm) ;
+    ColCount2 = (Int *) (L2->ColCount) ;
     L2->ordering = L->ordering ;
 
     for (j = 0 ; j < n ; j++)
@@ -780,21 +780,21 @@ cholmod_factor *CHOLMOD(copy_factor)
 	/* copy the contents of a simplicial numeric factor */
 	/* ------------------------------------------------------------------ */
 
-	Lp = L->p ;
-	Li = L->i ;
-	Lx = L->x ;
-	Lz = L->z ;
-	Lnz = L->nz ;
-	Lnext = L->next ;
-	Lprev = L->prev ;
+	Lp = (Int *) (L->p) ;
+	Li = (Int *) (L->i) ;
+	Lx = (double *) (L->x) ;
+	Lz = (double *) (L->z) ;
+	Lnz = (Int *) (L->nz) ;
+	Lnext = (Int *) (L->next) ;
+	Lprev = (Int *) (L->prev) ;
 
-	L2p = L2->p ;
-	L2i = L2->i ;
-	L2x = L2->x ;
-	L2z = L2->z ;
-	L2nz = L2->nz ;
-	L2next = L2->next ;
-	L2prev = L2->prev ;
+	L2p = (Int *) (L2->p) ;
+	L2i = (Int *) (L2->i) ;
+	L2x = (double *) (L2->x) ;
+	L2z = (double *) (L2->z) ;
+	L2nz = (Int *) (L2->nz) ;
+	L2next = (Int *) (L2->next) ;
+	L2prev = (Int *) (L2->prev) ;
 	L2->xtype = L->xtype ;
 	L2->dtype = L->dtype ;
 
@@ -885,17 +885,17 @@ cholmod_factor *CHOLMOD(copy_factor)
 	/* copy the contents of a supernodal factor */
 	/* ------------------------------------------------------------------ */
 
-	Lsuper = L->super ;
-	Lpi = L->pi ;
-	Lpx = L->px ;
-	Ls = L->s ;
-	Lx = L->x ;
+	Lsuper = (Int *) (L->super) ;
+	Lpi = (Int *) (L->pi) ;
+	Lpx = (Int *) (L->px) ;
+	Ls = (Int *) (L->s) ;
+	Lx = (double *) (L->x) ;
 
-	L2super = L2->super ;
-	L2pi = L2->pi ;
-	L2px = L2->px ;
-	L2s = L2->s ;
-	L2x = L2->x ;
+	L2super = (Int *) (L2->super) ;
+	L2pi = (Int *) (L2->pi) ;
+	L2px = (Int *) (L2->px) ;
+	L2s = (Int *) (L2->s) ;
+	L2x = (double *) (L2->x) ;
 
 	L2->maxcsize = L->maxcsize ;
 	L2->maxesize = L->maxesize ;

@@ -172,18 +172,18 @@ cholmod_sparse *CHOLMOD(submatrix)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap  = A->p ;
-    Anz = A->nz ;
-    Ai  = A->i ;
-    Ax  = A->x ;
+    Ap  = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
+    Ai  = (Int *) (A->i) ;
+    Ax  = (double *) (A->x) ;
     packed = A->packed ;
 
     /* ---------------------------------------------------------------------- */
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Head  = Common->Head ;	    /* size anrow */
-    Iwork = Common->Iwork ;
+    Head  = (Int *) (Common->Head) ;	    /* size anrow */
+    Iwork = (Int *) (Common->Iwork) ;
     Rlen  = Iwork ;		    /* size anrow (i/i/l) */
     Rnext = Iwork + anrow ;	    /* size nr (i/i/l), not used if nr < 0 */
 
@@ -305,9 +305,9 @@ cholmod_sparse *CHOLMOD(submatrix)
 	return (NULL) ;
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
-    Cx = C->x ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
+    Cx = (double *) (C->x) ;
 
     /* ---------------------------------------------------------------------- */
     /* C = A (rset,cset) */

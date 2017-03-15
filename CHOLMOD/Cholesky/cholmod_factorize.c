@@ -227,14 +227,14 @@ int CHOLMOD(factorize_p)
 		/* This is the fastest option for factoring a permuted matrix */
 		/* S = tril (PAP'); F not needed */
 		/* workspace: Iwork (2*nrow) */
-		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
 		S = A1 ;
 	    }
 	    else if (stype < 0)
 	    {
 		/* A2 = triu (PAP') */
 		/* workspace: Iwork (2*nrow) */
-		A2 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
+		A2 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
 		/* S = tril (A2'); F not needed */
 		/* workspace: Iwork (nrow) */
 		A1 = CHOLMOD(ptranspose) (A2, 2, NULL, NULL, 0, Common) ;
@@ -246,7 +246,7 @@ int CHOLMOD(factorize_p)
 	    {
 		/* F = A(p,f)' */
 		/* workspace: Iwork (nrow if no fset; MAX (nrow,ncol) if fset)*/
-		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, fset, fsize, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), fset, fsize, Common) ;
 		F = A1 ;
 		/* S = F' */
 		/* workspace: Iwork (nrow) */
@@ -353,7 +353,7 @@ int CHOLMOD(factorize_p)
 	    {
 		/* F = tril (A (p,p)') */
 		/* workspace: Iwork (2*nrow) */
-		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
 		/* A2 = triu (F') */
 		/* workspace: Iwork (nrow) */
 		A2 = CHOLMOD(ptranspose) (A1, 2, NULL, NULL, 0, Common) ;
@@ -366,13 +366,13 @@ int CHOLMOD(factorize_p)
 		 * way to factorize a matrix using the simplicial routine
 		 * (cholmod_rowfac). */
 		/* workspace: Iwork (2*nrow) */
-		A2 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
+		A2 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
 	    }
 	    else
 	    {
 		/* F = A (p,f)' */
 		/* workspace: Iwork (nrow if no fset; MAX (nrow,ncol) if fset)*/
-		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, fset, fsize, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), fset, fsize, Common) ;
 		F = A1 ;
 		/* A2 = F' */
 		/* workspace: Iwork (nrow) */

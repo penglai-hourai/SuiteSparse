@@ -104,8 +104,8 @@ static int change_complexity
     }
 
     Common->status = CHOLMOD_OK ;
-    Xold = *XX ;
-    Zold = *ZZ ;
+    Xold = (double *) (*XX) ;
+    Zold = (double *) (*ZZ) ;
 
     switch (xtype_in)
     {
@@ -125,7 +125,7 @@ static int change_complexity
 
 		case CHOLMOD_REAL:
 		    /* allocate X and set to all ones */
-		    Xnew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			return (FALSE) ;
@@ -143,7 +143,7 @@ static int change_complexity
 
 		case CHOLMOD_COMPLEX:
 		    /* allocate X and set to all ones */
-		    Xnew = CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			return (FALSE) ;
@@ -162,8 +162,8 @@ static int change_complexity
 
 		case CHOLMOD_ZOMPLEX:
 		    /* allocate X and Z and set to all ones */
-		    Xnew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
-		    Znew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Znew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			CHOLMOD(free) (nz, sizeof (double), Xnew, Common) ;
@@ -205,7 +205,7 @@ static int change_complexity
 
 		case CHOLMOD_COMPLEX:
 		    /* allocate a new X and copy the old X */
-		    Xnew = CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			return (FALSE) ;
@@ -225,7 +225,7 @@ static int change_complexity
 
 		case CHOLMOD_ZOMPLEX:
 		    /* allocate a new Z and set it to zero */
-		    Znew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Znew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			return (FALSE) ;
@@ -279,8 +279,8 @@ static int change_complexity
 
 		case CHOLMOD_ZOMPLEX:
 		    /* allocate X and Z and copy the old X into them */
-		    Xnew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
-		    Znew = CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
+		    Znew = (double *) CHOLMOD(malloc) (nz, sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			CHOLMOD(free) (nz, sizeof (double), Xnew, Common) ;
@@ -332,7 +332,7 @@ static int change_complexity
 		/* ---------------------------------------------------------- */
 
 		case CHOLMOD_COMPLEX:
-		    Xnew = CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
+		    Xnew = (double *) CHOLMOD(malloc) (nz, 2*sizeof (double), Common) ;
 		    if (Common->status < CHOLMOD_OK)
 		    {
 			return (FALSE) ;

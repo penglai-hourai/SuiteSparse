@@ -116,8 +116,8 @@ static SuiteSparse_long partition    /* size of separator or -1 if failure */
     /* ---------------------------------------------------------------------- */
 
     n = C->nrow ;
-    Cp = C->p ;
-    Ci = C->i ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
     nz = Cp [n] ;
 
     PRINT2 (("Partition start, n "ID" nz "ID"\n", n, nz)) ;
@@ -596,7 +596,7 @@ static SuiteSparse_long clear_flag (Int *Map, Int cn, cholmod_common *Common)
     if (Common->mark <= 0)
     {
 	nrow = Common->nrow ;
-	Flag = Common->Flag ;
+	Flag = (Int *) (Common->Flag) ;
         if (Map != NULL)
         {
             for (i = 0 ; i < cn ; i++)
@@ -696,7 +696,7 @@ static void find_components
     /* ---------------------------------------------------------------------- */
 
     PRINT2 (("find components: cn %d\n", cn)) ;
-    Flag = Common->Flag ;	    /* size n */
+    Flag = (Int *) (Common->Flag) ;	    /* size n */
 
     /* force initialization of Flag [Map [0..cn-1]] */
     save_mark = Common->mark ;      /* save the current mark */
@@ -706,8 +706,8 @@ static void find_components
     /* this takes O(cn) time */
     mark = clear_flag (Map, cn, Common) ;
 
-    Bp = B->p ;
-    Bi = B->i ;
+    Bp = (Int *) (B->p) ;
+    Bi = (Int *) (B->i) ;
     n = B->nrow ;
     ASSERT (cnode >= EMPTY && cnode < n) ;
     ASSERT (IMPLIES (cnode >= 0, Flag [cnode] < EMPTY)) ;
@@ -897,7 +897,7 @@ SuiteSparse_long CHOLMOD(bisect)	/* returns # of nodes in separator */
     }
     ASSERT (CHOLMOD(dump_work) (TRUE, TRUE, 0, Common)) ;
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Hash = Iwork ;		/* size n, (i/l/l) */
     Cmap = Iwork + n ;		/* size n, (i/i/l) */
 
@@ -928,8 +928,8 @@ SuiteSparse_long CHOLMOD(bisect)	/* returns # of nodes in separator */
     {
 	return (EMPTY) ;
     }
-    Bp = B->p ;
-    Bi = B->i ;
+    Bp = (Int *) (B->p) ;
+    Bi = (Int *) (B->i) ;
     bnz = Bp [n] ;
     ASSERT ((Int) (B->nrow) == n && (Int) (B->ncol) == n) ;
 
@@ -942,7 +942,7 @@ SuiteSparse_long CHOLMOD(bisect)	/* returns # of nodes in separator */
     csize = MAX (((size_t) n) + 1, (size_t) bnz) ;
 
     /* create the graph using Flag as workspace for node weights [ */
-    Bnw = Common->Flag ;    /* size n workspace */
+    Bnw = (Int *) (Common->Flag) ;    /* size n workspace */
 
     /* compute hash for each node if compression requested */
     if (compress)
@@ -964,7 +964,7 @@ SuiteSparse_long CHOLMOD(bisect)	/* returns # of nodes in separator */
     }
 
     /* allocate edge weights */
-    Bew = CHOLMOD(malloc) (csize, sizeof (Int), Common) ;
+    Bew = (Int *) CHOLMOD(malloc) (csize, sizeof (Int), Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	/* out of memory */
@@ -1130,16 +1130,16 @@ SuiteSparse_long CHOLMOD(nested_dissection)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag = Common->Flag ;	/* size n */
-    Head = Common->Head ;	/* size n+1, all equal to -1 */
+    Flag = (Int *) (Common->Flag) ;	/* size n */
+    Head = (Int *) (Common->Head) ;	/* size n+1, all equal to -1 */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Imap = Iwork ;		/* size n, same as Queue in find_components */
     Map  = Iwork + n ;		/* size n */
     Bnz  = Iwork + 2*((size_t) n) ;	/* size n */
     Hash = Iwork + 3*((size_t) n) ;	/* size n */
 
-    Work3n = CHOLMOD(malloc) (n, 3*sizeof (Int), Common) ;
+    Work3n = (Int *) CHOLMOD(malloc) (n, 3*sizeof (Int), Common) ;
     Part = Work3n ;		/* size n */
     Bnw  = Part + n ;		/* size n */
     Cnw  = Bnw + n ;		/* size n */
@@ -1177,8 +1177,8 @@ SuiteSparse_long CHOLMOD(nested_dissection)
 	CHOLMOD(free) (3*n, sizeof (Int), Work3n, Common) ;
 	return (EMPTY) ;
     }
-    Bp = B->p ;
-    Bi = B->i ;
+    Bp = (Int *) (B->p) ;
+    Bi = (Int *) (B->i) ;
     bnz = CHOLMOD(nnz) (B, Common) ;
     ASSERT ((Int) (B->nrow) == n && (Int) (B->ncol) == n) ;
     csize = MAX (n, bnz) ;
@@ -1258,7 +1258,7 @@ SuiteSparse_long CHOLMOD(nested_dissection)
     /* Cp and Ci are workspace to construct the subgraphs to partition */
     C = CHOLMOD(allocate_sparse) (n, n, csize, FALSE, TRUE, 0, CHOLMOD_PATTERN,
 	    Common) ;
-    Cew  = CHOLMOD(malloc) (csize, sizeof (Int), Common) ;
+    Cew  = (Int *) CHOLMOD(malloc) (csize, sizeof (Int), Common) ;
 
     if (Common->status < CHOLMOD_OK)
     {
@@ -1273,8 +1273,8 @@ SuiteSparse_long CHOLMOD(nested_dissection)
 	return (EMPTY) ;
     }
 
-    Cp = C->p ;
-    Ci = C->i ;
+    Cp = (Int *) (C->p) ;
+    Ci = (Int *) (C->i) ;
 
     /* create initial unit node and edge weights */
     for (j = 0 ; j < n ; j++)
@@ -2012,7 +2012,7 @@ SuiteSparse_long CHOLMOD(collapse_septree)
     {
 	return (EMPTY) ;
     }
-    W = Common->Iwork ;
+    W = (Int *) (Common->Iwork) ;
     Count    = W ; W += ncomponents ;	    /* size ncomponents */
     Csubtree = W ; W += ncomponents ;	    /* size ncomponents */
     First    = W ; W += ncomponents ;	    /* size ncomponents */

@@ -194,16 +194,16 @@ int CHOLMOD(transpose_unsym)
     nrow = A->nrow ;
     ncol = A->ncol ;
 
-    Ap = A->p ;		/* size A->ncol+1, column pointers of A */
-    Ai = A->i ;		/* size nz = Ap [A->ncol], row indices of A */
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;		/* size A->ncol+1, column pointers of A */
+    Ai = (Int *) (A->i) ;		/* size nz = Ap [A->ncol], row indices of A */
+    Anz = (Int *) (A->nz) ;
     Apacked = A->packed ;
     ASSERT (IMPLIES (!Apacked, Anz != NULL)) ;
 
     permute = (Perm != NULL) ;
 
-    Fp = F->p ;		/* size A->nrow+1, row pointers of F */
-    Fnz = F->nz ;
+    Fp = (Int *) (F->p) ;		/* size A->nrow+1, row pointers of F */
+    Fnz = (Int *) (F->nz) ;
     Fpacked = F->packed ;
     ASSERT (IMPLIES (!Fpacked, Fnz != NULL)) ;
 
@@ -227,7 +227,7 @@ int CHOLMOD(transpose_unsym)
 	return (FALSE) ;	/* out of memory */
     }
 
-    Wi = Common->Iwork ;	/* size nrow (i/l/l) */
+    Wi = (Int *) (Common->Iwork) ;	/* size nrow (i/l/l) */
 
     /* ---------------------------------------------------------------------- */
     /* check Perm and fset */
@@ -519,14 +519,14 @@ int CHOLMOD(transpose_sym)
 
     permute = (Perm != NULL) ;
     n = A->nrow ;
-    Ap = A->p ;		/* size A->ncol+1, column pointers of A */
-    Ai = A->i ;		/* size nz = Ap [A->ncol], row indices of A */
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;		/* size A->ncol+1, column pointers of A */
+    Ai = (Int *) (A->i) ;		/* size nz = Ap [A->ncol], row indices of A */
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ASSERT (IMPLIES (!packed, Anz != NULL)) ;
     upper = (A->stype > 0) ;
 
-    Fp = F->p ;		/* size A->nrow+1, row pointers of F */
+    Fp = (Int *) (F->p) ;		/* size A->nrow+1, row pointers of F */
 
     /* ---------------------------------------------------------------------- */
     /* allocate workspace */
@@ -550,7 +550,7 @@ int CHOLMOD(transpose_sym)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = Common->Iwork ;
+    Iwork = (Int *) (Common->Iwork) ;
     Wi   = Iwork ;	    /* size n (i/l/l) */
     Pinv = Iwork + n ;	    /* size n (i/i/l) , unused if Perm NULL */
 
@@ -947,8 +947,8 @@ cholmod_sparse *CHOLMOD(ptranspose)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
-    Anz = A->nz ;
+    Ap = (Int *) (A->p) ;
+    Anz = (Int *) (A->nz) ;
     packed = A->packed ;
     ASSERT (IMPLIES (!packed, Anz != NULL)) ;
     xtype = values ? A->xtype : CHOLMOD_PATTERN ;
@@ -1120,7 +1120,7 @@ int CHOLMOD(sort)
     /* reduce A in size, if needed.  This must succeed. */
     /* ---------------------------------------------------------------------- */
 
-    Ap = A->p ;
+    Ap = (Int *) (A->p) ;
     anz = Ap [ncol] ;
     ASSERT ((size_t) anz <= A->nzmax) ;
     CHOLMOD(reallocate_sparse) (anz, A, Common) ;

@@ -103,7 +103,7 @@ int CHOLMOD(sdmult)
     e = (A->xtype == CHOLMOD_REAL ? 1:2) ;
     if (A->stype && X->ncol >= 4)
     {
-	w = CHOLMOD(malloc) (nx, 4*e*sizeof (double), Common) ;
+	w = (double *) CHOLMOD(malloc) (nx, 4*e*sizeof (double), Common) ;
     }
     if (Common->status < CHOLMOD_OK)
     {
