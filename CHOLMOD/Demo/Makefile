@@ -21,7 +21,7 @@ LIB2 += $(CUDART_LIB) $(CUBLAS_LIB)
 endif
 #-------------------------------------------------------------------------------
 
-C = $(CXX) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
 code: library cholmod_demo cholmod_l_demo cholmod_simple

@@ -74,10 +74,10 @@
 
 /* make it easy for C++ programs to include CHOLMOD */
 
+#include "SuiteSparse_config.h"
+
 /* assume large file support.  If problems occur, compile with -DNLARGEFILE */
 #include "cholmod_io64.h"
-
-#include "SuiteSparse_config.h"
 
 #include "cholmod_config.h"
 

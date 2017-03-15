@@ -63,8 +63,8 @@
 #ifndef CHOLMOD_CHECK_H
 #define CHOLMOD_CHECK_H
 
-#include "cholmod_core.h"
 #include <stdio.h>
+#include "cholmod_core.h"
 
 #ifdef __cplusplus
 extern "C" {

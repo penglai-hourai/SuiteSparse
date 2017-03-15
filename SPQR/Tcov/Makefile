@@ -25,7 +25,7 @@ CF = -pg \
 	-O0 -g -fprofile-arcs -ftest-coverage \
 	-Wall -W -Wshadow -Winline -Wno-unused-parameter \
 	-Wredundant-decls -Wdisabled-optimization \
-	-ansi -fexceptions -fopenmp
+	-fexceptions -fopenmp
 
 # Using an optimized BLAS can cause problems in Valgrind
 # FLIB = -llapack_plain -lblas_plain -lgfortran

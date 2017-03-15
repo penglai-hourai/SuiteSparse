@@ -14,12 +14,12 @@ LAPACK = -llapack
 
 # CF = -Wall -W -Wshadow -Wmissing-prototypes -Wstrict-prototypes \
 # 	-Wredundant-decls -Wnested-externs -Wdisabled-optimization \
-# 	-pedantic -ansi -O3 -pg
+# 	-pedantic -O3 -pg
 
 # for statement coverage, picky tests
 CF = -Wall -W -Wshadow -Wmissing-prototypes -Wstrict-prototypes \
    	-Wredundant-decls -Wnested-externs -Wdisabled-optimization \
- 	-ansi -g -ftest-coverage -fprofile-arcs -fexceptions \
+ 	-g -ftest-coverage -fprofile-arcs -fexceptions \
 	-fopenmp
 
 C = $(CC) $(CF)
