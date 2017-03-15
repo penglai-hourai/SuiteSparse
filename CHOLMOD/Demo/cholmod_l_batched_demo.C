@@ -750,6 +750,8 @@ class main : public CBase_main
     cholmod_l_free_sparse (&A, cm) ;
     cholmod_l_free_dense (&B, cm) ;
     cholmod_l_finish (cm) ;
+
+    CkExit();
 };
 };
 
