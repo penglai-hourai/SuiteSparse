@@ -211,6 +211,15 @@ static int TEMPLATE (cholmod_super_numeric)
 
     Lx = (double *) (L->x) ;
 
+    t_max = L->nleaves;
+
+    for (vdevice = 0; vdevice < MIN (Common->cholmod_parallel_num_threads, t_max); vdevice++)
+    {
+        L->Map_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
+        L->RelativeMap_queue[vdevice] = CHOLMOD (malloc) (L->MapSize, sizeof(Int), Common);
+        L->C_queue[vdevice] = CHOLMOD (malloc) (L->maxcsize, sizeof(double), Common);
+    }
+
 #ifndef NTIMER
     /* clear GPU / CPU statistics */
     Common->CHOLMOD_CPU_GEMM_CALLS  = 0 ;
@@ -232,8 +241,6 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME   = 0 ;
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
-
-    t_max = L->nleaves;
 
 #ifdef GPU_BLAS
 #ifdef MAGMA

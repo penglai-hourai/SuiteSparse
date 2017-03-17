@@ -1,7 +1,15 @@
 mainmodule cholmod_l_batched_demo
 {
+    readonly CProxy_main mainProxy;
+
     mainchare main
     {
         entry main (CkArgMsg *msg);
+    };
+
+    array [1D] factorizer
+    {
+        entry factorizer (void);
+        entry [sync] void factorize ();
     };
 };
