@@ -30,7 +30,6 @@
  * SuiteSparse_long is normally defined as long, except for WIN64.
  */
 
-#include <omp.h>
 #include "cholmod_demo.h"
 #include "cholmod_l_batched_demo.decl.h"
 
@@ -148,6 +147,13 @@ class main : public CBase_main
 
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
 
+#if 0
+            for (k = 0; k < nGPUs; k++)
+                factorizers[k].factorize();
+#endif
+
+            while (TRUE);
+
             cholmod_l_finish (cm) ;
 
             for (k = 0; k < nfiles; k++)
@@ -167,13 +173,13 @@ class factorizer : public CBase_factorizer
         factorizer ()
         {
             device = thisIndex;
-            factorize ();
+            factorize();
         }
 
         factorizer (CkMigrateMessage *msg)
         {
             device = thisIndex;
-            factorize ();
+            factorize();
         }
 
         void factorize ()
