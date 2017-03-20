@@ -337,7 +337,7 @@ class factorizer : public CBase_factorizer
             {
                 printf ("Factorizing A*A'+beta*I\n") ;
                 t = CPUTIME ;
-                cholmod_l_factorize_p (A, beta, NULL, 0, L, cm) ;
+                cholmod_l_factorize_p (A, beta, NULL, 0, L, cm, -1) ;
                 tf = CPUTIME - t ;
                 tf = MAX (tf, 0) ;
             }
@@ -345,7 +345,7 @@ class factorizer : public CBase_factorizer
             {
                 printf ("Factorizing A\n") ;
                 t = CPUTIME ;
-                cholmod_l_factorize (A, L, cm) ;
+                cholmod_l_factorize (A, L, cm, -1) ;
                 tf = CPUTIME - t ;
                 tf = MAX (tf, 0) ;
             }

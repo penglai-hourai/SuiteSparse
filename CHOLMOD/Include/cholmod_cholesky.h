@@ -145,10 +145,11 @@ int cholmod_factorize
     /* ---- in/out --- */
     cholmod_factor *L,	/* resulting factorization */
     /* --------------- */
-    cholmod_common *Common
+    cholmod_common *Common,
+    int pdev
 ) ;
 
-int cholmod_l_factorize (cholmod_sparse *, cholmod_factor *, cholmod_common *) ;
+int cholmod_l_factorize (cholmod_sparse *, cholmod_factor *, cholmod_common *, int) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_factorize_p:  factorize, with user-provided permutation or fset */
@@ -166,11 +167,12 @@ int cholmod_factorize_p
     /* ---- in/out --- */
     cholmod_factor *L,	/* resulting factorization */
     /* --------------- */
-    cholmod_common *Common
+    cholmod_common *Common,
+    int pdev
 ) ;
 
 int cholmod_l_factorize_p (cholmod_sparse *, double *, SuiteSparse_long *,
-    size_t, cholmod_factor *, cholmod_common *) ;
+    size_t, cholmod_factor *, cholmod_common *, int) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_solve:  solve a linear system (simplicial or supernodal) */

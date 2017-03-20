@@ -106,7 +106,8 @@ int CHOLMOD(super_numeric)
     /* ---- in/out --- */
     cholmod_factor *L,	/* factorization */
     /* --------------- */
-    cholmod_common *Common
+    cholmod_common *Common,
+    int pdev 
 )
 {
     cholmod_dense *C ;
@@ -284,16 +285,16 @@ int CHOLMOD(super_numeric)
     switch (A->xtype)
     {
 	case CHOLMOD_REAL:
-	    ok = r_cholmod_super_numeric (A, F, beta, L, C, Common) ;
+	    ok = r_cholmod_super_numeric (A, F, beta, L, C, Common, pdev) ;
 	    break ;
 
 	case CHOLMOD_COMPLEX:
-	    ok = c_cholmod_super_numeric (A, F, beta, L, C, Common) ;
+	    ok = c_cholmod_super_numeric (A, F, beta, L, C, Common, pdev) ;
 	    break ;
 
 	case CHOLMOD_ZOMPLEX:
 	    /* This operates on complex L, not zomplex */
-	    ok = z_cholmod_super_numeric (A, F, beta, L, C, Common) ;
+	    ok = z_cholmod_super_numeric (A, F, beta, L, C, Common, pdev) ;
 	    break ;
     }
 

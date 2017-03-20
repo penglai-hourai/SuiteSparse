@@ -103,7 +103,8 @@ static int TEMPLATE (cholmod_super_numeric)
     /* -- workspace -- */
     cholmod_dense *Cwork,       /* size (L->maxcsize)-by-1 */
     /* --------------- */
-    cholmod_common *Common
+    cholmod_common *Common,
+    int pdev 
     )
 {
     omp_lock_t *front_lock;
@@ -213,8 +214,16 @@ static int TEMPLATE (cholmod_super_numeric)
 
     t_max = L->nleaves;
 
-    vdev_l = 0;
-    vdev_h = MIN (Common->cholmod_parallel_num_threads, t_max);
+    if (pdev < 0)
+    {
+        vdev_l = 0;
+        vdev_h = MIN (Common->cholmod_parallel_num_threads, t_max);
+    }
+    else
+    {
+        vdev_l = pdev * Common->cuda_gpu_parallel;
+        vdev_h = vdev_l + MIN (Common->cuda_gpu_parallel, t_max); 
+    }
 
     for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
     {

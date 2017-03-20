@@ -215,7 +215,7 @@ int main (int argc, char **argv)
     {
 	printf ("Factorizing A*A'+beta*I\n") ;
 	t = CPUTIME ;
-	cholmod_factorize_p (A, beta, NULL, 0, L, cm) ;
+	cholmod_factorize_p (A, beta, NULL, 0, L, cm, -1) ;
 	tf = CPUTIME - t ;
 	tf = MAX (tf, 0) ;
     }
@@ -223,7 +223,7 @@ int main (int argc, char **argv)
     {
 	printf ("Factorizing A\n") ;
 	t = CPUTIME ;
-	cholmod_factorize (A, L, cm) ;
+	cholmod_factorize (A, L, cm, -1) ;
 	tf = CPUTIME - t ;
 	tf = MAX (tf, 0) ;
     }
