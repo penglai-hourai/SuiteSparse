@@ -176,7 +176,7 @@ class factorizer : public CBase_factorizer
 
         void factorize ()
         {
-            int k;
+            int k, findex;
 
             double resid [4], t, ta, tf, ts [3], tot, bnorm, xnorm, anorm, rnorm, fl,
                    anz, axbnorm, rnorm2, resid2, rcond ;
@@ -189,11 +189,11 @@ class factorizer : public CBase_factorizer
             int trial, method, L_is_super ;
             int nmethods ;
 
-            for (k = 0; k < nfiles; k++)
+            for (findex = 0; findex < nfiles; findex++)
             {
-                if (omp_test_lock(&file_lock[k]))
+                if (omp_test_lock(&file_lock[findex]))
                 {
-                    CkPrintf ("device %d factorizes file %d\n", device, k);
+                    CkPrintf ("device %d factorizes file %d\n", device, findex);
                 }
             }
 
