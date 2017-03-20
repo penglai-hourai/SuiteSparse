@@ -143,6 +143,16 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
     }
 
+    /* create cuBlas handle */
+    //for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
+    if ( ! Common->cublasHandle[vdevice] ) {
+        cudaErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
+        if (cudaErr != CUBLAS_STATUS_SUCCESS) {
+            ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
+            return 1;
+        }
+    }
+
     if (!(Common->gpuStream[vdevice][0])) {
 
         /* ------------------------------------------------------------------ */

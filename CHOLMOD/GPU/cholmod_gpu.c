@@ -449,16 +449,6 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
 
     CHOLMOD(gpu_deallocate) (Common, device);
 
-    /* create cuBlas handle */
-    for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
-    if ( ! Common->cublasHandle[vdevice] ) {
-        cublasErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
-        if (cublasErr != CUBLAS_STATUS_SUCCESS) {
-            ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
-            return 1;
-        }
-    }
-
     /* allocated corresponding pinned host memory */
     requestedHostMemory = (requestedDeviceMemory - CHOLMOD_DEVICE_LS_SIZE_T)
         * CHOLMOD_HOST_SUPERNODE_BUFFERS
