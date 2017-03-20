@@ -81,7 +81,7 @@ cholmod_l_batched_demo: cholmod_l_batched_demo.C cholmod_l_batched_demo.decl.h c
 	$(CHARM) -language charm++ -o cholmod_l_batched_demo $(I) -c cholmod_l_batched_demo.C $(LIB2)
 
 cholmod_l_batched_demo.decl.h:
-	$(CHARM) $(I) cholmod_l_batched_demo.ci
+	$(CHARM) cholmod_l_batched_demo.ci
 
 readhb: readhb.f
 	$(F77) $(FFLAGS) -o readhb readhb.f
