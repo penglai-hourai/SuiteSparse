@@ -9,13 +9,16 @@ mainmodule cholmod_l_batched_demo
     mainchare main
     {
         entry main (CkArgMsg *msg);
+        entry [sync] int lock_file (int findex);
+        entry [sync] std::string get_filename (int findex);
     };
 
     array [1D] factorizer
     {
         entry factorizer (void);
         entry [local] void initialize ();
-        entry [local] void factorize (std::string filename);
+        entry [local] void factorize (int nfiles);
         entry [local] void destroy ();
+        entry void cholesky (int nfiles);
     };
 };

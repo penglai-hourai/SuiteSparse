@@ -138,8 +138,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     if (voffset == 0)
     {
-    cudaErr = cudaMemcpy ( gpu_p->d_Ls, L->s, nls*sizeof(Int),
-                           cudaMemcpyHostToDevice );
+    cudaErr = cudaMemcpy ( gpu_p->d_Ls, L->s, nls*sizeof(Int), cudaMemcpyHostToDevice );
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
     }
 
