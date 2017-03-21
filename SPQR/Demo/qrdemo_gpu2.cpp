@@ -33,7 +33,7 @@ int main (int argc, char **argv)
     // to be done once
     cc->useGPU = true ;
     t = SuiteSparse_time ( ) ;
-    cholmod_l_gpu_memorysize (&total_mem, &available_mem, cc) ;
+    cholmod_l_gpu_memorysize (&total_mem, &available_mem, cc, 0) ;
     cc->gpuMemorySize = available_mem ;
     t = SuiteSparse_time ( ) - t ;
     if (cc->gpuMemorySize <= 1)

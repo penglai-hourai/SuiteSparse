@@ -72,9 +72,6 @@
 #ifndef CHOLMOD_H
 #define CHOLMOD_H
 
-#include <cuda_runtime.h>
-#include <omp.h>
-
 /* make it easy for C++ programs to include CHOLMOD */
 
 #include "SuiteSparse_config.h"

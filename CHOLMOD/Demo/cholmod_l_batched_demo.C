@@ -30,6 +30,9 @@
  * SuiteSparse_long is normally defined as long, except for WIN64.
  */
 
+#include <cuda_runtime.h>
+#include <omp.h>
+
 #include "cholmod_demo.h"
 #include "cholmod_l_batched_demo.decl.h"
 
