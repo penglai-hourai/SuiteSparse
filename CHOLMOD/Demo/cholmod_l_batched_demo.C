@@ -37,16 +37,13 @@
 
 CProxy_main mainProxy;
 
-int prefer_zomplex;
-
+int prefer_zomplex = 0;
 
 class main : public CBase_main
 {
     private:
         int argc;
         char **argv;
-        cholmod_common Common;
-        cholmod_common *cm;
 
     public:
         main (CkArgMsg *msg)
@@ -63,7 +60,6 @@ class main : public CBase_main
 
             argc = msg->argc;
             argv = msg->argv;
-            cm = &Common;
 
             mainProxy = thisProxy;
 
@@ -75,26 +71,6 @@ class main : public CBase_main
                 omp_init_lock (&file_lock[k]);
 
             /* ---------------------------------------------------------------------- */
-            /* start CHOLMOD and set parameters */
-            /* ---------------------------------------------------------------------- */
-
-            cholmod_l_start (cm) ;
-            CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
-
-            /* cm->useGPU = 1; */
-            cm->prefer_zomplex = prefer_zomplex ;
-
-            /* use default parameter settings, except for the error handler.  This
-             * demo program terminates if an error occurs (out of memory, not positive
-             * definite, ...).  It makes the demo program simpler (no need to check
-             * CHOLMOD error conditions).  This non-default parameter setting has no
-             * effect on performance. */
-            cm->error_handler = NULL;
-
-            /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
-             * default, automatically selecting the latter if flop/nnz(L) < 40. */
-
-            /* ---------------------------------------------------------------------- */
             /* read in a matrix */
             /* ---------------------------------------------------------------------- */
 
@@ -104,11 +80,12 @@ class main : public CBase_main
             SuiteSparse_version (ver) ;
             printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
-            cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-
-            nGPUs = cm->cuda_gpu_num;
+            cudaGetDeviceCount(&nGPUs);
 
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
+
+            for (device = 0; device < nGPUs; device++)
+                        factorizers[device].initialize();
 
 #if 1
 #pragma omp parallel for schedule (static)
@@ -131,19 +108,15 @@ class main : public CBase_main
             }
 #endif
 
-            while (TRUE);
+            for (device = 0; device < nGPUs; device++)
+                        factorizers[device].destroy();
 
-            cholmod_l_finish (cm) ;
+            while (TRUE);
 
             for (k = 0; k < nfiles; k++)
                 omp_destroy_lock (&file_lock[k]);
 
             CkExit();
-        }
-
-        cholmod_common get_common()
-        {
-            return Common;
         }
 };
 
@@ -160,7 +133,6 @@ class factorizer : public CBase_factorizer
         {
             device = thisIndex;
             file = NULL;
-            Common = mainProxy.get_common();
             cm = &Common;
         }
 
@@ -168,8 +140,32 @@ class factorizer : public CBase_factorizer
         {
             device = thisIndex;
             file = NULL;
-            Common = mainProxy.get_common();
             cm = &Common;
+        }
+
+        void initialize ()
+        {
+            /* ---------------------------------------------------------------------- */
+            /* start CHOLMOD and set parameters */
+            /* ---------------------------------------------------------------------- */
+
+            cholmod_l_start (cm) ;
+            CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
+
+            /* cm->useGPU = 1; */
+            cm->prefer_zomplex = prefer_zomplex ;
+
+            /* use default parameter settings, except for the error handler.  This
+             * demo program terminates if an error occurs (out of memory, not positive
+             * definite, ...).  It makes the demo program simpler (no need to check
+             * CHOLMOD error conditions).  This non-default parameter setting has no
+             * effect on performance. */
+            cm->error_handler = NULL;
+
+            /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
+             * default, automatically selecting the latter if flop/nnz(L) < 40. */
+
+            cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm, device);
         }
 
         void factorize (std::string filename)
@@ -785,6 +781,11 @@ class factorizer : public CBase_factorizer
             cholmod_l_free_sparse (&A, cm) ;
             cholmod_l_free_dense (&B, cm) ;
             }
+        }
+
+        void destroy ()
+        {
+            cholmod_l_finish (cm) ;
         }
 };
 

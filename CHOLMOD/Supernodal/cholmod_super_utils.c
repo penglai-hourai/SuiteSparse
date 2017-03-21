@@ -91,7 +91,7 @@ void CHOLMOD (qRevSort) (Int *key, Int *value, Int low, Int high)
     return;
 }
 
-void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
+void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common, int pdev)
 {
     const char* env_use_gpu;
     const char* env_max_bytes;
@@ -99,7 +99,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
     const char* env_max_fraction;
     double max_fraction;
 #ifdef GPU_BLAS
-    int device;
+    int device, dev_l, dev_h;
 #endif
 
     double timestamp;
@@ -205,8 +205,18 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
         timestamp = SuiteSparse_time();
         if ( Common->useGPU == 1 )
         {
+            if (pdev < 0)
+            {
+                dev_l = 0;
+                dev_h = Common->cuda_gpu_num;
+            }
+            else
+            {
+                dev_l = pdev;
+                dev_h = dev_l + 1;
+            }
             /* Cholesky + GPU, so allocate space */
-            for (device = 0; device < Common->cuda_gpu_num; device++)
+            for (device = dev_l; device < dev_h; device++)
             {
                 /* fprintf (stderr, "allocate GPU:\n") ; */
                 CHOLMOD(gpu_allocate) ( Common, device );

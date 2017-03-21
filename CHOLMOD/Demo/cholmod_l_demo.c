@@ -134,7 +134,7 @@ int main (int argc, char **argv)
     SuiteSparse_version (ver) ;
     printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
-    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
+    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm, -1);
 
     A = cholmod_l_read_sparse (f, cm) ;
     if (ff != NULL)
