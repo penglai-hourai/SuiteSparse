@@ -91,7 +91,7 @@ class main : public CBase_main
             factorizers.factorize(nfiles);
             factorizers.destroy();
 #else
-            factorizers[1].cholesky(nfiles);
+            factorizers[0].cholesky(nfiles);
 #endif
 
             for (k = 0; k < nfiles; k++)
@@ -162,7 +162,7 @@ class factorizer : public CBase_factorizer
              * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
             cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-            printf ("device %d initialized\n", device);
+            printf ("device %d initialized devBuffSize = %ld\n", device, cm->devBuffSize);
         }
 
         void factorize (int nfiles)
@@ -196,7 +196,7 @@ class factorizer : public CBase_factorizer
                         file = stdin;
                     else
                         file = fopen (filename.c_str(), "r");
-            printf ("device %d factorizing file %s\n", device, filename.c_str());
+                    printf ("device %d factorizing file %s\n", device, filename.c_str());
 
                     if (file != NULL)
                     {

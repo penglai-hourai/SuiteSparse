@@ -1237,6 +1237,29 @@ ret:
 
     printf ("cleanup time = %lf\n", SuiteSparse_time() - timestamp);
 
+    {
+        Int i, j, k, p;
+        FILE *file;
+        file = fopen ("log", "w");
+        for (s = 0; s < nsuper; s++)
+        {
+            for (j = Super[s]; j < Super[s+1]; j++)
+            {
+                for (p = Ap[j]; p < Ap[j+1]; p++)
+                {
+                    i = Ai[p];
+                    fprintf (file, "A[%04ld,%04ld] = %16.16lf\n", j, i, Ax[p]);
+                }
+            }
+        }
+        for (s = 0; s < nsuper; s++)
+        {
+            fprintf (file, "s: %04ld col: %04ld - %04ld row: %04ld - %04ld, index: %04ld - %04ld\n", s, Super[s], Super[s+1], Lpi[s], Lpi[s+1], Lpx[s], Lpi[s+1]);
+            for (k = Lpi[s]; k < Lpi[s+1]; k++)
+                fprintf (file, "L[%04ld,%04ld] = %16.16lf\n", s, k, Lx[k]);
+        }
+    }
+
     return (Common->status >= CHOLMOD_OK) ;
 
 }
