@@ -103,10 +103,11 @@ static int TEMPLATE (cholmod_super_numeric)
     /* -- workspace -- */
     cholmod_dense *Cwork,       /* size (L->maxcsize)-by-1 */
     /* --------------- */
-    cholmod_common *Common,
-    int pdev 
+    cholmod_common *Common
     )
 {
+    const int pdev = Common->pdev;
+
     omp_lock_t *front_lock;
     const double one  [2] = {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     const double zero [2] = {0, 0} ;    /* BETA for *syrk, *herk, and *gemm */
@@ -225,6 +226,8 @@ static int TEMPLATE (cholmod_super_numeric)
         vdev_h = vdev_l + MIN (Common->cuda_gpu_parallel, t_max); 
     }
 
+    printf ("cuda_gpu_num = %d cuda_gpu_parallel = %d pdev = %d vdev_l = %d vdev_h = %d\n", Common->cuda_gpu_num, Common->cuda_gpu_parallel, pdev, vdev_l, vdev_h);
+
     for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
     {
         L->Map_queue[vdevice] = CHOLMOD (malloc) (n, sizeof(Int), Common);
@@ -259,7 +262,6 @@ static int TEMPLATE (cholmod_super_numeric)
     magma_init();
 #endif
     for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
-    //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
     {
         device = vdevice / Common->cuda_gpu_parallel;
         gpu_p_queue[vdevice].device = device;

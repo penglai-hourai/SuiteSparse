@@ -445,6 +445,8 @@ enum {
 
 typedef struct cholmod_common_struct
 {
+    int pdev;
+
     /* ---------------------------------------------------------------------- */
     /* parameters for symbolic/numeric factorization and update/downdate */
     /* ---------------------------------------------------------------------- */
@@ -1025,13 +1027,13 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_VGPU_NUM];
 
     /* a set of streams for general use */
-    CHOLMOD_CUDASTREAM    gpuStream[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_CUDASTREAM    gpuStream[CUDA_VGPU_NUM][CHOLMOD_DEVICE_STREAMS];
 
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CUDA_VGPU_NUM] [3] ;
     CHOLMOD_CUDAEVENT     updateCKernelsComplete[CUDA_VGPU_NUM];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 #ifdef MAGMA
-    CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_VGPU_NUM][CHOLMOD_HOST_SUPERNODE_BUFFERS];
+    CHOLMOD_MAGMAQUEUE    magmaQueue[CUDA_VGPU_NUM][CHOLMOD_DEVICE_STREAMS];
 #endif
     void *dev_mempool[CUDA_GPU_NUM];    /* pointer to single allocation of device memory */
     size_t dev_mempool_size[CUDA_GPU_NUM];

@@ -91,8 +91,10 @@ void CHOLMOD (qRevSort) (Int *key, Int *value, Int low, Int high)
     return;
 }
 
-void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common, int pdev)
+void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
 {
+    const int pdev = Common->pdev;
+
     const char* env_use_gpu;
     const char* env_max_bytes;
     size_t max_bytes;

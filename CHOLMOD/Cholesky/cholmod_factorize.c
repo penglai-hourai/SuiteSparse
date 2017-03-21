@@ -78,14 +78,15 @@ int CHOLMOD(factorize)
     /* ---- in/out --- */
     cholmod_factor *L,	/* resulting factorization */
     /* --------------- */
-    cholmod_common *Common,
-    int pdev
+    cholmod_common *Common
 )
 {
+    const int pdev = Common->pdev;
+
     double zero [2] ;
     zero [0] = 0 ;
     zero [1] = 0 ;
-    return (CHOLMOD(factorize_p) (A, zero, NULL, 0, L, Common, pdev)) ;
+    return (CHOLMOD(factorize_p) (A, zero, NULL, 0, L, Common)) ;
 }
 
 
@@ -105,10 +106,11 @@ int CHOLMOD(factorize_p)
     /* ---- in/out --- */
     cholmod_factor *L,	/* resulting factorization */
     /* --------------- */
-    cholmod_common *Common,
-    int pdev
+    cholmod_common *Common
 )
 {
+    const int pdev = Common->pdev;
+
     cholmod_sparse *S, *F, *A1, *A2 ;
     Int nrow, ncol, stype, convert, n, nsuper, grow2, status ;
     size_t s, t, uncol ;
@@ -264,7 +266,7 @@ int CHOLMOD(factorize_p)
 	/* workspace: Flag (nrow), Head (nrow+1), Iwork (2*nrow+2*nsuper) */
 	if (Common->status == CHOLMOD_OK)
 	{
-	    CHOLMOD(super_numeric) (S, F, beta, L, Common, pdev) ;
+	    CHOLMOD(super_numeric) (S, F, beta, L, Common) ;
 	}
 	status = Common->status ;
 	ASSERT (IMPLIES (status >= CHOLMOD_OK, L->xtype != CHOLMOD_PATTERN)) ;

@@ -134,7 +134,7 @@ int main (int argc, char **argv)
     SuiteSparse_version (ver) ;
     printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
-    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm, -1);
+    cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
 
     A = cholmod_l_read_sparse (f, cm) ;
     if (ff != NULL)
@@ -285,7 +285,7 @@ int main (int argc, char **argv)
     {
 	printf ("Factorizing A*A'+beta*I\n") ;
 	t = CPUTIME ;
-	cholmod_l_factorize_p (A, beta, NULL, 0, L, cm, -1) ;
+	cholmod_l_factorize_p (A, beta, NULL, 0, L, cm) ;
 	tf = CPUTIME - t ;
 	tf = MAX (tf, 0) ;
     }
@@ -293,7 +293,7 @@ int main (int argc, char **argv)
     {
 	printf ("Factorizing A\n") ;
 	t = CPUTIME ;
-	cholmod_l_factorize (A, L, cm, -1) ;
+	cholmod_l_factorize (A, L, cm) ;
 	tf = CPUTIME - t ;
 	tf = MAX (tf, 0) ;
     }

@@ -20,7 +20,7 @@ int main (void)
     double one [2] = {1,0}, m1 [2] = {-1,0} ;	    /* basic scalars */
     cholmod_common c ;
     cholmod_start (&c) ;			    /* start CHOLMOD */
-    cholmod_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, &c, -1);
+    cholmod_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, &c);
     A = cholmod_read_sparse (stdin, &c) ;	    /* read in a matrix */
     cholmod_print_sparse (A, "A", &c) ;		    /* print the matrix */
     if (A == NULL || A->stype == 0)		    /* A must be symmetric */
@@ -31,7 +31,7 @@ int main (void)
     }
     b = cholmod_ones (A->nrow, 1, A->xtype, &c) ;   /* b = ones(n,1) */
     L = cholmod_analyze (A, &c) ;		    /* analyze */
-    cholmod_factorize (A, L, &c, -1) ;		    /* factorize */
+    cholmod_factorize (A, L, &c) ;		    /* factorize */
     x = cholmod_solve (CHOLMOD_A, L, b, &c) ;	    /* solve Ax=b */
     r = cholmod_copy_dense (b, &c) ;		    /* r = b */
 #ifndef NMATRIXOPS

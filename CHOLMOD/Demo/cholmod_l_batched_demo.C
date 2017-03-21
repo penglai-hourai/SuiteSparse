@@ -146,6 +146,8 @@ class factorizer : public CBase_factorizer
             cholmod_l_start (cm) ;
             CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
 
+            cm->pdev = device;
+
             /* cm->useGPU = 1; */
             cm->prefer_zomplex = prefer_zomplex ;
 
@@ -159,7 +161,7 @@ class factorizer : public CBase_factorizer
             /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
              * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
-            cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm, device);
+            cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
             printf ("device %d initialized\n", device);
         }
 
@@ -335,7 +337,7 @@ class factorizer : public CBase_factorizer
                         {
                             printf ("Factorizing A*A'+beta*I\n") ;
                             t = CPUTIME ;
-                            cholmod_l_factorize_p (A, beta, NULL, 0, L, cm, device) ;
+                            cholmod_l_factorize_p (A, beta, NULL, 0, L, cm) ;
                             tf = CPUTIME - t ;
                             tf = MAX (tf, 0) ;
                         }
@@ -343,7 +345,7 @@ class factorizer : public CBase_factorizer
                         {
                             printf ("Factorizing A\n") ;
                             t = CPUTIME ;
-                            cholmod_l_factorize (A, L, cm, device) ;
+                            cholmod_l_factorize (A, L, cm) ;
                             tf = CPUTIME - t ;
                             tf = MAX (tf, 0) ;
                         }

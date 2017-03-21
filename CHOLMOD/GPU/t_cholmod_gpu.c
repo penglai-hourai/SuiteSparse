@@ -158,7 +158,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
         /* create each CUDA stream */
         /* ------------------------------------------------------------------ */
 
-        for ( i=0; i<CHOLMOD_HOST_SUPERNODE_BUFFERS; i++ ) {
+        for ( i=0; i<CHOLMOD_DEVICE_STREAMS; i++ ) {
             cudaErr = cudaStreamCreate ( &(Common->gpuStream[vdevice][i]) );
             if (cudaErr != cudaSuccess) {
                 ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
@@ -1380,7 +1380,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
         }
 
         cublasStatus = cublasSetStream ( Common->cublasHandle[vdevice],
-                                         Common->gpuStream[vdevice][ibuf] );
+                                         Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS] );
 
         if ( cublasStatus != CUBLAS_STATUS_SUCCESS )
         {
@@ -1414,7 +1414,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             gpu_lda,
             devPtrB + gpu_row_start,
             gpu_ldb,
-            Common->magmaQueue[vdevice][ibuf]) ;
+            Common->magmaQueue[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]) ;
 #endif
 #else
 #ifndef MAGMA
@@ -1443,7 +1443,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             gpu_lda,
             (cuDoubleComplex *)devPtrB + gpu_row_start ,
             gpu_ldb,
-            Common->magmaQueue[vdevice][ibuf]) ;
+            Common->magmaQueue[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]) ;
 #endif
 #endif
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1465,19 +1465,18 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             sizeof (devPtrB [0]),
             nscol2,
             cudaMemcpyDeviceToHost,
-            Common->gpuStream[vdevice][ibuf]);
+            Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]);
 
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
         }
 
-        cudaEventRecord ( Common->updateCBuffersFree[vdevice][ibuf],
-                          Common->gpuStream[vdevice][ibuf] );
+        cudaEventRecord ( Common->updateCBuffersFree[vdevice][ibuf%CHOLMOD_HOST_SUPERNODE_BUFFERS],
+                          Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS] );
 
         gpu_row_start += gpu_row_chunk;
         ibuf++;
-        ibuf = ibuf % CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
         iblock ++;
 

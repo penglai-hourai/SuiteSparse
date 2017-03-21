@@ -114,12 +114,11 @@ int cholmod_super_numeric
     /* ---- in/out --- */
     cholmod_factor *L,	/* factorization */
     /* --------------- */
-    cholmod_common *Common,
-    int pdev
+    cholmod_common *Common
 ) ;
 
 int cholmod_l_super_numeric (cholmod_sparse *, cholmod_sparse *, double *,
-    cholmod_factor *, cholmod_common *, int) ;
+    cholmod_factor *, cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_super_lsolve */
