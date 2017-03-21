@@ -117,7 +117,7 @@ SUITESPARSE_VERSION = 4.5.3
             # use the Intel icc compiler for C codes, and -qopenmp for OpenMP
             CC = icc -D_GNU_SOURCE
             CXX = $(CC)
-            CFOPENMP = -qopenmp -I$(MKLROOT)/include
+            CFOPENMP = -fopenmp -I$(MKLROOT)/include
         endif
         ifneq ($(shell which ifort 2>/dev/null),)
             # use the Intel ifort compiler for Fortran codes

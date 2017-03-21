@@ -297,7 +297,7 @@
 #endif
 
 #ifndef NMATRICES
-#define NMATRICES 16
+#define NMATRICES 64
 #endif
 
 enum {

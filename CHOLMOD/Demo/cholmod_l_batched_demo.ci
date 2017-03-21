@@ -6,13 +6,7 @@ mainmodule cholmod_l_batched_demo
 
     readonly int prefer_zomplex;
 
-    readonly FILE *ff[NMATRICES];
-    readonly FILE *f[NMATRICES];
-    readonly omp_lock_t file_lock[NMATRICES];
     readonly cholmod_common *cm;
-    readonly int findex[CUDA_GPU_NUM];
-
-    message factorize_parameter_message;
 
     mainchare main
     {
@@ -22,6 +16,6 @@ mainmodule cholmod_l_batched_demo
     array [1D] factorizer
     {
         entry factorizer (void);
-        entry [sync] void factorize (factorize_parameter_message *msg);
+        entry [sync] void factorize (std::string filename);
     };
 };

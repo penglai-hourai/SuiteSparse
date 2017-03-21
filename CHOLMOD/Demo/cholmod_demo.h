@@ -7,11 +7,15 @@
  * -------------------------------------------------------------------------- */
 
 #include "cholmod.h"
-#include <string.h>
 #include <ctype.h>
-#include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#ifdef __cplusplus
+#include <string>
+#endif
+
 #define TRUE 1
 #define FALSE 0
 

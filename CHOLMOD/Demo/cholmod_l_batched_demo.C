@@ -35,53 +35,28 @@
 
 #define NTRIALS 100
 
-static void my_handler (int status, const char *file, int line, const char *message);
-
 CProxy_main mainProxy;
 
 int prefer_zomplex;
 
-/* ff is a global variable so that it can be closed by my_handler */
-FILE *ff [NMATRICES];
-FILE *f [NMATRICES];
-
-omp_lock_t file_lock [NMATRICES];
 cholmod_common Common, *cm ;
-
-int findex[CUDA_GPU_NUM];
-
-class factorize_parameter_message : public CMessage_factorize_parameter_message
-{
-    private:
-
-    public:
-        FILE **ff;
-        FILE **f;
-        int findex;
-        cholmod_common *cm;
-
-        factorize_parameter_message (FILE **ff, FILE **f, int findex, cholmod_common *cm)
-        {
-            this->ff = ff;
-            this->f = f;
-            this->findex = findex;
-            this->cm = cm;
-        }
-};
 
 class main : public CBase_main
 {
     private:
 
     public:
-        int nfiles;
-
         main (CkArgMsg *msg)
         {
+            int ver [3] ;
+
             int k, device;
 
+            int nfiles;
+            std::string filename;
             int nGPUs;
-            int ver [3] ;
+
+            omp_lock_t file_lock [NMATRICES];
 
             int argc = msg->argc;
             char **argv = msg->argv;
@@ -89,35 +64,11 @@ class main : public CBase_main
             mainProxy = thisProxy;
 
             nfiles = argc - 1;
+            if (nfiles == 0)
+                nfiles = 1;
 
             for (k = 0; k < nfiles; k++)
                 omp_init_lock (&file_lock[k]);
-
-            /* ---------------------------------------------------------------------- */
-            /* get the file containing the input matrix */
-            /* ---------------------------------------------------------------------- */
-
-            for (k = 0; k < NMATRICES; k++)
-            {
-                ff[k] = NULL ;
-                f[k] = NULL ;
-            }
-            prefer_zomplex = 0 ;
-            if (argc > 1)
-                for (k = 1; k < argc; k++)
-                {
-                    if ((f[k-1] = fopen (argv [k], "r")) == NULL)
-                    {
-                        my_handler (CHOLMOD_INVALID, __FILE__, __LINE__,
-                                "unable to open file") ;
-                    }
-                    ff[k-1] = f[k-1] ;
-                    prefer_zomplex = (argc > NMATRICES + 1) ;
-                }
-            else
-            {
-                f[0] = stdin ;
-            }
 
             /* ---------------------------------------------------------------------- */
             /* start CHOLMOD and set parameters */
@@ -135,7 +86,7 @@ class main : public CBase_main
              * definite, ...).  It makes the demo program simpler (no need to check
              * CHOLMOD error conditions).  This non-default parameter setting has no
              * effect on performance. */
-            cm->error_handler = my_handler ;
+            cm->error_handler = NULL;
 
             /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
              * default, automatically selecting the latter if flop/nnz(L) < 40. */
@@ -160,12 +111,18 @@ class main : public CBase_main
 #pragma omp parallel for schedule (static)
             for (device = 0; device < nGPUs; device++)
             {
-                for (findex[device] = 0; findex[device] < nfiles; findex[device]++)
+                int findex;
+
+                for (findex = 0; findex < nfiles; findex++)
                 {
-                    if (omp_test_lock(&file_lock[findex[device]]))
+                    if (omp_test_lock(&file_lock[findex]))
                     {
-                        CkPrintf ("device %d factorizes file %d\n", device, findex[device]);
-                        factorizers[device].factorize(new factorize_parameter_message(ff, f, findex[device], cm));
+                        CkPrintf ("device %d factorizes file %d\n", device, findex);
+                        if (argc == 1)
+                            filename = "";
+                        else
+                            filename = argv[findex+1];
+                        factorizers[device].factorize(filename);
                     }
                 }
             }
@@ -182,44 +139,27 @@ class main : public CBase_main
         }
 };
 
-/* halt if an error occurs */
-static void my_handler (int status, const char *file, int line, const char *message)
-{
-    int k;
-
-    printf ("cholmod error: file: %s line: %d status: %d: %s\n",
-            file, line, status, message) ;
-    if (status < 0)
-    {
-        for (k = 0; k < NMATRICES; k++)
-            if (ff[k] != NULL) fclose (ff[k]) ;
-        exit (0) ;
-    }
-}
-
 class factorizer : public CBase_factorizer
 {
     private:
         int device;
+        FILE *file;
 
     public:
         factorizer ()
         {
             device = thisIndex;
+            file = NULL;
         }
 
         factorizer (CkMigrateMessage *msg)
         {
             device = thisIndex;
+            file = NULL;
         }
 
-        void factorize (factorize_parameter_message *msg)
+        void factorize (std::string filename)
         {
-            FILE **ff = msg->ff;
-            FILE **f = msg->f;
-            int findex = msg->findex;
-            cholmod_common *cm = msg->cm;
-
             int k;
 
             double resid [4], t, ta, tf, ts [3], tot, bnorm, xnorm, anorm, rnorm, fl,
@@ -236,6 +176,13 @@ class factorizer : public CBase_factorizer
             if (device != 0)
                 return;
 
+            if (filename.empty())
+                file = stdin;
+            else
+                file = fopen (filename.c_str(), "r");
+
+            if (file != NULL)
+            {
             printf ("checkpoint 0\n");
             ts[0] = 0.;
             ts[1] = 0.;
@@ -254,16 +201,17 @@ class factorizer : public CBase_factorizer
             beta [0] = 1e-6 ;
             beta [1] = 0 ;
 
+            /* ---------------------------------------------------------------------- */
+            /* get the file containing the input matrix */
+            /* ---------------------------------------------------------------------- */
+
             printf ("checkpoint 1\n");
-            A = cholmod_l_read_sparse (f[findex], cm) ;
+            A = cholmod_l_read_sparse (file, cm) ;
             printf ("checkpoint 2\n");
-            if (ff[findex] != NULL)
-            {
-                fclose (ff[findex]) ;
-                ff[findex] = NULL ;
-            }
-            anorm = 1 ;
+            if (filename.empty())
+                fclose (file);
             printf ("checkpoint 3\n");
+            anorm = 1 ;
 #ifndef NMATRIXOPS
             anorm = cholmod_l_norm_sparse (A, 0, cm) ;
             printf ("checkpoint 4\n");
@@ -822,6 +770,7 @@ class factorizer : public CBase_factorizer
 
             cholmod_l_free_sparse (&A, cm) ;
             cholmod_l_free_dense (&B, cm) ;
+            }
         }
 };
 
