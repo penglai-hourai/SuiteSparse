@@ -14,8 +14,8 @@ mainmodule cholmod_l_batched_demo
     array [1D] factorizer
     {
         entry factorizer (void);
-        entry [sync] void initialize ();
-        entry [sync] void factorize (std::string filename);
-        entry [sync] void destroy ();
+        entry [local] void initialize ();
+        entry [local] void factorize (std::string filename);
+        entry [local] void destroy ();
     };
 };

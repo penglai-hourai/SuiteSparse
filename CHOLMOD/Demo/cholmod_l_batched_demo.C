@@ -80,13 +80,17 @@ class main : public CBase_main
             SuiteSparse_version (ver) ;
             printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
+            printf ("checkpoint -0\n");
             cudaGetDeviceCount(&nGPUs);
 
+            printf ("checkpoint -1\n");
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
 
+            printf ("checkpoint -2\n");
             for (device = 0; device < nGPUs; device++)
-                        factorizers[device].initialize();
+                factorizers[device].initialize();
 
+            printf ("checkpoint -3\n");
 #if 1
 #pragma omp parallel for schedule (static)
             for (device = 0; device < nGPUs; device++)
@@ -108,9 +112,11 @@ class main : public CBase_main
             }
 #endif
 
+            printf ("checkpoint -4\n");
             for (device = 0; device < nGPUs; device++)
-                        factorizers[device].destroy();
+                factorizers[device].destroy();
 
+            printf ("checkpoint -5\n");
             while (TRUE);
 
             for (k = 0; k < nfiles; k++)
@@ -145,6 +151,7 @@ class factorizer : public CBase_factorizer
 
         void initialize ()
         {
+            printf ("device %d initializing\n", device);
             /* ---------------------------------------------------------------------- */
             /* start CHOLMOD and set parameters */
             /* ---------------------------------------------------------------------- */
@@ -166,6 +173,7 @@ class factorizer : public CBase_factorizer
              * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
             cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm, device);
+            printf ("device %d initialized\n", device);
         }
 
         void factorize (std::string filename)
