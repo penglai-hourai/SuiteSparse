@@ -91,7 +91,7 @@ class main : public CBase_main
             factorizers.factorize(nfiles);
             factorizers.destroy();
 #else
-            factorizers[0].cholesky(nfiles);
+            factorizers.cholesky(nfiles);
 #endif
 
             for (k = 0; k < nfiles; k++)
@@ -137,8 +137,8 @@ class factorizer : public CBase_factorizer
             int device = thisIndex;
             cholmod_common *cm = &Common;
 
-            printf ("device %d initializing\n", device);
-            printf ("device = %d cm = %lx\n", device, cm);
+            printf ("================ device %d initialize begin\n", device);
+
             /* ---------------------------------------------------------------------- */
             /* start CHOLMOD and set parameters */
             /* ---------------------------------------------------------------------- */
@@ -162,7 +162,8 @@ class factorizer : public CBase_factorizer
              * default, automatically selecting the latter if flop/nnz(L) < 40. */
 
             cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-            printf ("device %d initialized devBuffSize = %ld\n", device, cm->devBuffSize);
+
+            printf ("================ device %d initialize end\n", device);
         }
 
         void factorize (int nfiles)
@@ -185,8 +186,8 @@ class factorizer : public CBase_factorizer
             int trial, method, L_is_super ;
             int nmethods ;
 
-            printf ("device %d factorizing\n", device);
-            printf ("device = %d cm = %lx\n", device, cm);
+            printf ("================ device %d factorize begin\n", device);
+
             for (findex = 0; findex < nfiles; findex++)
             {
                 if (mainProxy.lock_file(findex))
@@ -196,7 +197,8 @@ class factorizer : public CBase_factorizer
                         file = stdin;
                     else
                         file = fopen (filename.c_str(), "r");
-                    printf ("device %d factorizing file %s\n", device, filename.c_str());
+
+                    CkPrintf("================ device %d factorizes file %s\n", device, filename.c_str());
 
                     if (file != NULL)
                     {
@@ -785,7 +787,8 @@ class factorizer : public CBase_factorizer
                     }
                 }
             }
-            printf ("device %d factorized\n", device);
+
+            printf ("================ device %d factorize end\n", device);
         }
 
         void destroy ()
@@ -793,9 +796,11 @@ class factorizer : public CBase_factorizer
             int device = thisIndex;
             cholmod_common *cm = &Common;
 
-            printf ("device %d destroying\n", device);
+            printf ("================ device %d free begin\n", device);
+
             cholmod_l_finish (cm) ;
-            printf ("device %d destroyed\n", device);
+
+            printf ("================ device %d free end\n", device);
         }
 
         void cholesky (int nfiles)

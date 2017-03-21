@@ -163,6 +163,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
  * more than 1 GB of device memory.
  */
 
+#if 0
 int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
 {
 
@@ -194,6 +195,7 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
     /* no GPU is available */
     return 0;  /* useGPU = 0 */
 }
+#endif
 
 /* ========================================================================== */
 /* === cholmod_gpu_deallocate =============================================== */
