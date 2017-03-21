@@ -165,7 +165,6 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common, int pdev)
         if ( Common->useGPU == 1 )
         {
             /* fprintf (stderr, "\nprobe GPU:\n") ; */
-            Common->useGPU = CHOLMOD(gpu_probe) (Common); 
             CHOLMOD_HANDLE_CUDA_ERROR (cudaGetDeviceCount(&(Common->cuda_gpu_num)), "cudaGetDeviceCount error");
             if (Common->cuda_gpu_num > CUDA_GPU_NUM)
                 Common->cuda_gpu_num = CUDA_GPU_NUM;
@@ -215,6 +214,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common, int pdev)
                 dev_l = pdev;
                 dev_h = dev_l + 1;
             }
+            Common->useGPU = CHOLMOD(gpu_probe) (Common, dev_l); 
             /* Cholesky + GPU, so allocate space */
             for (device = dev_l; device < dev_h; device++)
             {

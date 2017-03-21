@@ -41,16 +41,20 @@
 
 #ifdef GPU_BLAS
 
-static int poll_gpu (size_t s)          /* TRUE if OK, FALSE otherwise */
+static int poll_gpu (size_t s, int device)          /* TRUE if OK, FALSE otherwise */
 {
     /* Returns TRUE if the GPU has a block of memory of size s,
        FALSE otherwise.  The block of memory is immediately freed. */
     void *p = NULL ;
+
     /* double t = SuiteSparse_time ( ) ; */
     if (s == 0)
     {
         return (FALSE) ;
     }
+
+    cudaSetDevice(device);
+
     if (cudaMalloc (&p, s) != cudaSuccess)
     {
         /* t = SuiteSparse_time ( ) - t ; */
@@ -69,7 +73,8 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 (
     size_t         *total_mem,
     size_t         *available_mem,
-    cholmod_common *Common
+    cholmod_common *Common,
+    int device
 )
 {
     size_t good, bad, s, total_free, total_memory ;
@@ -87,6 +92,8 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
         return (0) ;                    /* not using the GPU at all */
     }
 
+    cudaSetDevice(device);
+
 #ifdef GPU_BLAS
 
     /* find the total amount of free memory */
@@ -96,6 +103,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
     /* printf ("free %lu tot %lu time %g\n", total_free, total_memory, t) ; */
 
     *total_mem = total_memory;
+    printf ("device = %d totalfree = %ld MINSIZE = %ld\n", device, total_free, MINSIZE);
 
     if (total_free < MINSIZE)
     {
@@ -104,7 +112,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 
     /* try a bit less than the total free memory */
     s = MAX (MINSIZE, total_free*0.98) ;
-    if (poll_gpu (s))
+    if (poll_gpu (s, device))
     {
         /* printf ("quick %lu\n", s) ; */
         *available_mem = s;
@@ -112,7 +120,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
     }
 
     /* ensure s = 64 MB is OK */
-    if (!poll_gpu (MINSIZE))
+    if (!poll_gpu (MINSIZE, device))
     {
         return (1) ;                    /* not even 64MB; return failure code */
     }
@@ -123,7 +131,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
     for (k = 0 ; k < 8 ; k++)
     {
         s = (good + bad) / 2 ;
-        if (poll_gpu (s))
+        if (poll_gpu (s, device))
         {
             good = s ;                  /* s is OK, increase good */
         }
@@ -156,7 +164,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
  * more than 1 GB of device memory.
  */
 
-int CHOLMOD(gpu_probe) ( cholmod_common *Common )
+int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
 {
 
 #ifdef GPU_BLAS
@@ -168,6 +176,8 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
     {
         return (0) ;
     }
+
+    cudaSetDevice(device);
 
     cudaGetDeviceCount(&ngpus);
 
@@ -398,7 +408,7 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     if ( maxGpuMemFraction < 0 ) maxGpuMemFraction = 0;
     if ( maxGpuMemFraction > 1 ) maxGpuMemFraction = 1;
 
-    int err = CHOLMOD(gpu_memorysize) (&tdm,&fdm,Common) ;
+    int err = CHOLMOD(gpu_memorysize) (&tdm,&fdm,Common, device) ;
     if (err)
     {
         printf ("GPU failure in cholmod_gpu: gpu_memorysize %g %g MB\n",

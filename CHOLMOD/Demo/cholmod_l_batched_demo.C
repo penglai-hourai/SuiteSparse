@@ -82,6 +82,8 @@ class main : public CBase_main
 
             printf ("checkpoint -0\n");
             cudaGetDeviceCount(&nGPUs);
+            if (nGPUs > CUDA_GPU_NUM)
+                nGPUs = CUDA_GPU_NUM;
 
             printf ("checkpoint -1\n");
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
