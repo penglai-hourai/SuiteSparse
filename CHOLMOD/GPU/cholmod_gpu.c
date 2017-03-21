@@ -103,7 +103,6 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
     /* printf ("free %lu tot %lu time %g\n", total_free, total_memory, t) ; */
 
     *total_mem = total_memory;
-    printf ("device = %d totalfree = %ld MINSIZE = %ld\n", device, total_free, MINSIZE);
 
     if (total_free < MINSIZE)
     {

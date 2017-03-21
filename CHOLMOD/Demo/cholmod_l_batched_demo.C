@@ -80,19 +80,15 @@ class main : public CBase_main
             SuiteSparse_version (ver) ;
             printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
-            printf ("checkpoint -0\n");
             cudaGetDeviceCount(&nGPUs);
             if (nGPUs > CUDA_GPU_NUM)
                 nGPUs = CUDA_GPU_NUM;
 
-            printf ("checkpoint -1\n");
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
 
-            printf ("checkpoint -2\n");
             for (device = 0; device < nGPUs; device++)
                 factorizers[device].initialize();
 
-            printf ("checkpoint -3\n");
 #if 1
 #pragma omp parallel for schedule (static)
             for (device = 0; device < nGPUs; device++)
@@ -114,12 +110,10 @@ class main : public CBase_main
             }
 #endif
 
-            printf ("checkpoint -4\n");
             for (device = 0; device < nGPUs; device++)
                 factorizers[device].destroy();
 
-            printf ("checkpoint -5\n");
-            while (TRUE);
+            //while (TRUE);
 
             for (k = 0; k < nfiles; k++)
                 omp_destroy_lock (&file_lock[k]);
@@ -203,7 +197,6 @@ class factorizer : public CBase_factorizer
 
             if (file != NULL)
             {
-            printf ("checkpoint 0\n");
             ts[0] = 0.;
             ts[1] = 0.;
             ts[2] = 0.;
@@ -225,16 +218,12 @@ class factorizer : public CBase_factorizer
             /* get the file containing the input matrix */
             /* ---------------------------------------------------------------------- */
 
-            printf ("checkpoint 1\n");
             A = cholmod_l_read_sparse (file, cm) ;
-            printf ("checkpoint 2\n");
             if (filename.empty())
                 fclose (file);
-            printf ("checkpoint 3\n");
             anorm = 1 ;
 #ifndef NMATRIXOPS
             anorm = cholmod_l_norm_sparse (A, 0, cm) ;
-            printf ("checkpoint 4\n");
             printf ("norm (A,inf) = %g\n", anorm) ;
             printf ("norm (A,1)   = %g\n", cholmod_l_norm_sparse (A, 1, cm)) ;
 #endif
