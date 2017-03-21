@@ -39,11 +39,14 @@ CProxy_main mainProxy;
 
 int prefer_zomplex;
 
-cholmod_common Common, *cm ;
 
 class main : public CBase_main
 {
     private:
+        int argc;
+        char **argv;
+        cholmod_common Common;
+        cholmod_common *cm;
 
     public:
         main (CkArgMsg *msg)
@@ -58,8 +61,9 @@ class main : public CBase_main
 
             omp_lock_t file_lock [NMATRICES];
 
-            int argc = msg->argc;
-            char **argv = msg->argv;
+            argc = msg->argc;
+            argv = msg->argv;
+            cm = &Common;
 
             mainProxy = thisProxy;
 
@@ -74,7 +78,6 @@ class main : public CBase_main
             /* start CHOLMOD and set parameters */
             /* ---------------------------------------------------------------------- */
 
-            cm = &Common ;
             cholmod_l_start (cm) ;
             CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
 
@@ -137,6 +140,11 @@ class main : public CBase_main
 
             CkExit();
         }
+
+        cholmod_common get_common()
+        {
+            return Common;
+        }
 };
 
 class factorizer : public CBase_factorizer
@@ -144,18 +152,24 @@ class factorizer : public CBase_factorizer
     private:
         int device;
         FILE *file;
+        cholmod_common Common;
+        cholmod_common *cm;
 
     public:
         factorizer ()
         {
             device = thisIndex;
             file = NULL;
+            Common = mainProxy.get_common();
+            cm = &Common;
         }
 
         factorizer (CkMigrateMessage *msg)
         {
             device = thisIndex;
             file = NULL;
+            Common = mainProxy.get_common();
+            cm = &Common;
         }
 
         void factorize (std::string filename)

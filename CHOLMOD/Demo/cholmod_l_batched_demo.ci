@@ -6,11 +6,10 @@ mainmodule cholmod_l_batched_demo
 
     readonly int prefer_zomplex;
 
-    readonly cholmod_common *cm;
-
     mainchare main
     {
         entry main (CkArgMsg *msg);
+        entry [sync] cholmod_common get_common();
     };
 
     array [1D] factorizer
