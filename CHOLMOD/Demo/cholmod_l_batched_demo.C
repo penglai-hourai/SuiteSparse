@@ -56,7 +56,7 @@ class main : public CBase_main
         {
             int ver [3] ;
 
-            int k, device;
+            int k;
 
             argc = msg->argc;
             argv = msg->argv;
@@ -122,20 +122,24 @@ class factorizer : public CBase_factorizer
 {
     private:
         cholmod_common Common;
+        cholmod_common *cm;
 
     public:
         factorizer ()
         {
+            cm = &Common;
+            cm->pdev = 7 - thisIndex;
         }
 
         factorizer (CkMigrateMessage *msg)
         {
+            cm = &Common;
+            cm->pdev = 7 - thisIndex;
         }
 
         void initialize ()
         {
-            int device = thisIndex;
-            cholmod_common *cm = &Common;
+            const int device = cm->pdev;
 
             printf ("================ device %d initialize begin\n", device);
 
@@ -168,8 +172,7 @@ class factorizer : public CBase_factorizer
 
         void factorize (int nfiles)
         {
-            int device = thisIndex;
-            cholmod_common *cm = &Common;
+            const int device = cm->pdev;
 
             int k, findex;
             FILE *file;
@@ -793,8 +796,7 @@ class factorizer : public CBase_factorizer
 
         void destroy ()
         {
-            int device = thisIndex;
-            cholmod_common *cm = &Common;
+            const int device = cm->pdev;
 
             printf ("================ device %d free begin\n", device);
 
