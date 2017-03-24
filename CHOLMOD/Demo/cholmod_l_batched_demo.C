@@ -128,13 +128,13 @@ class factorizer : public CBase_factorizer
         factorizer ()
         {
             cm = &Common;
-            cm->pdev = 7 - thisIndex;
+            cm->pdev = thisIndex;
         }
 
         factorizer (CkMigrateMessage *msg)
         {
             cm = &Common;
-            cm->pdev = 7 - thisIndex;
+            cm->pdev = thisIndex;
         }
 
         void initialize ()
@@ -201,7 +201,7 @@ class factorizer : public CBase_factorizer
                     else
                         file = fopen (filename.c_str(), "r");
 
-                    CkPrintf("================ device %d factorizes file %s\n", device, filename.c_str());
+                    CkPrintf("================ device %d factorizes file %d: %s\n", device, findex, filename.c_str());
 
                     if (file != NULL)
                     {

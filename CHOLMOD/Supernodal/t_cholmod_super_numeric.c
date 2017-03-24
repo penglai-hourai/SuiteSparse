@@ -226,7 +226,7 @@ static int TEMPLATE (cholmod_super_numeric)
         vdev_h = vdev_l + MIN (Common->cuda_gpu_parallel, t_max); 
     }
 
-    printf ("cuda_gpu_num = %d cuda_gpu_parallel = %d pdev = %d vdev_l = %d vdev_h = %d\n", Common->cuda_gpu_num, Common->cuda_gpu_parallel, pdev, vdev_l, vdev_h);
+    //printf ("cuda_gpu_num = %d cuda_gpu_parallel = %d pdev = %d vdev_l = %d vdev_h = %d\n", Common->cuda_gpu_num, Common->cuda_gpu_parallel, pdev, vdev_l, vdev_h);
 
     for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
     {
@@ -344,7 +344,8 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
 
 #ifdef GPU_BLAS
-        if (vdevice < Common->cuda_vgpu_num && useGPU_queue[vdevice])
+        if (vdevice >= vdev_l && vdevice < vdev_h && useGPU_queue[vdevice])
+        //if (vdevice < Common->cuda_vgpu_num && useGPU_queue[vdevice])
         {
             useGPU = TRUE;
             gpu_p = &gpu_p_queue[vdevice];
@@ -358,7 +359,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
         /* clear the Map so that changes in the pattern of A can be detected */
 
-        t = vdevice;
+        t = vdevice - vdev_l;
         if (t < t_max)
             s = leaf[t];
         while (t < t_max && s < nsuper)
@@ -1227,8 +1228,11 @@ ret:
 #ifdef GPU_BLAS
     if (Common->useGPU == 1)
     {
+        if (pdev < 0)
         for (device = 0; device < Common->cuda_gpu_num; device++)
             CHOLMOD (gpu_end) (Common, device) ;
+        else
+            CHOLMOD (gpu_end) (Common, pdev) ;
     }
 #ifdef MAGMA
     magma_finalize();
@@ -1238,14 +1242,15 @@ ret:
     printf ("cleanup time = %lf\n", SuiteSparse_time() - timestamp);
 
     {
-        Int i, j, k, p;
+        char filename [16];
         FILE *file;
-        file = fopen ("log", "w");
+        memset (filename, 0, sizeof(char) * 16);
+        sprintf (filename, "log%d.log", pdev);
+        file = fopen (filename, "w");
         for (s = 0; s < nsuper; s++)
         {
             fprintf (file, "s: %04ld col: %04ld - %04ld row: %04ld - %04ld, index: %04ld - %04ld\n", s, Super[s], Super[s+1], Lpi[s], Lpi[s+1], Lpx[s], Lpx[s+1]);
-            for (k = Lpi[s]; k < Lpi[s+1]; k++)
-                fprintf (file, "L[%04ld,%04ld] = %16.16lf\n", s, k, Lx[k]);
+            fprintf (file, "L[%04ld,%04ld] = %16.16lf\n", s, Lpx[s], Lx[Lpx[s]]);
         }
     }
 
