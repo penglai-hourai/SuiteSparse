@@ -74,11 +74,11 @@ class main : public CBase_main
             /* read in a matrix */
             /* ---------------------------------------------------------------------- */
 
-            printf ("\n---------------------------------- cholmod_l_demo:\n") ;
+            CkPrintf ("\n---------------------------------- cholmod_l_demo:\n") ;
             cholmod_l_version (ver) ;
-            printf ("cholmod version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
+            CkPrintf ("cholmod version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
             SuiteSparse_version (ver) ;
-            printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
+            CkPrintf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
 
             cudaGetDeviceCount(&nGPUs);
             if (nGPUs > CUDA_GPU_NUM)
@@ -141,7 +141,7 @@ class factorizer : public CBase_factorizer
         {
             const int device = cm->pdev;
 
-            printf ("================ device %d initialize begin\n", device);
+            CkPrintf ("================ device %d initialize begin\n", device);
 
             /* ---------------------------------------------------------------------- */
             /* start CHOLMOD and set parameters */
@@ -167,7 +167,7 @@ class factorizer : public CBase_factorizer
 
             cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
 
-            printf ("================ device %d initialize end\n", device);
+            CkPrintf ("================ device %d initialize end\n", device);
         }
 
         void factorize (int nfiles)
@@ -189,7 +189,7 @@ class factorizer : public CBase_factorizer
             int trial, method, L_is_super ;
             int nmethods ;
 
-            printf ("================ device %d factorize begin\n", device);
+            CkPrintf ("================ device %d factorize begin\n", device);
 
             for (findex = 0; findex < nfiles; findex++)
             {
@@ -232,8 +232,8 @@ class factorizer : public CBase_factorizer
                         anorm = 1 ;
 #ifndef NMATRIXOPS
                         anorm = cholmod_l_norm_sparse (A, 0, cm) ;
-                        printf ("norm (A,inf) = %g\n", anorm) ;
-                        printf ("norm (A,1)   = %g\n", cholmod_l_norm_sparse (A, 1, cm)) ;
+                        CkPrintf ("norm (A,inf) = %g\n", anorm) ;
+                        CkPrintf ("norm (A,1)   = %g\n", cholmod_l_norm_sparse (A, 1, cm)) ;
 #endif
 
                         if (prefer_zomplex && A->xtype == CHOLMOD_COMPLEX)
@@ -243,7 +243,7 @@ class factorizer : public CBase_factorizer
                                uses zomplex matrix exclusively. */
                             double *Ax = (double *) (A->x) ;
                             SuiteSparse_long nz = cholmod_l_nnz (A, cm) ;
-                            printf ("nz: %ld\n", nz) ;
+                            CkPrintf ("nz: %ld\n", nz) ;
                             double *Ax2 = (double *) cholmod_l_malloc (nz, sizeof (double), cm) ;
                             double *Az2 = (double *) cholmod_l_malloc (nz, sizeof (double), cm) ;
                             for (i = 0 ; i < nz ; i++)
@@ -267,7 +267,7 @@ class factorizer : public CBase_factorizer
                             cholmod_sparse *C = cholmod_l_transpose (A, 2, cm) ;
                             cholmod_l_free_sparse (&A, cm) ;
                             A = C ;
-                            printf ("transposing input matrix\n") ;
+                            CkPrintf ("transposing input matrix\n") ;
                         }
 
                         /* ---------------------------------------------------------------------- */
@@ -324,7 +324,7 @@ class factorizer : public CBase_factorizer
                         bnorm = 1 ;
 #ifndef NMATRIXOPS
                         bnorm = cholmod_l_norm_dense (B, 0, cm) ;	/* max norm */
-                        printf ("bnorm %g\n", bnorm) ;
+                        CkPrintf ("bnorm %g\n", bnorm) ;
 #endif
 
                         /* ---------------------------------------------------------------------- */
@@ -336,11 +336,11 @@ class factorizer : public CBase_factorizer
                         ta = CPUTIME - t ;
                         ta = MAX (ta, 0) ;
 
-                        printf ("Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
+                        CkPrintf ("Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
 
                         if (A->stype == 0)
                         {
-                            printf ("Factorizing A*A'+beta*I\n") ;
+                            CkPrintf ("Factorizing A*A'+beta*I\n") ;
                             t = CPUTIME ;
                             cholmod_l_factorize_p (A, beta, NULL, 0, L, cm) ;
                             tf = CPUTIME - t ;
@@ -348,7 +348,7 @@ class factorizer : public CBase_factorizer
                         }
                         else
                         {
-                            printf ("Factorizing A\n") ;
+                            CkPrintf ("Factorizing A\n") ;
                             t = CPUTIME ;
                             cholmod_l_factorize (A, L, cm) ;
                             tf = CPUTIME - t ;
@@ -407,7 +407,7 @@ class factorizer : public CBase_factorizer
                         {
                             nmethods = 3 ;
                         }
-                        printf ("nmethods: %d\n", nmethods) ;
+                        CkPrintf ("nmethods: %d\n", nmethods) ;
 
                         for (method = 0 ; method <= nmethods ; method++)
                         {
@@ -653,7 +653,7 @@ class factorizer : public CBase_factorizer
                                 axbnorm = (anorm * xnorm + bnorm + ((n == 0) ? 1 : 0)) ;
                                 resid [method] = rnorm / axbnorm ;
 #else
-                                printf ("residual not computed (requires CHOLMOD/MatrixOps)\n") ;
+                                CkPrintf ("residual not computed (requires CHOLMOD/MatrixOps)\n") ;
 #endif
                             }
                         }
@@ -708,70 +708,70 @@ class factorizer : public CBase_factorizer
                             ordering = cm->method [i].ordering ;
                             if (fl >= 0)
                             {
-                                printf ("Ordering: ") ;
-                                if (ordering == CHOLMOD_POSTORDERED) printf ("postordered ") ;
-                                if (ordering == CHOLMOD_NATURAL)     printf ("natural ") ;
-                                if (ordering == CHOLMOD_GIVEN)	 printf ("user    ") ;
-                                if (ordering == CHOLMOD_AMD)	 printf ("AMD     ") ;
-                                if (ordering == CHOLMOD_METIS)	 printf ("METIS   ") ;
-                                if (ordering == CHOLMOD_NESDIS)      printf ("NESDIS  ") ;
+                                CkPrintf ("Ordering: ") ;
+                                if (ordering == CHOLMOD_POSTORDERED) CkPrintf ("postordered ") ;
+                                if (ordering == CHOLMOD_NATURAL)     CkPrintf ("natural ") ;
+                                if (ordering == CHOLMOD_GIVEN)	 CkPrintf ("user    ") ;
+                                if (ordering == CHOLMOD_AMD)	 CkPrintf ("AMD     ") ;
+                                if (ordering == CHOLMOD_METIS)	 CkPrintf ("METIS   ") ;
+                                if (ordering == CHOLMOD_NESDIS)      CkPrintf ("NESDIS  ") ;
                                 if (xlnz > 0)
                                 {
-                                    printf ("fl/lnz %10.1f", fl / xlnz) ;
+                                    CkPrintf ("fl/lnz %10.1f", fl / xlnz) ;
                                 }
                                 if (anz > 0)
                                 {
-                                    printf ("  lnz/anz %10.1f", xlnz / anz) ;
+                                    CkPrintf ("  lnz/anz %10.1f", xlnz / anz) ;
                                 }
-                                printf ("\n") ;
+                                CkPrintf ("\n") ;
                             }
                         }
 
-                        printf ("ints in L: %15.0f, doubles in L: %15.0f\n",
+                        CkPrintf ("ints in L: %15.0f, doubles in L: %15.0f\n",
                                 (double) isize, (double) xsize) ;
-                        printf ("factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
+                        CkPrintf ("factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
                                 cm->fl, cm->lnz) ;
                         if (A->stype == 0)
                         {
-                            printf ("nnz(A):    %15.0f\n", cm->anz) ;
+                            CkPrintf ("nnz(A):    %15.0f\n", cm->anz) ;
                         }
                         else
                         {
-                            printf ("nnz(A*A'): %15.0f\n", cm->anz) ;
+                            CkPrintf ("nnz(A*A'): %15.0f\n", cm->anz) ;
                         }
                         if (cm->lnz > 0)
                         {
-                            printf ("flops / nnz(L):  %8.1f\n", cm->fl / cm->lnz) ;
+                            CkPrintf ("flops / nnz(L):  %8.1f\n", cm->fl / cm->lnz) ;
                         }
                         if (anz > 0)
                         {
-                            printf ("nnz(L) / nnz(A): %8.1f\n", cm->lnz / cm->anz) ;
+                            CkPrintf ("nnz(L) / nnz(A): %8.1f\n", cm->lnz / cm->anz) ;
                         }
-                        printf ("analyze cputime:  %12.4f\n", ta) ;
-                        printf ("factor  cputime:   %12.4f mflop: %8.1f\n", tf,
+                        CkPrintf ("analyze cputime:  %12.4f\n", ta) ;
+                        CkPrintf ("factor  cputime:   %12.4f mflop: %8.1f\n", tf,
                                 (tf == 0) ? 0 : (1e-6*cm->fl / tf)) ;
-                        printf ("solve   cputime:   %12.4f mflop: %8.1f\n", ts [0],
+                        CkPrintf ("solve   cputime:   %12.4f mflop: %8.1f\n", ts [0],
                                 (ts [0] == 0) ? 0 : (1e-6*4*cm->lnz / ts [0])) ;
-                        printf ("overall cputime:   %12.4f mflop: %8.1f\n", 
+                        CkPrintf ("overall cputime:   %12.4f mflop: %8.1f\n", 
                                 tot, (tot == 0) ? 0 : (1e-6 * (cm->fl + 4 * cm->lnz) / tot)) ;
-                        printf ("solve   cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [1],
+                        CkPrintf ("solve   cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [1],
                                 (ts [1] == 0) ? 0 : (1e-6*4*cm->lnz / ts [1]), NTRIALS) ;
-                        printf ("solve2  cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [2],
+                        CkPrintf ("solve2  cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [2],
                                 (ts [2] == 0) ? 0 : (1e-6*4*cm->lnz / ts [2]), NTRIALS) ;
-                        printf ("peak memory usage: %12.0f (MB)\n",
+                        CkPrintf ("peak memory usage: %12.0f (MB)\n",
                                 (double) (cm->memory_usage) / 1048576.) ;
-                        printf ("residual (|Ax-b|/(|A||x|+|b|)): ") ;
+                        CkPrintf ("residual (|Ax-b|/(|A||x|+|b|)): ") ;
                         for (method = 0 ; method <= nmethods ; method++)
                         {
-                            printf ("%8.2e ", resid [method]) ;
+                            CkPrintf ("%8.2e ", resid [method]) ;
                         }
-                        printf ("\n") ;
+                        CkPrintf ("\n") ;
                         if (resid2 >= 0)
                         {
-                            printf ("residual %8.1e (|Ax-b|/(|A||x|+|b|))"
+                            CkPrintf ("residual %8.1e (|Ax-b|/(|A||x|+|b|))"
                                     " after iterative refinement\n", resid2) ;
                         }
-                        printf ("rcond    %8.1e\n\n", rcond) ;
+                        CkPrintf ("rcond    %8.1e\n\n", rcond) ;
 
                         if (L_is_super)
                         {
@@ -791,18 +791,18 @@ class factorizer : public CBase_factorizer
                 }
             }
 
-            printf ("================ device %d factorize end\n", device);
+            CkPrintf ("================ device %d factorize end\n", device);
         }
 
         void destroy ()
         {
             const int device = cm->pdev;
 
-            printf ("================ device %d free begin\n", device);
+            CkPrintf ("================ device %d free begin\n", device);
 
             cholmod_l_finish (cm) ;
 
-            printf ("================ device %d free end\n", device);
+            CkPrintf ("================ device %d free end\n", device);
         }
 
         void cholesky (int nfiles)

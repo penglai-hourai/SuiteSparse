@@ -16,9 +16,9 @@ mainmodule cholmod_l_batched_demo
     array [1D] factorizer
     {
         entry factorizer (void);
-        entry [local] void initialize ();
-        entry [local] void factorize (int nfiles);
-        entry [local] void destroy ();
+        entry [threaded] void initialize ();
+        entry [threaded] void factorize (int nfiles);
+        entry [threaded] void destroy ();
         entry [threaded] void cholesky (int nfiles);
     };
 };

@@ -1241,6 +1241,7 @@ ret:
 
     printf ("cleanup time = %lf\n", SuiteSparse_time() - timestamp);
 
+    /*
     {
         char filename [16];
         FILE *file;
@@ -1253,6 +1254,7 @@ ret:
             fprintf (file, "L[%04ld,%04ld] = %16.16lf\n", s, Lpx[s], Lx[Lpx[s]]);
         }
     }
+    */
 
     return (Common->status >= CHOLMOD_OK) ;
 
