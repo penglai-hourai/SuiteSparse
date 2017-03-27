@@ -24,9 +24,9 @@ endif
 C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
 
-code: library cholmod_demo cholmod_l_demo cholmod_simple
+code: library cholmod_demo cholmod_l_demo cholmod_l_batched_demo cholmod_simple
 	
-charm: cholmod_l_batched_demo
+charm: cholmod_l_charm_batched_demo
 
 fortran: readhb readhb2 reade 
 
@@ -39,7 +39,7 @@ big: code
 distclean: purge
 
 purge: clean
-	- $(RM) cholmod_demo cholmod_l_demo cholmod_l_batched_demo readhb readhb2 reade
+	- $(RM) cholmod_demo cholmod_l_demo cholmod_l_batched_demo cholmod_l_charm_batched_demo readhb readhb2 reade
 	- $(RM) cholmod_simple
 	- $(RM) timelog.m
 	- $(RM) -r $(PURGE)
@@ -77,11 +77,14 @@ cholmod_simple: cholmod_simple.c
 cholmod_l_demo: cholmod_l_demo.c cholmod_demo.h
 	$(C) -o cholmod_l_demo $(I) cholmod_l_demo.c $(LIB2)
 
-cholmod_l_batched_demo: cholmod_l_batched_demo.C cholmod_l_batched_demo.decl.h cholmod_demo.h
-	$(CHARM) -language charm++ -o cholmod_l_batched_demo $(I) -c cholmod_l_batched_demo.C $(LIB2)
+cholmod_l_batched_demo: cholmod_l_batched_demo.c cholmod_demo.h
+	$(C) -o cholmod_l_batched_demo $(I) cholmod_l_batched_demo.c $(LIB2)
 
-cholmod_l_batched_demo.decl.h:
-	$(CHARM) -language charm++ $(I) cholmod_l_batched_demo.ci
+cholmod_l_charm_batched_demo: cholmod_l_charm_batched_demo.C cholmod_l_charm_batched_demo.decl.h cholmod_demo.h
+	$(CHARM) -language charm++ -o cholmod_l_charm_batched_demo $(I) -c cholmod_l_charm_batched_demo.C $(LIB2)
+
+cholmod_l_charm_batched_demo.decl.h:
+	$(CHARM) -language charm++ $(I) cholmod_l_charm_batched_demo.ci
 
 readhb: readhb.f
 	$(F77) $(FFLAGS) -o readhb readhb.f

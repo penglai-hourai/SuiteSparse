@@ -1,4 +1,4 @@
-mainmodule cholmod_l_batched_demo
+mainmodule cholmod_l_charm_batched_demo
 {
     include "cholmod_demo.h";
 
@@ -9,8 +9,11 @@ mainmodule cholmod_l_batched_demo
     mainchare main
     {
         entry main (CkArgMsg *msg);
+        entry void mark_file (int findex);
+        entry [sync] int get_mark (int findex);
         entry [sync] int lock_file (int findex);
         entry [sync] std::string get_filename (int findex);
+        entry void exit_main ();
     };
 
     array [1D] factorizer

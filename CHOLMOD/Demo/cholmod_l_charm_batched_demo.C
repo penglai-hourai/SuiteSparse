@@ -34,7 +34,7 @@
 #include <omp.h>
 
 #include "cholmod_demo.h"
-#include "cholmod_l_batched_demo.decl.h"
+#include "cholmod_l_charm_batched_demo.decl.h"
 
 #define NTRIALS 100
 
@@ -49,6 +49,7 @@ class main : public CBase_main
         char **argv;
         int nfiles;
         int nGPUs;
+        int file_mark [NMATRICES];
         omp_lock_t file_lock [NMATRICES];
 
     public:
@@ -68,7 +69,10 @@ class main : public CBase_main
                 nfiles = 1;
 
             for (k = 0; k < nfiles; k++)
+            {
                 omp_init_lock (&file_lock[k]);
+                file_mark[k] = FALSE;
+            }
 
             /* ---------------------------------------------------------------------- */
             /* read in a matrix */
@@ -91,13 +95,31 @@ class main : public CBase_main
             factorizers.factorize(nfiles);
             factorizers.destroy();
 #else
+            CkPrintf ("\n---------------------------------- cholesky begin:\n") ;
             factorizers.cholesky(nfiles);
+            CkPrintf ("\n---------------------------------- cholesky end:\n") ;
 #endif
 
+            /*
             for (k = 0; k < nfiles; k++)
+            {
+                while (file_mark[k] == FALSE);
                 omp_destroy_lock (&file_lock[k]);
+            }
 
-            //CkExit();
+            CkExit();
+            */
+        }
+
+        void mark_file (int findex)
+        {
+            file_mark[findex] = TRUE;
+            omp_destroy_lock (&file_lock[findex]);
+        }
+
+        int get_mark (int findex)
+        {
+            return file_mark[findex];
         }
 
         int lock_file (int findex)
@@ -115,6 +137,11 @@ class main : public CBase_main
                 filename = argv[findex+1];
 
             return filename;
+        }
+
+        void exit_main ()
+        {
+            CkExit();
         }
 };
 
@@ -177,6 +204,8 @@ class factorizer : public CBase_factorizer
             int k, findex;
             FILE *file;
             std::string filename;
+            FILE *log;
+            char logname[16];
 
             double resid [4], t, ta, tf, ts [3], tot, bnorm, xnorm, anorm, rnorm, fl,
                    anz, axbnorm, rnorm2, resid2, rcond ;
@@ -189,19 +218,24 @@ class factorizer : public CBase_factorizer
             int trial, method, L_is_super ;
             int nmethods ;
 
+            memset (logname, 0, sizeof(char) * 16);
+
             CkPrintf ("================ device %d factorize begin\n", device);
 
             for (findex = 0; findex < nfiles; findex++)
             {
                 if (mainProxy.lock_file(findex))
                 {
+                    sprintf (logname, "log%04d.log", findex);
+                    log = fopen (logname, "w");
+
                     filename = mainProxy.get_filename(findex);
                     if (filename.empty())
                         file = stdin;
                     else
                         file = fopen (filename.c_str(), "r");
 
-                    CkPrintf("================ device %d factorizes file %d: %s\n", device, findex, filename.c_str());
+                    CkPrintf ("================ device %d factorizes file %d: %s\n", device, findex, filename.c_str());
 
                     if (file != NULL)
                     {
@@ -232,8 +266,8 @@ class factorizer : public CBase_factorizer
                         anorm = 1 ;
 #ifndef NMATRIXOPS
                         anorm = cholmod_l_norm_sparse (A, 0, cm) ;
-                        CkPrintf ("norm (A,inf) = %g\n", anorm) ;
-                        CkPrintf ("norm (A,1)   = %g\n", cholmod_l_norm_sparse (A, 1, cm)) ;
+                        fprintf (log, "norm (A,inf) = %g\n", anorm) ;
+                        fprintf (log, "norm (A,1)   = %g\n", cholmod_l_norm_sparse (A, 1, cm)) ;
 #endif
 
                         if (prefer_zomplex && A->xtype == CHOLMOD_COMPLEX)
@@ -243,7 +277,7 @@ class factorizer : public CBase_factorizer
                                uses zomplex matrix exclusively. */
                             double *Ax = (double *) (A->x) ;
                             SuiteSparse_long nz = cholmod_l_nnz (A, cm) ;
-                            CkPrintf ("nz: %ld\n", nz) ;
+                            fprintf (log, "nz: %ld\n", nz) ;
                             double *Ax2 = (double *) cholmod_l_malloc (nz, sizeof (double), cm) ;
                             double *Az2 = (double *) cholmod_l_malloc (nz, sizeof (double), cm) ;
                             for (i = 0 ; i < nz ; i++)
@@ -267,7 +301,7 @@ class factorizer : public CBase_factorizer
                             cholmod_sparse *C = cholmod_l_transpose (A, 2, cm) ;
                             cholmod_l_free_sparse (&A, cm) ;
                             A = C ;
-                            CkPrintf ("transposing input matrix\n") ;
+                            fprintf (log, "transposing input matrix\n") ;
                         }
 
                         /* ---------------------------------------------------------------------- */
@@ -324,7 +358,7 @@ class factorizer : public CBase_factorizer
                         bnorm = 1 ;
 #ifndef NMATRIXOPS
                         bnorm = cholmod_l_norm_dense (B, 0, cm) ;	/* max norm */
-                        CkPrintf ("bnorm %g\n", bnorm) ;
+                        fprintf (log, "bnorm %g\n", bnorm) ;
 #endif
 
                         /* ---------------------------------------------------------------------- */
@@ -336,11 +370,11 @@ class factorizer : public CBase_factorizer
                         ta = CPUTIME - t ;
                         ta = MAX (ta, 0) ;
 
-                        CkPrintf ("Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
+                        fprintf (log, "Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
 
                         if (A->stype == 0)
                         {
-                            CkPrintf ("Factorizing A*A'+beta*I\n") ;
+                            fprintf (log, "Factorizing A*A'+beta*I\n") ;
                             t = CPUTIME ;
                             cholmod_l_factorize_p (A, beta, NULL, 0, L, cm) ;
                             tf = CPUTIME - t ;
@@ -348,7 +382,7 @@ class factorizer : public CBase_factorizer
                         }
                         else
                         {
-                            CkPrintf ("Factorizing A\n") ;
+                            fprintf (log, "Factorizing A\n") ;
                             t = CPUTIME ;
                             cholmod_l_factorize (A, L, cm) ;
                             tf = CPUTIME - t ;
@@ -407,7 +441,7 @@ class factorizer : public CBase_factorizer
                         {
                             nmethods = 3 ;
                         }
-                        CkPrintf ("nmethods: %d\n", nmethods) ;
+                        fprintf (log, "nmethods: %d\n", nmethods) ;
 
                         for (method = 0 ; method <= nmethods ; method++)
                         {
@@ -653,7 +687,7 @@ class factorizer : public CBase_factorizer
                                 axbnorm = (anorm * xnorm + bnorm + ((n == 0) ? 1 : 0)) ;
                                 resid [method] = rnorm / axbnorm ;
 #else
-                                CkPrintf ("residual not computed (requires CHOLMOD/MatrixOps)\n") ;
+                                fprintf (log, "residual not computed (requires CHOLMOD/MatrixOps)\n") ;
 #endif
                             }
                         }
@@ -708,70 +742,70 @@ class factorizer : public CBase_factorizer
                             ordering = cm->method [i].ordering ;
                             if (fl >= 0)
                             {
-                                CkPrintf ("Ordering: ") ;
-                                if (ordering == CHOLMOD_POSTORDERED) CkPrintf ("postordered ") ;
-                                if (ordering == CHOLMOD_NATURAL)     CkPrintf ("natural ") ;
-                                if (ordering == CHOLMOD_GIVEN)	 CkPrintf ("user    ") ;
-                                if (ordering == CHOLMOD_AMD)	 CkPrintf ("AMD     ") ;
-                                if (ordering == CHOLMOD_METIS)	 CkPrintf ("METIS   ") ;
-                                if (ordering == CHOLMOD_NESDIS)      CkPrintf ("NESDIS  ") ;
+                                fprintf (log, "Ordering: ") ;
+                                if (ordering == CHOLMOD_POSTORDERED) fprintf (log, "postordered ") ;
+                                if (ordering == CHOLMOD_NATURAL)     fprintf (log, "natural ") ;
+                                if (ordering == CHOLMOD_GIVEN)	 fprintf (log, "user    ") ;
+                                if (ordering == CHOLMOD_AMD)	 fprintf (log, "AMD     ") ;
+                                if (ordering == CHOLMOD_METIS)	 fprintf (log, "METIS   ") ;
+                                if (ordering == CHOLMOD_NESDIS)      fprintf (log, "NESDIS  ") ;
                                 if (xlnz > 0)
                                 {
-                                    CkPrintf ("fl/lnz %10.1f", fl / xlnz) ;
+                                    fprintf (log, "fl/lnz %10.1f", fl / xlnz) ;
                                 }
                                 if (anz > 0)
                                 {
-                                    CkPrintf ("  lnz/anz %10.1f", xlnz / anz) ;
+                                    fprintf (log, "  lnz/anz %10.1f", xlnz / anz) ;
                                 }
-                                CkPrintf ("\n") ;
+                                fprintf (log, "\n") ;
                             }
                         }
 
-                        CkPrintf ("ints in L: %15.0f, doubles in L: %15.0f\n",
+                        fprintf (log, "ints in L: %15.0f, doubles in L: %15.0f\n",
                                 (double) isize, (double) xsize) ;
-                        CkPrintf ("factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
+                        fprintf (log, "factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
                                 cm->fl, cm->lnz) ;
                         if (A->stype == 0)
                         {
-                            CkPrintf ("nnz(A):    %15.0f\n", cm->anz) ;
+                            fprintf (log, "nnz(A):    %15.0f\n", cm->anz) ;
                         }
                         else
                         {
-                            CkPrintf ("nnz(A*A'): %15.0f\n", cm->anz) ;
+                            fprintf (log, "nnz(A*A'): %15.0f\n", cm->anz) ;
                         }
                         if (cm->lnz > 0)
                         {
-                            CkPrintf ("flops / nnz(L):  %8.1f\n", cm->fl / cm->lnz) ;
+                            fprintf (log, "flops / nnz(L):  %8.1f\n", cm->fl / cm->lnz) ;
                         }
                         if (anz > 0)
                         {
-                            CkPrintf ("nnz(L) / nnz(A): %8.1f\n", cm->lnz / cm->anz) ;
+                            fprintf (log, "nnz(L) / nnz(A): %8.1f\n", cm->lnz / cm->anz) ;
                         }
-                        CkPrintf ("analyze cputime:  %12.4f\n", ta) ;
-                        CkPrintf ("factor  cputime:   %12.4f mflop: %8.1f\n", tf,
+                        fprintf (log, "analyze cputime:  %12.4f\n", ta) ;
+                        fprintf (log, "factor  cputime:   %12.4f mflop: %8.1f\n", tf,
                                 (tf == 0) ? 0 : (1e-6*cm->fl / tf)) ;
-                        CkPrintf ("solve   cputime:   %12.4f mflop: %8.1f\n", ts [0],
+                        fprintf (log, "solve   cputime:   %12.4f mflop: %8.1f\n", ts [0],
                                 (ts [0] == 0) ? 0 : (1e-6*4*cm->lnz / ts [0])) ;
-                        CkPrintf ("overall cputime:   %12.4f mflop: %8.1f\n", 
+                        fprintf (log, "overall cputime:   %12.4f mflop: %8.1f\n", 
                                 tot, (tot == 0) ? 0 : (1e-6 * (cm->fl + 4 * cm->lnz) / tot)) ;
-                        CkPrintf ("solve   cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [1],
+                        fprintf (log, "solve   cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [1],
                                 (ts [1] == 0) ? 0 : (1e-6*4*cm->lnz / ts [1]), NTRIALS) ;
-                        CkPrintf ("solve2  cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [2],
+                        fprintf (log, "solve2  cputime:   %12.4f mflop: %8.1f (%d trials)\n", ts [2],
                                 (ts [2] == 0) ? 0 : (1e-6*4*cm->lnz / ts [2]), NTRIALS) ;
-                        CkPrintf ("peak memory usage: %12.0f (MB)\n",
+                        fprintf (log, "peak memory usage: %12.0f (MB)\n",
                                 (double) (cm->memory_usage) / 1048576.) ;
-                        CkPrintf ("residual (|Ax-b|/(|A||x|+|b|)): ") ;
+                        fprintf (log, "residual (|Ax-b|/(|A||x|+|b|)): ") ;
                         for (method = 0 ; method <= nmethods ; method++)
                         {
-                            CkPrintf ("%8.2e ", resid [method]) ;
+                            fprintf (log, "%8.2e ", resid [method]) ;
                         }
-                        CkPrintf ("\n") ;
+                        fprintf (log, "\n") ;
                         if (resid2 >= 0)
                         {
-                            CkPrintf ("residual %8.1e (|Ax-b|/(|A||x|+|b|))"
+                            fprintf (log, "residual %8.1e (|Ax-b|/(|A||x|+|b|))"
                                     " after iterative refinement\n", resid2) ;
                         }
-                        CkPrintf ("rcond    %8.1e\n\n", rcond) ;
+                        fprintf (log, "rcond    %8.1e\n\n", rcond) ;
 
                         if (L_is_super)
                         {
@@ -788,10 +822,21 @@ class factorizer : public CBase_factorizer
                         cholmod_l_free_sparse (&A, cm) ;
                         cholmod_l_free_dense (&B, cm) ;
                     }
+
+                    if (log) fclose (log);
+
+                    mainProxy.mark_file(findex);
                 }
             }
 
             CkPrintf ("================ device %d factorize end\n", device);
+
+            for (findex = 0; findex < nfiles; findex++)
+            {
+                while (mainProxy.get_mark(findex) == FALSE);
+            }
+
+            mainProxy.exit_main();
         }
 
         void destroy ()
@@ -813,4 +858,4 @@ class factorizer : public CBase_factorizer
         }
 };
 
-#include "cholmod_l_batched_demo.def.h"
+#include "cholmod_l_charm_batched_demo.def.h"
