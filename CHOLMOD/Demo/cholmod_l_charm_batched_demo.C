@@ -51,6 +51,7 @@ class main : public CBase_main
         int nGPUs;
         int file_mark [NMATRICES];
         omp_lock_t file_lock [NMATRICES];
+        double begin_time, end_time;
 
     public:
         main (CkArgMsg *msg)
@@ -95,9 +96,9 @@ class main : public CBase_main
             factorizers.factorize(nfiles);
             factorizers.destroy();
 #else
-            CkPrintf ("\n---------------------------------- cholesky begin:\n") ;
+            begin_time = CPUTIME;
+            CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
             factorizers.cholesky(nfiles);
-            CkPrintf ("\n---------------------------------- cholesky end:\n") ;
 #endif
 
             /*
@@ -141,6 +142,9 @@ class main : public CBase_main
 
         void exit_main ()
         {
+            end_time = CPUTIME;
+            CkPrintf ("---------------------------------- cholesky end timestamp = %12.4lf:\n", end_time);
+            CkPrintf ("total time = %12.4lf:\n", end_time - begin_time);
             CkExit();
         }
 };
