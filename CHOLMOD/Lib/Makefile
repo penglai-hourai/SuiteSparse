@@ -22,7 +22,7 @@ SO_OPTS += $(CFOPENMP) $(CFPTHREADS)
 #-------------------------------------------------------------------------------
 # With the CUDA BLAS:
 ifneq ($(GPU_CONFIG),)
-LDLIBS += $(CUDART_LIB) $(CUBLAS_LIB) $(CUSOLVER_LIB)
+LDLIBS += $(CUDART_LIB) $(CUBLAS_LIB)
 endif
 #-------------------------------------------------------------------------------
 
