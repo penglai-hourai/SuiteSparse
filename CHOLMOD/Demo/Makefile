@@ -22,7 +22,7 @@ endif
 #-------------------------------------------------------------------------------
 
 C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
-CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+CHARM = $(CHARMC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION) -module CommonLBs
 
 code: library cholmod_demo cholmod_l_demo cholmod_l_batched_demo cholmod_simple
 	
