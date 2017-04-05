@@ -16,12 +16,12 @@ mainmodule cholmod_l_charm_batched_matrix_demo
         entry void exit_main ();
     };
 
-    array [1D] factorizer
+    array [1D] common_struct
     {
-        entry factorizer (void);
+        entry common_struct (void);
         entry [threaded] void initialize ();
         entry [threaded] void factorize (int nfiles);
-        entry [threaded] void destroy ();
+        entry [threaded] void destroy (int nfiles);
         entry [threaded] void cholesky (int nfiles);
     };
 };

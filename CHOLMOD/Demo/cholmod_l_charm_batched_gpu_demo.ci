@@ -21,7 +21,7 @@ mainmodule cholmod_l_charm_batched_gpu_demo
         entry factorizer (void);
         entry [threaded] void initialize ();
         entry [threaded] void factorize (int nfiles);
-        entry [threaded] void destroy ();
+        entry [threaded] void destroy (int nfiles);
         entry [threaded] void cholesky (int nfiles);
     };
 };

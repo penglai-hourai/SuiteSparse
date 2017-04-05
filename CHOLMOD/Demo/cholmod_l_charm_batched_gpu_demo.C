@@ -94,7 +94,7 @@ class main : public CBase_main
 #if 0
             factorizers.initialize();
             factorizers.factorize(nfiles);
-            factorizers.destroy();
+            factorizers.destroy(nfiles);
 #else
             begin_time = CPUTIME;
             CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
@@ -834,31 +834,33 @@ class factorizer : public CBase_factorizer
             }
 
             CkPrintf ("================ device %d factorize end\n", device);
+        }
+
+        void destroy (int nfiles)
+        {
+            const int device = cm->pdev;
+
+            int findex;
 
             for (findex = 0; findex < nfiles; findex++)
             {
                 while (mainProxy.get_mark(findex) == FALSE);
             }
 
-            mainProxy.exit_main();
-        }
-
-        void destroy ()
-        {
-            const int device = cm->pdev;
-
             CkPrintf ("================ device %d free begin\n", device);
 
             cholmod_l_finish (cm) ;
 
             CkPrintf ("================ device %d free end\n", device);
+
+            mainProxy.exit_main();
         }
 
         void cholesky (int nfiles)
         {
             initialize();
             factorize(nfiles);
-            destroy();
+            destroy(nfiles);
         }
 };
 

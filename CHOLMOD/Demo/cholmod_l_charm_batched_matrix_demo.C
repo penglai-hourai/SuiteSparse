@@ -89,16 +89,16 @@ class main : public CBase_main
             if (nGPUs > CUDA_GPU_NUM)
                 nGPUs = CUDA_GPU_NUM;
 
-            CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
+            CProxy_common_struct common_structs = CProxy_common_struct::ckNew(nGPUs);
 
 #if 0
-            factorizers.initialize();
-            factorizers.factorize(nfiles);
-            factorizers.destroy();
+            common_structs.initialize();
+            common_structs.factorize(nfiles);
+            common_structs.destroy(nfiles);
 #else
             begin_time = CPUTIME;
             CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
-            factorizers.cholesky(nfiles);
+            common_structs.cholesky(nfiles);
 #endif
 
             /*
@@ -149,20 +149,20 @@ class main : public CBase_main
         }
 };
 
-class factorizer : public CBase_factorizer
+class common_struct : public CBase_common_struct
 {
     private:
         cholmod_common Common;
         cholmod_common *cm;
 
     public:
-        factorizer ()
+        common_struct ()
         {
             cm = &Common;
             cm->pdev = thisIndex;
         }
 
-        factorizer (CkMigrateMessage *msg)
+        common_struct (CkMigrateMessage *msg)
         {
             cm = &Common;
             cm->pdev = thisIndex;
@@ -834,31 +834,33 @@ class factorizer : public CBase_factorizer
             }
 
             CkPrintf ("================ device %d factorize end\n", device);
+        }
+
+        void destroy (int nfiles)
+        {
+            const int device = cm->pdev;
+
+            int findex;
 
             for (findex = 0; findex < nfiles; findex++)
             {
                 while (mainProxy.get_mark(findex) == FALSE);
             }
 
-            mainProxy.exit_main();
-        }
-
-        void destroy ()
-        {
-            const int device = cm->pdev;
-
             CkPrintf ("================ device %d free begin\n", device);
 
             cholmod_l_finish (cm) ;
 
             CkPrintf ("================ device %d free end\n", device);
+
+            mainProxy.exit_main();
         }
 
         void cholesky (int nfiles)
         {
             initialize();
             factorize(nfiles);
-            destroy();
+            destroy(nfiles);
         }
 };
 
