@@ -1,4 +1,4 @@
-mainmodule cholmod_l_charm_batched_demo
+mainmodule cholmod_l_charm_batched_matrix_demo
 {
     include "cholmod_demo.h";
 

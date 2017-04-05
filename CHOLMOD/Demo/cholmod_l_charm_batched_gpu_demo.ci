@@ -1,0 +1,27 @@
+mainmodule cholmod_l_charm_batched_gpu_demo
+{
+    include "cholmod_demo.h";
+
+    readonly CProxy_main mainProxy;
+
+    readonly int prefer_zomplex;
+
+    mainchare main
+    {
+        entry main (CkArgMsg *msg);
+        entry void mark_file (int findex);
+        entry [sync] int get_mark (int findex);
+        entry [sync] int lock_file (int findex);
+        entry [sync] std::string get_filename (int findex);
+        entry void exit_main ();
+    };
+
+    array [1D] factorizer
+    {
+        entry factorizer (void);
+        entry [threaded] void initialize ();
+        entry [threaded] void factorize (int nfiles);
+        entry [threaded] void destroy ();
+        entry [threaded] void cholesky (int nfiles);
+    };
+};

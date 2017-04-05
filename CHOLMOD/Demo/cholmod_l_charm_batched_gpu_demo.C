@@ -34,7 +34,7 @@
 #include <omp.h>
 
 #include "cholmod_demo.h"
-#include "cholmod_l_charm_batched_demo.decl.h"
+#include "cholmod_l_charm_batched_gpu_demo.decl.h"
 
 #define NTRIALS 100
 
@@ -862,4 +862,4 @@ class factorizer : public CBase_factorizer
         }
 };
 
-#include "cholmod_l_charm_batched_demo.def.h"
+#include "cholmod_l_charm_batched_gpu_demo.def.h"
