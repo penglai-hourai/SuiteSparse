@@ -50,7 +50,7 @@ class main : public CBase_main
         int nfiles;
         int nGPUs;
         int file_mark [NMATRICES];
-        omp_lock_t file_lock [NMATRICES];
+        omp_lock_t gpu_lock [CUDA_GPU_NUM];
         double begin_time, end_time;
 
     public:
@@ -69,9 +69,10 @@ class main : public CBase_main
             if (nfiles == 0)
                 nfiles = 1;
 
+            CProxy_file_struct file_structs = CProxy_file_struct::ckNew(nfiles);
+
             for (k = 0; k < nfiles; k++)
             {
-                omp_init_lock (&file_lock[k]);
                 file_mark[k] = FALSE;
             }
 
@@ -91,31 +92,23 @@ class main : public CBase_main
 
             CProxy_common_struct common_structs = CProxy_common_struct::ckNew(nGPUs);
 
-#if 0
-            common_structs.initialize();
-            common_structs.factorize(nfiles);
-            common_structs.destroy(nfiles);
-#else
-            begin_time = CPUTIME;
-            CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
-            common_structs.cholesky(nfiles);
-#endif
-
-            /*
-            for (k = 0; k < nfiles; k++)
+            for (k = 0; k < nGPUs; k++)
             {
-                while (file_mark[k] == FALSE);
-                omp_destroy_lock (&file_lock[k]);
+                omp_init_lock (&gpu_lock[k]);
             }
 
-            CkExit();
-            */
+            for (k = 0; k < nGPUs; k++)
+                common_structs[k].initialize();
+
+            file_structs.cholesky(nGPUs, common_structs);
+
+            for (k = 0; k < nGPUs; k++)
+                common_structs[k].destroy(nfiles);
         }
 
         void mark_file (int findex)
         {
             file_mark[findex] = TRUE;
-            omp_destroy_lock (&file_lock[findex]);
         }
 
         int get_mark (int findex)
@@ -123,9 +116,14 @@ class main : public CBase_main
             return file_mark[findex];
         }
 
-        int lock_file (int findex)
+        int lock_gpu (int GPUindex)
         {
-            return omp_test_lock(&file_lock[findex]);
+            return omp_test_lock(&gpu_lock[GPUindex]);
+        }
+
+        void destroy_gpu_lock (int GPUindex)
+        {
+            omp_destroy_lock(&gpu_lock[GPUindex]);
         }
 
         std::string get_filename (int findex)
@@ -168,6 +166,11 @@ class common_struct : public CBase_common_struct
             cm->pdev = thisIndex;
         }
 
+        cholmod_common *get_cm()
+        {
+            return cm;
+        }
+
         void initialize ()
         {
             const int device = cm->pdev;
@@ -201,13 +204,65 @@ class common_struct : public CBase_common_struct
             CkPrintf ("================ device %d initialize end\n", device);
         }
 
-        void factorize (int nfiles)
+        void destroy (int nfiles)
         {
             const int device = cm->pdev;
 
-            int k, findex;
-            FILE *file;
-            std::string filename;
+            int findex;
+
+            for (findex = 0; findex < nfiles; findex++)
+            {
+                while (mainProxy.get_mark(findex) == FALSE);
+            }
+
+            CkPrintf ("================ device %d free begin\n", device);
+
+            cholmod_l_finish (cm) ;
+
+            CkPrintf ("================ device %d free end\n", device);
+
+            mainProxy.destroy_gpu_lock (device);
+
+            mainProxy.exit_main();
+        }
+};
+
+class file_struct : public CBase_file_struct
+{
+    private:
+        int findex;
+        std::string filename;
+        FILE *file;
+
+    public:
+        file_struct ()
+        {
+            findex = thisIndex;
+            filename = mainProxy.get_filename(findex);
+        }
+
+        file_struct (CkMigrateMessage *msg)
+        {
+            findex = thisIndex;
+            filename = mainProxy.get_filename(findex);
+        }
+
+        void initialize ()
+        {
+            if (filename.empty())
+                file = stdin;
+            else
+                file = fopen (filename.c_str(), "r");
+        }
+
+        void factorize (int nGPUs, CProxy_common_struct common_structs)
+        {
+            int GPUindex, selected;
+            cholmod_common *cm;
+
+            int device;
+
+            int k;
             FILE *log;
             char logname[16];
 
@@ -222,22 +277,23 @@ class common_struct : public CBase_common_struct
             int trial, method, L_is_super ;
             int nmethods ;
 
+            GPUindex = -1;
+            selected = 0;
+            while (!selected)
+            {
+                GPUindex = (GPUindex + 1) % nGPUs;
+                selected = mainProxy.lock_gpu(GPUindex);
+            }
+            cm = common_structs[GPUindex].get_cm();
+            device = cm->pdev;
+
             memset (logname, 0, sizeof(char) * 16);
 
             CkPrintf ("================ device %d factorize begin\n", device);
 
-            for (findex = 0; findex < nfiles; findex++)
-            {
-                if (mainProxy.lock_file(findex))
                 {
                     sprintf (logname, "log%04d.log", findex);
                     log = fopen (logname, "w");
-
-                    filename = mainProxy.get_filename(findex);
-                    if (filename.empty())
-                        file = stdin;
-                    else
-                        file = fopen (filename.c_str(), "r");
 
                     CkPrintf ("================ device %d factorizes file %d: %s\n", device, findex, filename.c_str());
 
@@ -265,8 +321,6 @@ class common_struct : public CBase_common_struct
                         /* ---------------------------------------------------------------------- */
 
                         A = cholmod_l_read_sparse (file, cm) ;
-                        if (!filename.empty())
-                            fclose (file);
                         anorm = 1 ;
 #ifndef NMATRIXOPS
                         anorm = cholmod_l_norm_sparse (A, 0, cm) ;
@@ -831,36 +885,21 @@ class common_struct : public CBase_common_struct
 
                     mainProxy.mark_file(findex);
                 }
-            }
 
             CkPrintf ("================ device %d factorize end\n", device);
         }
 
-        void destroy (int nfiles)
+        void destroy ()
         {
-            const int device = cm->pdev;
-
-            int findex;
-
-            for (findex = 0; findex < nfiles; findex++)
-            {
-                while (mainProxy.get_mark(findex) == FALSE);
-            }
-
-            CkPrintf ("================ device %d free begin\n", device);
-
-            cholmod_l_finish (cm) ;
-
-            CkPrintf ("================ device %d free end\n", device);
-
-            mainProxy.exit_main();
+            if (!filename.empty())
+                fclose (file);
         }
 
-        void cholesky (int nfiles)
+        void cholesky (int nGPUs, CProxy_common_struct common_structs)
         {
             initialize();
-            factorize(nfiles);
-            destroy(nfiles);
+            factorize(nGPUs, common_structs);
+            destroy();
         }
 };
 

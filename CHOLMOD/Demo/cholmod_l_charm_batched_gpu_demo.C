@@ -92,24 +92,16 @@ class main : public CBase_main
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
 
 #if 0
-            factorizers.initialize();
-            factorizers.factorize(nfiles);
-            factorizers.destroy(nfiles);
+            for (k = 0; k < nGPUs; k++)
+                common_structs[k].initialize();
+            common_structs.factorize(nfiles);
+            for (k = 0; k < nGPUs; k++)
+                common_structs[k].destroy(nfiles);
 #else
             begin_time = CPUTIME;
             CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
             factorizers.cholesky(nfiles);
 #endif
-
-            /*
-            for (k = 0; k < nfiles; k++)
-            {
-                while (file_mark[k] == FALSE);
-                omp_destroy_lock (&file_lock[k]);
-            }
-
-            CkExit();
-            */
         }
 
         void mark_file (int findex)

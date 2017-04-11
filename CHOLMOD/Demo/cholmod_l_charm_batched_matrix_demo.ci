@@ -11,7 +11,8 @@ mainmodule cholmod_l_charm_batched_matrix_demo
         entry main (CkArgMsg *msg);
         entry void mark_file (int findex);
         entry [sync] int get_mark (int findex);
-        entry [sync] int lock_file (int findex);
+        entry [sync] int lock_gpu (int GPUindex);
+        entry void destroy_gpu_lock (int GPUindex);
         entry [sync] std::string get_filename (int findex);
         entry void exit_main ();
     };
@@ -19,9 +20,17 @@ mainmodule cholmod_l_charm_batched_matrix_demo
     array [1D] common_struct
     {
         entry common_struct (void);
-        entry [threaded] void initialize ();
-        entry [threaded] void factorize (int nfiles);
-        entry [threaded] void destroy (int nfiles);
-        entry [threaded] void cholesky (int nfiles);
+        entry [sync] cholmod_common *get_cm();
+        entry void initialize ();
+        entry void destroy (int nfiles);
+    };
+
+    array [1D] file_struct
+    {
+        entry file_struct (void);
+        entry void initialize ();
+        entry void factorize (int nGPUs, CProxy_common_struct common_struct);
+        entry void destroy ();
+        entry [threaded] void cholesky (int nGPUs, CProxy_common_struct common_struct);
     };
 };
