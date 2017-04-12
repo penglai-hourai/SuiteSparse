@@ -487,6 +487,8 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)
         Common->devBuffSize = devBuffSize;
 
+    cudaSetDevice(device);
+
     cudaErr = cudaMalloc ( &(Common->dev_mempool[device]), requestedDeviceMemory );
     /*
     CHOLMOD_HANDLE_CUDA_ERROR (cudaErr,"device memory allocation failure\n");
