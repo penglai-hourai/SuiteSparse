@@ -100,7 +100,9 @@ class main : public CBase_main
             for (k = 0; k < nGPUs; k++)
                 common_structs[k].initialize();
 
+            printf ("checkpoint 0\n");
             file_structs.cholesky(nGPUs, common_structs);
+            printf ("checkpoint 1\n");
 
             for (k = 0; k < nGPUs; k++)
                 common_structs[k].destroy(nfiles);
@@ -237,18 +239,16 @@ class file_struct : public CBase_file_struct
     public:
         file_struct ()
         {
-            findex = thisIndex;
-            filename = mainProxy.get_filename(findex);
         }
 
         file_struct (CkMigrateMessage *msg)
         {
-            findex = thisIndex;
-            filename = mainProxy.get_filename(findex);
         }
 
         void initialize ()
         {
+            findex = thisIndex;
+            filename = mainProxy.get_filename(findex);
             if (filename.empty())
                 file = stdin;
             else
@@ -897,9 +897,13 @@ class file_struct : public CBase_file_struct
 
         void cholesky (int nGPUs, CProxy_common_struct common_structs)
         {
+            printf ("checkpoint 0.0\n");
             initialize();
+            printf ("checkpoint 0.1\n");
             factorize(nGPUs, common_structs);
+            printf ("checkpoint 0.2\n");
             destroy();
+            printf ("checkpoint 0.3\n");
         }
 };
 
