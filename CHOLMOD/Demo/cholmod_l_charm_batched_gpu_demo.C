@@ -91,17 +91,9 @@ class main : public CBase_main
 
             CProxy_factorizer factorizers = CProxy_factorizer::ckNew(nGPUs);
 
-#if 0
-            for (k = 0; k < nGPUs; k++)
-                common_structs[k].initialize();
-            common_structs.factorize(nfiles);
-            for (k = 0; k < nGPUs; k++)
-                common_structs[k].destroy(nfiles);
-#else
             begin_time = CPUTIME;
             CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
             factorizers.cholesky(nfiles);
-#endif
         }
 
         void mark_file (int findex)
@@ -110,7 +102,7 @@ class main : public CBase_main
             omp_destroy_lock (&file_lock[findex]);
         }
 
-        int get_mark (int findex)
+        int get_file_mark (int findex)
         {
             return file_mark[findex];
         }
@@ -836,7 +828,7 @@ class factorizer : public CBase_factorizer
 
             for (findex = 0; findex < nfiles; findex++)
             {
-                while (mainProxy.get_mark(findex) == FALSE);
+                while (mainProxy.get_file_mark(findex) == FALSE);
             }
 
             CkPrintf ("================ device %d free begin\n", device);
