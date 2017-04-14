@@ -95,28 +95,22 @@ class main : public CBase_main
             if (nGPUs > CUDA_GPU_NUM)
                 nGPUs = CUDA_GPU_NUM;
 
-            printf ("checkpoint -5\n");
-
-            printf ("checkpoint -4\n");
             for (k = 0; k < nGPUs; k++)
             {
                 omp_init_lock (&gpu_lock[k]);
             }
 
-            printf ("checkpoint -3\n");
             for (k = 0; k < nGPUs; k++)
             {
                 device_mark[k] = FALSE;
             }
 
-            printf ("checkpoint -2\n");
             initialize();
 
-            printf ("checkpoint -1\n");
+            begin_time = CPUTIME;
+            CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
 
-            printf ("checkpoint 0\n");
             file_structs.cholesky(nGPUs, nfiles);
-            printf ("checkpoint 1\n");
         }
 
         void initialize ()
@@ -265,9 +259,7 @@ class file_struct : public CBase_file_struct
 
             for (k = 0; k < nGPUs; k++)
             {
-                printf ("checkpoint -0.7\n");
                 while (mainProxy.get_device_mark(k) == FALSE);
-                printf ("checkpoint -0.3\n");
             }
 
             findex = thisIndex;
@@ -300,24 +292,15 @@ class file_struct : public CBase_file_struct
             int trial, method, L_is_super ;
             int nmethods ;
 
-            printf ("checkpoint 0.10\n");
             GPUindex = -1;
-            printf ("checkpoint 0.11\n");
             selected = 0;
-            printf ("checkpoint 0.12\n");
             while (!selected)
             {
-                printf ("checkpoint 0.120\n");
                 GPUindex = (GPUindex + 1) % nGPUs;
-                printf ("checkpoint 0.121\n");
                 selected = mainProxy.lock_gpu(GPUindex);
-                printf ("checkpoint 0.122\n");
             }
-            printf ("checkpoint 0.13 GPUindex = %d\n", GPUindex);
             cm = ((cholmod_common**)cm_queue)[GPUindex];
-            printf ("checkpoint 0.14\n");
             device = cm->pdev;
-            printf ("checkpoint 0.15\n");
 
             memset (logname, 0, sizeof(char) * 16);
 
@@ -938,13 +921,9 @@ class file_struct : public CBase_file_struct
 
         void cholesky (int nGPUs, int nfiles)
         {
-            printf ("checkpoint 0.0\n");
             initialize(nGPUs);
-            printf ("checkpoint 0.1\n");
             factorize(nGPUs);
-            printf ("checkpoint 0.2\n");
             destroy(nfiles);
-            printf ("checkpoint 0.3\n");
         }
 };
 

@@ -93,6 +93,7 @@ class main : public CBase_main
 
             begin_time = CPUTIME;
             CkPrintf ("---------------------------------- cholesky begin timestamp = %12.4lf:\n", begin_time);
+
             factorizers.cholesky(nfiles);
         }
 
