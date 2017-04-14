@@ -3,12 +3,15 @@ mainmodule cholmod_l_charm_batched_matrix_demo
     include "cholmod_demo.h";
 
     readonly CProxy_main mainProxy;
+    readonly size_t cm_queue [16];
 
     readonly int prefer_zomplex;
 
     mainchare main
     {
         entry main (CkArgMsg *msg);
+        entry void initialize ();
+        entry void destroy ();
         entry void mark_device (int GPUindex);
         entry [sync] int get_device_mark (int GPUindex);
         entry [sync] int lock_gpu (int GPUindex);
@@ -20,20 +23,12 @@ mainmodule cholmod_l_charm_batched_matrix_demo
         entry void exit_main ();
     };
 
-    array [1D] common_struct
-    {
-        entry common_struct (void);
-        entry [sync] cholmod_common* get_cm();
-        entry [threaded] void initialize ();
-        entry [threaded] void destroy (int nfiles);
-    };
-
     array [1D] file_struct
     {
         entry file_struct (void);
         entry void initialize (int nGPUs);
-        entry void factorize (int nGPUs, CProxy_common_struct common_struct);
-        entry void destroy ();
-        entry [threaded] void cholesky (int nGPUs, CProxy_common_struct common_struct);
+        entry void factorize (int nGPUs);
+        entry void destroy (int nfiles);
+        entry [threaded] void cholesky (int nGPUs, int nfiles);
     };
 };

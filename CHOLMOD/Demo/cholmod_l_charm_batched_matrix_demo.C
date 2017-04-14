@@ -39,6 +39,7 @@
 #define NTRIALS 100
 
 CProxy_main mainProxy;
+size_t cm_queue [CUDA_GPU_NUM];
 
 int prefer_zomplex = 0;
 
@@ -53,6 +54,9 @@ class main : public CBase_main
         omp_lock_t gpu_lock [CUDA_GPU_NUM];
         int file_mark [NMATRICES];
         double begin_time, end_time;
+        CProxy_file_struct file_structs;
+
+        cholmod_common Common_queue [CUDA_GPU_NUM];
 
     public:
         main (CkArgMsg *msg)
@@ -70,7 +74,7 @@ class main : public CBase_main
             if (nfiles == 0)
                 nfiles = 1;
 
-            CProxy_file_struct file_structs = CProxy_file_struct::ckNew(nfiles);
+            file_structs = CProxy_file_struct::ckNew(nfiles);
 
             for (k = 0; k < nfiles; k++)
             {
@@ -93,8 +97,6 @@ class main : public CBase_main
 
             printf ("checkpoint -5\n");
 
-            CProxy_common_struct common_structs  = CProxy_common_struct::ckNew(nGPUs);;
-
             printf ("checkpoint -4\n");
             for (k = 0; k < nGPUs; k++)
             {
@@ -108,21 +110,80 @@ class main : public CBase_main
             }
 
             printf ("checkpoint -2\n");
-            for (k = 0; k < nGPUs; k++)
-            {
-                common_structs.initialize();
-            }
+            initialize();
 
             printf ("checkpoint -1\n");
 
             printf ("checkpoint 0\n");
-            file_structs.cholesky(nGPUs, common_structs);
+            file_structs.cholesky(nGPUs, nfiles);
             printf ("checkpoint 1\n");
+        }
 
-            for (k = 0; k < nGPUs; k++)
+        void initialize ()
+        {
+            int device;
+            cholmod_common *cm;
+
+            for (device = 0; device < nGPUs; device++)
             {
-                common_structs.destroy(nfiles);
+                ((cholmod_common**)cm_queue)[device] = &Common_queue[device];
+                cm = ((cholmod_common**)cm_queue)[device];
+                cm->pdev = device;
+
+                CkPrintf ("================ device %d initialize begin\n", device);
+
+                /* ---------------------------------------------------------------------- */
+                /* start CHOLMOD and set parameters */
+                /* ---------------------------------------------------------------------- */
+
+                cholmod_l_start (cm) ;
+                CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
+
+                cm->pdev = device;
+
+                /* cm->useGPU = 1; */
+                cm->prefer_zomplex = prefer_zomplex ;
+
+                /* use default parameter settings, except for the error handler.  This
+                 * demo program terminates if an error occurs (out of memory, not positive
+                 * definite, ...).  It makes the demo program simpler (no need to check
+                 * CHOLMOD error conditions).  This non-default parameter setting has no
+                 * effect on performance. */
+                cm->error_handler = NULL;
+
+                /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
+                 * default, automatically selecting the latter if flop/nnz(L) < 40. */
+
+                cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
+
+                mark_device(device);
+
+                CkPrintf ("================ device %d initialize end\n", device);
             }
+        }
+
+        void destroy ()
+        {
+            int device;
+            cholmod_common *cm;
+
+            for (device = 0; device < nGPUs; device++)
+            {
+                if (lock_gpu(device))
+                {
+                    cm = ((cholmod_common**)cm_queue)[device];
+
+                    CkPrintf ("================ device %d free begin\n", device);
+
+                    cholmod_l_finish (cm) ;
+
+                    CkPrintf ("================ device %d free end\n", device);
+                }
+            }
+
+            destroy_gpu_lock (device);
+
+            exit_main();
         }
 
         void mark_device (int GPUindex)
@@ -181,89 +242,6 @@ class main : public CBase_main
         }
 };
 
-class common_struct : public CBase_common_struct
-{
-    private:
-        cholmod_common Common;
-        cholmod_common *cm;
-
-    public:
-        common_struct ()
-        {
-            cm = &Common;
-            cm->pdev = thisIndex;
-        }
-
-        common_struct (CkMigrateMessage *msg)
-        {
-            cm = &Common;
-            cm->pdev = thisIndex;
-        }
-
-        cholmod_common* get_cm()
-        {
-            printf ("checkpoint 0.130 cm = 0x%lx\n", cm);
-            return cm;
-        }
-
-        void initialize ()
-        {
-            const int device = cm->pdev;
-
-            CkPrintf ("================ device %d initialize begin\n", device);
-
-            /* ---------------------------------------------------------------------- */
-            /* start CHOLMOD and set parameters */
-            /* ---------------------------------------------------------------------- */
-
-            cholmod_l_start (cm) ;
-            CHOLMOD_FUNCTION_DEFAULTS ;     /* just for testing (not required) */
-
-            cm->pdev = device;
-
-            /* cm->useGPU = 1; */
-            cm->prefer_zomplex = prefer_zomplex ;
-
-            /* use default parameter settings, except for the error handler.  This
-             * demo program terminates if an error occurs (out of memory, not positive
-             * definite, ...).  It makes the demo program simpler (no need to check
-             * CHOLMOD error conditions).  This non-default parameter setting has no
-             * effect on performance. */
-            cm->error_handler = NULL;
-
-            /* Note that CHOLMOD will do a supernodal LL' or a simplicial LDL' by
-             * default, automatically selecting the latter if flop/nnz(L) < 40. */
-
-            cholmod_l_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-
-            mainProxy.mark_device(device);
-
-            CkPrintf ("================ device %d initialize end\n", device);
-        }
-
-        void destroy (int nfiles)
-        {
-            const int device = cm->pdev;
-
-            int findex;
-
-            for (findex = 0; findex < nfiles; findex++)
-            {
-                while (mainProxy.get_file_mark(findex) == FALSE);
-            }
-
-            CkPrintf ("================ device %d free begin\n", device);
-
-            cholmod_l_finish (cm) ;
-
-            CkPrintf ("================ device %d free end\n", device);
-
-            mainProxy.destroy_gpu_lock (device);
-
-            mainProxy.exit_main();
-        }
-};
-
 class file_struct : public CBase_file_struct
 {
     private:
@@ -287,9 +265,9 @@ class file_struct : public CBase_file_struct
 
             for (k = 0; k < nGPUs; k++)
             {
-            printf ("checkpoint -0.7\n");
+                printf ("checkpoint -0.7\n");
                 while (mainProxy.get_device_mark(k) == FALSE);
-            printf ("checkpoint -0.3\n");
+                printf ("checkpoint -0.3\n");
             }
 
             findex = thisIndex;
@@ -300,7 +278,7 @@ class file_struct : public CBase_file_struct
                 file = fopen (filename.c_str(), "r");
         }
 
-        void factorize (int nGPUs, CProxy_common_struct common_structs)
+        void factorize (int nGPUs)
         {
             int GPUindex, selected;
             cholmod_common *cm;
@@ -329,14 +307,14 @@ class file_struct : public CBase_file_struct
             printf ("checkpoint 0.12\n");
             while (!selected)
             {
-            printf ("checkpoint 0.120\n");
+                printf ("checkpoint 0.120\n");
                 GPUindex = (GPUindex + 1) % nGPUs;
-            printf ("checkpoint 0.121\n");
+                printf ("checkpoint 0.121\n");
                 selected = mainProxy.lock_gpu(GPUindex);
-            printf ("checkpoint 0.122\n");
+                printf ("checkpoint 0.122\n");
             }
             printf ("checkpoint 0.13 GPUindex = %d\n", GPUindex);
-            cm = common_structs[GPUindex].get_cm();
+            cm = ((cholmod_common**)cm_queue)[GPUindex];
             printf ("checkpoint 0.14\n");
             device = cm->pdev;
             printf ("checkpoint 0.15\n");
@@ -943,20 +921,29 @@ class file_struct : public CBase_file_struct
             CkPrintf ("================ device %d factorize end\n", device);
         }
 
-        void destroy ()
+        void destroy (int nfiles)
         {
+            int findex;
+
             if (!filename.empty())
                 fclose (file);
+
+            for (findex = 0; findex < nfiles; findex++)
+            {
+                while (mainProxy.get_file_mark(findex) == FALSE);
+            }
+
+            mainProxy.destroy();
         }
 
-        void cholesky (int nGPUs, CProxy_common_struct common_structs)
+        void cholesky (int nGPUs, int nfiles)
         {
             printf ("checkpoint 0.0\n");
             initialize(nGPUs);
             printf ("checkpoint 0.1\n");
-            factorize(nGPUs, common_structs);
+            factorize(nGPUs);
             printf ("checkpoint 0.2\n");
-            destroy();
+            destroy(nfiles);
             printf ("checkpoint 0.3\n");
         }
 };
