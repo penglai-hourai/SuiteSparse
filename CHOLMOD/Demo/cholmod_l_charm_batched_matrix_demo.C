@@ -270,6 +270,10 @@ class file_struct : public CBase_file_struct
                 file = fopen (filename.c_str(), "r");
         }
 
+        void analyze (int nGPUs)
+        {
+        }
+
         void factorize (int nGPUs)
         {
             int GPUindex, selected;
@@ -922,9 +926,14 @@ class file_struct : public CBase_file_struct
         void cholesky (int nGPUs, int nfiles)
         {
             initialize(nGPUs);
+            analyze(nGPUs);
             factorize(nGPUs);
             destroy(nfiles);
         }
+};
+
+class front_struct : public CBase_front_struct
+{
 };
 
 #include "cholmod_l_charm_batched_matrix_demo.def.h"
