@@ -36,7 +36,7 @@ mainmodule cholmod_l_charm_batched_matrix_demo
     array [1D] front_struct
     {
         entry front_struct (void);
-        entry [local] void initialize (int nGPUs, cholmod_factor *L);
-        entry [threaded] void front_cholesky (int nGPUs, size_t L);
+        entry void initialize (int nGPUs, size_t L, size_t Common);
+        entry [threaded] void front_cholesky (int nGPUs, size_t L, size_t Common);
     };
 };

@@ -453,9 +453,9 @@ class file_struct : public CBase_file_struct
 
                 fprintf (log, "Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
 
-                front_structs = CProxy_front_struct::ckNew(L->nsuper);
+                front_structs = CProxy_front_struct::ckNew(L->nleaves);
 
-                front_structs.front_cholesky (nGPUs, (size_t) L);
+                front_structs.front_cholesky (nGPUs, (size_t) L, (size_t) cm);
 
                 if (A->stype == 0)
                 {
@@ -944,22 +944,39 @@ class file_struct : public CBase_file_struct
 class front_struct : public CBase_front_struct
 {
     private:
+        SuiteSparse_long n, nsuper, s;
         int nGPUs;
         cholmod_factor *L;
+        cholmod_common *Common;
+
+        SuiteSparse_long *Iwork;
+        SuiteSparse_long *SuperMap, *Next, *Lpos, *Next_save, *Lpos_save, *Previous, *pending, *leaf;
 
     public:
         front_struct ()
         {
         }
 
-        void initialize (int nGPUs, cholmod_factor *L)
+        void initialize (int nGPUs, size_t L, size_t Common)
         {
             this->nGPUs = nGPUs;
             this->L = (cholmod_factor *) L;
+            this->Common = (cholmod_common *) Common;
+
+            n = ((cholmod_factor *) L)->n;
+            nsuper = ((cholmod_factor *) L)->nsuper;
+
+            Iwork = (SuiteSparse_long *) (((cholmod_common *) Common)->Iwork);
+            leaf = Iwork + 2 * (size_t) n + 6 * (size_t) nsuper;
+
+            s = leaf[thisIndex];
+
+            printf ("initializing front %ld\n", s);
         }
 
-        void front_cholesky (int nGPUs, size_t L)
+        void front_cholesky (int nGPUs, size_t L, size_t Common)
         {
+            initialize (nGPUs, L, Common);
         }
 };
 
