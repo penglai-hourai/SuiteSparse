@@ -244,6 +244,10 @@ class file_struct : public CBase_file_struct
         std::string filename;
         FILE *file;
 
+        cholmod_factor *L ;
+
+        CProxy_front_struct front_structs;
+
     public:
         file_struct ()
         {
@@ -256,6 +260,8 @@ class file_struct : public CBase_file_struct
         void initialize (int nGPUs)
         {
             int k;
+
+            this->nGPUs = nGPUs;
 
             for (k = 0; k < nGPUs; k++)
             {
@@ -270,11 +276,11 @@ class file_struct : public CBase_file_struct
                 file = fopen (filename.c_str(), "r");
         }
 
-        void analyze (int nGPUs)
+        void analyze ()
         {
         }
 
-        void factorize (int nGPUs)
+        void factorize ()
         {
             int GPUindex, selected;
             cholmod_common *cm;
@@ -290,7 +296,6 @@ class file_struct : public CBase_file_struct
             cholmod_sparse *A ;
             cholmod_dense *X = NULL, *B, *W, *R = NULL ;
             double one [2], zero [2], minusone [2], beta [2], xlnz ;
-            cholmod_factor *L ;
             double *Bx, *Rx, *Xx, *Bz, *Xz, *Rz ;
             SuiteSparse_long i, n, isize, xsize, ordering, xtype, s, ss, lnz ;
             int trial, method, L_is_super ;
@@ -447,6 +452,10 @@ class file_struct : public CBase_file_struct
                 ta = MAX (ta, 0) ;
 
                 fprintf (log, "Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
+
+                front_structs = CProxy_front_struct::ckNew(L->nsuper);
+
+                front_structs.front_cholesky (nGPUs, (size_t) L);
 
                 if (A->stype == 0)
                 {
@@ -926,14 +935,32 @@ class file_struct : public CBase_file_struct
         void cholesky (int nGPUs, int nfiles)
         {
             initialize(nGPUs);
-            analyze(nGPUs);
-            factorize(nGPUs);
+            analyze();
+            factorize();
             destroy(nfiles);
         }
 };
 
 class front_struct : public CBase_front_struct
 {
+    private:
+        int nGPUs;
+        cholmod_factor *L;
+
+    public:
+        front_struct ()
+        {
+        }
+
+        void initialize (int nGPUs, cholmod_factor *L)
+        {
+            this->nGPUs = nGPUs;
+            this->L = (cholmod_factor *) L;
+        }
+
+        void front_cholesky (int nGPUs, size_t L)
+        {
+        }
 };
 
 #include "cholmod_l_charm_batched_matrix_demo.def.h"
