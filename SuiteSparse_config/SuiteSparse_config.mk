@@ -165,7 +165,7 @@ SUITESPARSE_VERSION = 4.5.3
             LAPACK =
         else
             # use the OpenBLAS at http://www.openblas.net
-            BLAS = -lopenblas
+            BLAS = -lopenblas -lgfortran
         endif
     endif
 
