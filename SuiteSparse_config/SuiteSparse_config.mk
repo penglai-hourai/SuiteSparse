@@ -205,7 +205,6 @@ SUITESPARSE_VERSION = 4.5.5
     ifeq ($(wildcard $(CUDA_PATH)),)
         # CUDA is not present
         CUDA_PATH     =
-        GPU_BLAS_PATH =
         GPU_CONFIG    =
         CUDART_LIB    =
         CUBLAS_LIB    =
@@ -215,13 +214,12 @@ SUITESPARSE_VERSION = 4.5.5
         NVCCFLAGS     =
     else
         # with CUDA for CHOLMOD and SPQR
-        GPU_BLAS_PATH = $(CUDA_PATH)
-        # GPU_CONFIG must include -DGPU_BLAS to compile SuiteSparse for the
+        # GPU_CONFIG must include -DSUITESPARSE_CUDA to compile SuiteSparse for the
         # GPU.  You can add additional GPU-related flags to it as well.
         # with 4 cores (default):
-        GPU_CONFIG    = -DGPU_BLAS
+        GPU_CONFIG    = -DSUITESPARSE_CUDA
         # For example, to compile CHOLMOD for 10 CPU cores when using the GPU:
-        # GPU_CONFIG  = -DGPU_BLAS -DCHOLMOD_OMP_NUM_THREADS=10
+        # GPU_CONFIG  = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=10
         CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
         CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so
         CUSOLVER_LIB  = $(CUDA_PATH)/lib64/libcusolver.so
@@ -293,7 +291,7 @@ SUITESPARSE_VERSION = 4.5.5
     #               LAPACK and the BLAS (defaults to 'int')
     # -DNSUNPERF    for Solaris only.  If defined, do not use the Sun
     #               Performance Library
-    # -DGPU_BLAS    enable the use of the CUDA BLAS
+    # -DSUITESPARSE_CUDA    enable the use of the CUDA BLAS
 
     CHOLMOD_CONFIG ?= $(GPU_CONFIG)
 
@@ -306,7 +304,7 @@ SUITESPARSE_VERSION = 4.5.5
     # -DNPARTITION      do not include the CHOLMOD partition module
     # -DNEXPERT         do not include the functions in SuiteSparseQR_expert.cpp
     # -DHAVE_TBB        enable the use of Intel's Threading Building Blocks
-    # -DGPU_BLAS        enable the use of the CUDA BLAS
+    # -DSUITESPARSE_CUDA        enable the use of the CUDA BLAS
 
     SPQR_CONFIG ?= $(GPU_CONFIG)
 

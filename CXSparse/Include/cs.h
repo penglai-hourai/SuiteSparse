@@ -28,17 +28,6 @@
 #include "mex.h"
 #endif
 
-#define CS_VER 3                    /* CXSparse Version */
-#define CS_SUBVER 1
-#define CS_SUBSUB 9
-#define CS_DATE "May 4, 2016"       /* CXSparse release date */
-#define CS_COPYRIGHT "Copyright (c) Timothy A. Davis, 2006-2016"
-#define CXSPARSE
-
-#include "SuiteSparse_config.h"
-#define cs_long_t       SuiteSparse_long
-#define cs_long_t_id    SuiteSparse_long_id
-#define cs_long_t_max   SuiteSparse_long_max
 
 #ifdef __cplusplus
 #ifndef NCOMPLEX
@@ -52,6 +41,18 @@ extern "C" {
 #define cs_complex_t double _Complex
 #endif
 #endif
+
+#define CS_VER 3                    /* CXSparse Version */
+#define CS_SUBVER 1
+#define CS_SUBSUB 9
+#define CS_DATE "May 4, 2016"       /* CXSparse release date */
+#define CS_COPYRIGHT "Copyright (c) Timothy A. Davis, 2006-2016"
+#define CXSPARSE
+
+#include "SuiteSparse_config.h"
+#define cs_long_t       SuiteSparse_long
+#define cs_long_t_id    SuiteSparse_long_id
+#define cs_long_t_max   SuiteSparse_long_max
 
 /* -------------------------------------------------------------------------- */
 /* double/int version of CXSparse */

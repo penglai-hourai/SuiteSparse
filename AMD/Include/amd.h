@@ -35,15 +35,15 @@
 #ifndef AMD_H
 #define AMD_H
 
-/* get the definition of size_t: */
-#include <stddef.h>
-
-#include "SuiteSparse_config.h"
-
 /* make it easy for C++ programs to include AMD */
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* get the definition of size_t: */
+#include <stddef.h>
+
+#include "SuiteSparse_config.h"
 
 int amd_order                  /* returns AMD_OK, AMD_OK_BUT_JUMBLED,
                                 * AMD_INVALID, or AMD_OUT_OF_MEMORY */

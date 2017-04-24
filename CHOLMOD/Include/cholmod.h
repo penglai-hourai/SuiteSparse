@@ -114,7 +114,7 @@
 #include "cholmod_super_utils.h"
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include "cholmod_gpu.h"
 #endif
 

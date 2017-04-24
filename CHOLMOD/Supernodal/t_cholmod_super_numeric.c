@@ -130,7 +130,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* these variables are not used if the GPU module is not installed */
 
     int device, vdevice, vdev_l, vdev_h;
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #ifdef USE_CPU_FREE
     int cpu_free = CPU_THREAD_NUM;
 #endif
@@ -257,7 +257,7 @@ static int TEMPLATE (cholmod_super_numeric)
     Common->CHOLMOD_ASSEMBLE_TIME2  = 0 ;
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #ifdef MAGMA
     magma_init();
 #endif
@@ -287,7 +287,7 @@ static int TEMPLATE (cholmod_super_numeric)
     /* fprintf (stderr, "local useGPU[%d] %d\n", vdevice, useGPU[vdevice]) ; */
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     if (Common->useGPU == 1)
     {
         /* Case of GPU, zero all supernodes at one time for better performance*/
@@ -332,18 +332,18 @@ static int TEMPLATE (cholmod_super_numeric)
 
         /* these variables are not used if the GPU module is not installed */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
         int useGPU;
         cholmod_gpu_pointers *gpu_p ;
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
         Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
             idescendant, dlarge, dsmall, skips ;
         int iHostBuff, iDevBuff, GPUavailable ;
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
         if (vdevice >= vdev_l && vdevice < vdev_h && useGPU_queue[vdevice])
         //if (vdevice < Common->cuda_vgpu_num && useGPU_queue[vdevice])
         {
@@ -393,7 +393,7 @@ label:
 
                 pend = psx + nsrow * nscol ;        /* s is nsrow-by-nscol */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                 if ( !useGPU )
 #endif
                 {
@@ -428,7 +428,7 @@ label:
                 /* (all supernodes in a level are independent) */
                 /* ------------------------------------------------------------------ */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                 if ( useGPU )
                 {
                     TEMPLATE2 (CHOLMOD (gpu_reorder_descendants))
@@ -564,7 +564,7 @@ label:
                 PRINT1 (("\nNow factorizing supernode "ID":\n", s)) ;
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                 /* initialize the buffer counter */
                 if ( useGPU ) {
                     Common->ibuffer[vdevice] = 0;
@@ -588,7 +588,7 @@ label:
 
                 while
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                     ( (!useGPU && (dnext != EMPTY))
                       || (useGPU && (idescendant < ndescendants)))
 #else
@@ -597,7 +597,7 @@ label:
 #endif
                         {
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
                             if ( useGPU ) {
 
@@ -747,7 +747,7 @@ label:
                             ASSERT (ndrow3 >= 0) ;
 
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                             if ( useGPU ) {
                                 /* set up GPU to assemble new supernode */
                                 if ( GPUavailable == 1) {
@@ -780,7 +780,7 @@ label:
                             }
 #endif
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                             if ( !useGPU
                                     || GPUavailable!=1
                                     || !TEMPLATE2 (CHOLMOD (gpu_updateC)) (ndrow1, ndrow2, ndrow,
@@ -886,7 +886,7 @@ label:
                                 }
 
                             }
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                             else
                             {
                                 supernodeUsedGPU = 1;   /* GPU was used for this supernode*/
@@ -923,7 +923,7 @@ label:
                                     }
                                 }
                             }
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #ifdef USE_CPU_FREE
                             if (useGPU && GPUavailable != 1)
 #pragma omp atomic
@@ -932,7 +932,7 @@ label:
 #endif
                         }  /* end of descendant supernode loop */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                 if ( useGPU ) {
                     iHostBuff = (Common->ibuffer[vdevice])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
                     iDevBuff = (Common->ibuffer[vdevice])%CHOLMOD_DEVICE_STREAMS;
@@ -968,7 +968,7 @@ label:
 
                 nscol2 = (repeat_supernode) ? (nscol_new) : (nscol) ;
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                 if ( !useGPU
                         || !supernodeUsedGPU
                         || !TEMPLATE2 (CHOLMOD (gpu_lower_potrf))(nscol2, nsrow, psx, Lx,
@@ -976,7 +976,7 @@ label:
 #endif
                 {
                     /* Note that the GPU will not be used for the triangular solve */
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                     supernodeUsedGPU = 0;
 #endif
 #ifndef NTIMER
@@ -1103,7 +1103,7 @@ label:
                      * notation.
                      */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                     if ( !useGPU
                             || !supernodeUsedGPU
                             || !TEMPLATE2 (CHOLMOD(gpu_triangular_solve))
@@ -1159,7 +1159,7 @@ label:
                 }
                 else
                 {
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
                     if (useGPU)
                         TEMPLATE2 ( CHOLMOD (gpu_copy_supernode) )
                             ( Common, Lx, psx, nscol, nscol2, nsrow,
@@ -1225,7 +1225,7 @@ ret:
         L->C_queue[vdevice] = CHOLMOD (free) (L->maxcsize, sizeof(double), L->C_queue[vdevice], Common);
     }
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     if (Common->useGPU == 1)
     {
         if (pdev < 0)

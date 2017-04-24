@@ -46,6 +46,10 @@
 
 #include "SuiteSparse_config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
@@ -89,9 +93,6 @@
 #define RBIO_SUBSUB_VERSION 6
 #define RBIO_VERSION RBIO_VER_CODE(RBIO_MAIN_VERSION,RBIO_SUB_VERSION)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* user-callable functions */

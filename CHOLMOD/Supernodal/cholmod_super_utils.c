@@ -100,7 +100,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
     size_t max_bytes;
     const char* env_max_fraction;
     double max_fraction;
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     int device, dev_l, dev_h;
 #endif
 
@@ -110,7 +110,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
     /* allocate GPU workspace */
     /* ---------------------------------------------------------------------- */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
     /* GPU module is installed */
     if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY )

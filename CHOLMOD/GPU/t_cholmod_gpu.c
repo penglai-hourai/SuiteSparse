@@ -13,7 +13,7 @@
 /* === include files and definitions ======================================== */
 /* ========================================================================== */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
 #include <cuda_runtime.h>
 

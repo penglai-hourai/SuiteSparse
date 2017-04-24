@@ -32,7 +32,7 @@
 
 #include "cholmod_internal.h"
 #include "cholmod_core.h"
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include "cholmod_gpu.h"
 #endif
 
@@ -592,7 +592,7 @@ int CHOLMOD(free_work)
     cholmod_common *Common
 )
 {
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     int device;
 #endif
 
@@ -609,7 +609,7 @@ int CHOLMOD(free_work)
     Common->iworksize = 0 ;
     Common->xworksize = 0 ;
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     for (device = 0; device < Common->cuda_gpu_num; device++)
     CHOLMOD(gpu_deallocate) (Common, device) ;
 #endif

@@ -44,7 +44,7 @@
 #include "cholmod_supernodal.h"
 #include "cholmod_super_utils.h"
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include <cuda_runtime.h>
 #include "cholmod_gpu.h"
 #endif
@@ -333,7 +333,7 @@ int CHOLMOD(super_symbolic2)
 	if (Parent [j-1] != j	    /* parent of j-1 is not j */
 	    || (ColCount [j-1] != ColCount [j] + 1) /* j-1 not subset of j*/
 	    || Wi [j] > 1	    /* j has more than one child */
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 	    /* Ensure that the supernode will fit in the GPU buffers */
 	    /* Data size of 16 bytes must be assumed for case of PATTERN */
 	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU && 
@@ -494,7 +494,7 @@ int CHOLMOD(super_symbolic2)
 	    }
 	}
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 	if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU ) {
 	  /* Ensure that the aggregated supernode fits in the device 
 	     supernode buffers */

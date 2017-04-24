@@ -19,7 +19,7 @@
 #include "cholmod_core.h"
 #include "cholmod_gpu.h"
 #include "stdio.h"
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include <cuda_runtime.h>
 #endif
 
@@ -39,7 +39,7 @@
  *  Returns 1 if GPU requested but not available, 0 otherwise
  */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
 static int poll_gpu (size_t s, int device)          /* TRUE if OK, FALSE otherwise */
 {
@@ -94,7 +94,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 
     cudaSetDevice(device);
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
     /* find the total amount of free memory */
     t = SuiteSparse_time ( ) ;
@@ -167,7 +167,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
 {
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     int ngpus, idevice;
     double tstart, tend;
     struct cudaDeviceProp gpuProp;
@@ -208,7 +208,7 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
 int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
 {
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     cudaError_t cudaErr;
 
     cudaSetDevice(device);
@@ -253,7 +253,7 @@ int CHOLMOD(gpu_deallocate) ( cholmod_common *Common, int device )
 
 void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 {
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     int k, vdevice;
 
 #ifdef MAGMA
@@ -381,7 +381,7 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
 int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
 {
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 
     int k;
     size_t fdm, tdm;

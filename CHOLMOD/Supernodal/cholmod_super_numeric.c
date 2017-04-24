@@ -59,7 +59,7 @@
 #include "cholmod_internal.h"
 #include "cholmod_supernodal.h"
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #ifdef MAGMA
 #include <magmablas_v2.h>
 #endif
@@ -71,7 +71,7 @@
 /* ========================================================================== */
 
 #ifdef DLONG
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #define REAL
 #include "../GPU/t_cholmod_gpu.c"
 #define COMPLEX

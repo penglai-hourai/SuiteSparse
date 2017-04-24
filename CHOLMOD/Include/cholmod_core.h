@@ -307,7 +307,7 @@ enum {
 };
 
 /* Define buffering parameters for GPU processing */
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include <cublas_v2.h>
 #ifdef MAGMA
 #include <magma.h>
@@ -1001,7 +1001,7 @@ typedef struct cholmod_common_struct
        the CHOLMOD Common, regardless of whether or not they are compiled
        with the GPU libraries or not */
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
     /* in CUDA, these three types are pointers */
     #define CHOLMOD_CUBLAS_HANDLE cublasHandle_t
     #define CHOLMOD_CUDASTREAM    cudaStream_t

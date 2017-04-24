@@ -14,7 +14,7 @@
 #ifndef CHOLMOD_GPU_H
 #define CHOLMOD_GPU_H
 
-#ifdef GPU_BLAS
+#ifdef SUITESPARSE_CUDA
 #include "omp.h"
 #include <fenv.h>
 #endif
