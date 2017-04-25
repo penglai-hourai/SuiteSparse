@@ -46,6 +46,12 @@
 
 #include "cholmod_core.h"
 
+#ifdef DLONG
+#define Int SuiteSparse_long
+#else
+#define Int int
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* cholmod_super_symbolic */
 /* -------------------------------------------------------------------------- */
@@ -85,7 +91,7 @@ int cholmod_super_symbolic2
                            FOR_SPQRGPU  (2): for SPQR with GPU acceleration */
     cholmod_sparse *A,	/* matrix to analyze */
     cholmod_sparse *F,	/* F = A' or A(:,f)' */
-    int *Parent,	/* elimination tree */
+    Int *Parent,	/* elimination tree */
     /* ---- in/out --- */
     cholmod_factor *L,	/* simplicial symbolic on input,
 			 * supernodal symbolic on output */

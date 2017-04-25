@@ -73,11 +73,14 @@
 #define CHOLMOD_H
 
 /* make it easy for C++ programs to include CHOLMOD */
-
-#include "SuiteSparse_config.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* assume large file support.  If problems occur, compile with -DNLARGEFILE */
 #include "cholmod_io64.h"
+
+#include "SuiteSparse_config.h"
 
 #include "cholmod_config.h"
 
@@ -116,6 +119,10 @@
 
 #ifdef SUITESPARSE_CUDA
 #include "cholmod_gpu.h"
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

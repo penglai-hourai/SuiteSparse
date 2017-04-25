@@ -300,12 +300,6 @@
 #define NMATRICES 1024
 #endif
 
-enum {
-    FRONT_IDLE,
-    FRONT_FACTORIZE,
-    FRONT_DONE
-};
-
 /* Define buffering parameters for GPU processing */
 #ifdef SUITESPARSE_CUDA
 #include <cublas_v2.h>
