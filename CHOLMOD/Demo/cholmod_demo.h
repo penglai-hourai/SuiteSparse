@@ -8,13 +8,8 @@
 
 #include "cholmod.h"
 #include <ctype.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
-#ifdef __cplusplus
-#include <string>
-#endif
 
 #define TRUE 1
 #define FALSE 0

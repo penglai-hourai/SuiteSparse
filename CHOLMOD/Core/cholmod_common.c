@@ -32,9 +32,6 @@
 
 #include "cholmod_internal.h"
 #include "cholmod_core.h"
-#ifdef SUITESPARSE_CUDA
-#include "cholmod_gpu.h"
-#endif
 
 /* ========================================================================== */
 /* === cholmod_start ======================================================== */
