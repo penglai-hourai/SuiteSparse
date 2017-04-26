@@ -270,7 +270,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* local copy of useGPU */
     if (Common->useGPU == 1)
-//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (Common->cuda_vgpu_num > 256) schedule (static)
+//#pragma omp parallel for num_threads(Common->ompNumThreads) if (Common->cuda_vgpu_num > 256) schedule (static)
         for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
         //for (vdevice = 0; vdevice < Common->cuda_vgpu_num; vdevice++)
         {
@@ -291,12 +291,11 @@ static int TEMPLATE (cholmod_super_numeric)
     if (Common->useGPU == 1)
     {
         /* Case of GPU, zero all supernodes at one time for better performance*/
-        TEMPLATE2 (CHOLMOD (gpu_clear_memory))(Lx, L->xsize,
-            CHOLMOD_OMP_NUM_THREADS);
+        TEMPLATE2 (CHOLMOD (gpu_clear_memory))(Lx, L->xsize, Common->ompNumThreads);
     }
 #endif
 
-//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
+//#pragma omp parallel for num_threads(Common->ompNumThreads) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_init_lock(&front_lock[s]);
 
@@ -399,7 +398,7 @@ label:
                 {
                     /* Case of no GPU, zero individual supernodes */
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS)   \
+#pragma omp parallel for num_threads(Common->ompNumThreads)   \
                     schedule (static) if ( pend - psx > 1024 )
 
                     for (p = psx ; p < pend ; p++) {
@@ -414,7 +413,7 @@ label:
                 /* If row i is the kth row in s, then Map [i] = k.  Similarly, if
                  * column j is the kth column in s, then  Map [j] = k. */
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS)   \
+#pragma omp parallel for num_threads(Common->ompNumThreads)   \
                 if ( nsrow > 128 )
 
                 for (k = 0 ; k < nsrow ; k++)
@@ -444,7 +443,7 @@ label:
                 pk = psx ;
 
 #pragma omp parallel for private ( p, pend, pfend, pf, i, j, imap, q )  \
-                num_threads(CHOLMOD_OMP_NUM_THREADS) if ( k2-k1 > 64 )
+                num_threads(Common->ompNumThreads) if ( k2-k1 > 64 )
 
                 for (k = k1 ; k < k2 ; k++)
                 {
@@ -855,7 +854,7 @@ label:
                                 DEBUG (CHOLMOD(dump_real) ("C", C, ndrow2, ndrow1, TRUE,
                                             L_ENTRY, Common)) ;
 
-#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS)   \
+#pragma omp parallel for num_threads(Common->ompNumThreads)   \
                                 if ( ndrow2 > 64 )
 
                                 for (i = 0 ; i < ndrow2 ; i++)
@@ -869,7 +868,7 @@ label:
                                 /* ---------------------------------------------------------- */
 
 #pragma omp parallel for private ( j, i, px, q )                \
-                                num_threads(CHOLMOD_OMP_NUM_THREADS) if (ndrow1 > 64 )
+                                num_threads(Common->ompNumThreads) if (ndrow1 > 64 )
 
                                 for (j = 0 ; j < ndrow1 ; j++)              /* cols k1:k2-1 */
                                 {
@@ -1211,7 +1210,7 @@ ret:
     printf ("factorization time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
 
-//#pragma omp parallel for num_threads(CHOLMOD_OMP_NUM_THREADS) if (nsuper > 256) schedule (static)
+//#pragma omp parallel for num_threads(Common->ompNumThreads) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
 

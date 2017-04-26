@@ -387,6 +387,7 @@ int CHOLMOD(defaults)
     /* GPU acceleration is not supported for int version of CHOLMOD */
     Common->useGPU = 0 ;
 #endif
+    Common->ompNumThreads = 1;
 
     return (TRUE) ;
 }

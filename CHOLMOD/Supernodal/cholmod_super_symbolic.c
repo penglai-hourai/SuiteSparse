@@ -180,6 +180,7 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
+    const char *env_omp_num_threads;
     int vdevice;
     Int *height, *leaf_height;
     Int *pending, *leaf;
@@ -213,6 +214,31 @@ int CHOLMOD(super_symbolic2)
 	return (FALSE) ;
     }
     Common->status = CHOLMOD_OK ;
+
+    /* ---------------------------------------------------------------------- */
+    /* determine number of OpenMP threads */
+    /* ---------------------------------------------------------------------- */
+
+    /* Query OS environment variables for request.*/
+    env_omp_num_threads  = getenv("OMP_NUM_THREADS");
+
+    /* OMP_NUM_THREADS environment variable is set */
+    if ( env_omp_num_threads )
+    {
+        Common->ompNumThreads = atoi ( env_omp_num_threads ); 	/* set # omp threads */
+    }
+    /* OMP_NUM_THREADS environment variable not set */
+    else
+    {
+#ifdef MKLROOT
+        Common->ompNumThreads = mkl_get_max_threads();            /* default is # cores in CPU */
+#else
+        Common->ompNumThreads = omp_get_max_threads();            /* default is # cores in CPU */
+#endif
+    }
+
+    if (Common->ompNumThreads > CHOLMOD_OMP_NUM_THREADS)
+        Common->ompNumThreads = CHOLMOD_OMP_NUM_THREADS;
 
     /* ---------------------------------------------------------------------- */
     /* allocate workspace */

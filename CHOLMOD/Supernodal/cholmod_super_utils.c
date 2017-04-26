@@ -95,10 +95,8 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
 {
     const int pdev = Common->pdev;
 
-    const char* env_use_gpu;
-    const char* env_max_bytes;
+    const char *env_use_gpu, *env_max_bytes, *env_max_fraction;
     size_t max_bytes;
-    const char* env_max_fraction;
     double max_fraction;
 #ifdef SUITESPARSE_CUDA
     int device, dev_l, dev_h;

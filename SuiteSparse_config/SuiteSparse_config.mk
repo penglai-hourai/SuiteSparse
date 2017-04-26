@@ -116,7 +116,6 @@ SUITESPARSE_VERSION = 4.5.5
             CC = icc -D_GNU_SOURCE
             CXX = $(CC)
             CFOPENMP = -fopenmp -I$(MKLROOT)/include
-	    LDFLAGS += -openmp
         endif
         ifneq ($(shell which ifort 2>/dev/null),)
             # use the Intel ifort compiler for Fortran codes
@@ -208,6 +207,7 @@ SUITESPARSE_VERSION = 4.5.5
         GPU_CONFIG    =
         CUDART_LIB    =
         CUBLAS_LIB    =
+        CUSOLVER_LIB  =
         CUDA_INC_PATH =
         CUDA_INC      =
         NVCC          = echo
@@ -228,6 +228,7 @@ SUITESPARSE_VERSION = 4.5.5
         NVCC          = $(CUDA_PATH)/bin/nvcc
         NVCCFLAGS     = -Xcompiler -fPIC -O3 \
 						-D_FORCE_INLINES \
+                            -gencode=arch=compute_20,code=sm_20 \
                             -gencode=arch=compute_30,code=sm_30 \
                             -gencode=arch=compute_35,code=sm_35 \
                             -gencode=arch=compute_50,code=sm_50 \

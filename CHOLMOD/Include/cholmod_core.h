@@ -273,7 +273,7 @@
 /* The number of OMP threads should typically be set to the number of cores   */
 /* per socket inthe machine being used.  This maximizes memory performance.   */
 #ifndef CHOLMOD_OMP_NUM_THREADS
-#define CHOLMOD_OMP_NUM_THREADS 4
+#define CHOLMOD_OMP_NUM_THREADS 32
 #endif
 
 #ifndef CUDA_GPU_PARALLEL
@@ -303,6 +303,7 @@
 /* Define buffering parameters for GPU processing */
 #ifdef SUITESPARSE_CUDA
 #include <cublas_v2.h>
+#include <cusolverDn.h>
 #ifdef MAGMA
 #include <magma.h>
 #endif
@@ -978,6 +979,7 @@ typedef struct cholmod_common_struct
     /*             environment CHOLMOD_USE_GPU will be queried and used. */
     /*             useGPU=-1 is only used by CHOLMOD and treated as 0 by SPQR */
     int useGPU;
+    int ompNumThreads;
 
     /* for CHOLMOD: */
     size_t maxGpuMemBytes;
