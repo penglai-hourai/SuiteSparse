@@ -67,6 +67,7 @@ INC =   ../Include/cholmod.h \
 	../Include/cholmod_partition.h \
 	../Include/cholmod_supernodal.h \
 	../Include/cholmod_template.h \
+	../Include/cholmod_subtree.h \
 	../Include/cholmod_gpu.h \
 	../Include/cholmod_super_utils.h
 
@@ -102,7 +103,9 @@ SUPERNODAL = cholmod_super_numeric.o cholmod_super_solve.o \
 			
 
 ifneq ($(GPU_CONFIG),)
-GPU = cholmod_gpu.o cholmod_gpu_kernels.o
+GPU = cholmod_gpu.o cholmod_gpu_kernels.o \
+	dgemm_custom_simple_1block_batch.o dsyrk_custom_simple_1block_batch.o \
+	dtrsm_custom_simple_1block_batch.o dpotrf_custom_simple_1block_batch.o
 else
 GPU =
 endif
@@ -501,6 +504,14 @@ cholmod_super_utils.o: ../Supernodal/cholmod_super_utils.c
 
 cholmod_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
         ../GPU/t_cholmod_gpu.c \
+        ../GPU/t_cholmod_subtree.c \
+        ../GPU/t_cholmod_root.c \
+        ../GPU/t_initialize_subtree.c \
+        ../GPU/t_factorize_subtree.c \
+        ../GPU/t_factorize_root.c \
+        ../GPU/t_factorize_root_parallel.c \
+        ../GPU/t_factorize_cpu_parallel.c \
+        ../GPU/t_factorize_cpu_serial.c \
 	../Supernodal/t_cholmod_super_numeric.c
 	$(C) -c $(I) $<
 
@@ -533,6 +544,18 @@ cholmod_l_super_solve.o: ../Supernodal/cholmod_super_solve.c \
 
 cholmod_gpu_kernels.o: ../GPU/cholmod_gpu_kernels.cu
 	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/cholmod_gpu_kernels.cu
+
+dgemm_custom_simple_1block_batch.o: ../GPU/dgemm_custom_simple_1block_batch.cu
+	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dgemm_custom_simple_1block_batch.cu
+
+dsyrk_custom_simple_1block_batch.o: ../GPU/dsyrk_custom_simple_1block_batch.cu
+	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dsyrk_custom_simple_1block_batch.cu
+
+dtrsm_custom_simple_1block_batch.o: ../GPU/dtrsm_custom_simple_1block_batch.cu
+	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dtrsm_custom_simple_1block_batch.cu
+
+dpotrf_custom_simple_1block_batch.o: ../GPU/dpotrf_custom_simple_1block_batch.cu
+	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dpotrf_custom_simple_1block_batch.cu
 
 cholmod_gpu.o: ../GPU/cholmod_gpu.c 
 	$(C) -c $(I) $<
