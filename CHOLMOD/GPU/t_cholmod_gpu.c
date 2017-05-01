@@ -141,64 +141,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
     }
 
-    /* create cuBlas handle */
-    //for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
-    if ( ! Common->cublasHandle[vdevice] ) {
-        cudaErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
-        if (cudaErr != CUBLAS_STATUS_SUCCESS) {
-            ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
-            return 1;
-        }
-    }
-
-    if (!(Common->gpuStream[vdevice][0])) {
-
-        /* ------------------------------------------------------------------ */
-        /* create each CUDA stream */
-        /* ------------------------------------------------------------------ */
-
-        for ( i=0; i<CHOLMOD_DEVICE_STREAMS; i++ ) {
-            cudaErr = cudaStreamCreate ( &(Common->gpuStream[vdevice][i]) );
-            if (cudaErr != cudaSuccess) {
-                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
-                return (0) ;
-            }
-#ifdef MAGMA
-            magma_queue_create_from_cuda(device, Common->gpuStream[vdevice][i], Common->cublasHandle[vdevice], NULL, &(Common->magmaQueue[vdevice][i]));
-#endif
-        }
-
-        /* ------------------------------------------------------------------ */
-        /* create each CUDA event */
-        /* ------------------------------------------------------------------ */
-
-        for (i = 0 ; i < 3 ; i++) {
-            cudaErr = cudaEventCreateWithFlags
-                (&(Common->cublasEventPotrf[vdevice] [i]), cudaEventDisableTiming) ;
-            if (cudaErr != cudaSuccess) {
-                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
-                return (0) ;
-            }
-        }
-
-        for (i = 0 ; i < CHOLMOD_HOST_SUPERNODE_BUFFERS ; i++) {
-            cudaErr = cudaEventCreateWithFlags
-                (&(Common->updateCBuffersFree[vdevice][i]), cudaEventDisableTiming) ;
-            if (cudaErr != cudaSuccess) {
-                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
-                return (0) ;
-            }
-        }
-
-        cudaErr = cudaEventCreateWithFlags ( &(Common->updateCKernelsComplete[vdevice]),
-                                             cudaEventDisableTiming );
-        if (cudaErr != cudaSuccess) {
-            ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCKernelsComplete event") ;
-            return (0) ;
-        }
-
-    }
-
     for ( k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
         gpu_p->h_Lx[k] = (double *) (Common->host_pinned_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
     }

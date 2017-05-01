@@ -189,6 +189,7 @@ int CHOLMOD(start)
     for (vdevice = 0; vdevice < CUDA_VGPU_NUM; vdevice++)
     {
         Common->cublasHandle[vdevice] = NULL ;
+        Common->cusolverHandle[vdevice] = NULL ;
         Common->cublasEventPotrf[vdevice] [0] = NULL ;
         Common->cublasEventPotrf[vdevice] [1] = NULL ;
         Common->cublasEventPotrf[vdevice] [2] = NULL ;

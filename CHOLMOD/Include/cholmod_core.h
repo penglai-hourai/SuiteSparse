@@ -1314,6 +1314,134 @@ typedef struct cholmod_sparse_struct
 
 } cholmod_sparse ;
 
+/* structures for holding syrk,gemm,potrf,trsm parameters */
+typedef struct cholmod_syrk_t {
+  double score;
+  SuiteSparse_long d;
+  SuiteSparse_long n;
+  SuiteSparse_long k;
+  SuiteSparse_long lda;
+  SuiteSparse_long ldc;
+  double *A;
+  double *C;
+} syrkStruct;
+
+typedef struct cholmod_gemm_t {
+  double score;
+  SuiteSparse_long m;
+  SuiteSparse_long n;
+  SuiteSparse_long k;
+  SuiteSparse_long lda;
+  SuiteSparse_long ldb;
+  SuiteSparse_long ldc;
+  double *A;
+  double *B;
+  double *C;
+} gemmStruct;
+
+typedef struct cholmod_potrf_t {
+  double score;
+  SuiteSparse_long n;
+  SuiteSparse_long lda;
+  double *A;
+} potrfStruct;
+
+typedef struct cholmod_trsm_t {
+  double score;
+  SuiteSparse_long m;
+  SuiteSparse_long n;
+  SuiteSparse_long lda;
+  SuiteSparse_long ldb;
+  double *A;
+  double *B;
+} trsmStruct;
+
+typedef struct cholmod_desc_t {
+  double score;
+  SuiteSparse_long d;
+  SuiteSparse_long s;
+  SuiteSparse_long pdi1;
+  SuiteSparse_long pdx1;
+  SuiteSparse_long ndrow1;
+  SuiteSparse_long ndrow2;
+  double *C;
+} descStruct;
+
+typedef struct cholmod_super_t {
+  SuiteSparse_long s;
+  SuiteSparse_long k1;
+  SuiteSparse_long k2;
+  SuiteSparse_long psi;
+  SuiteSparse_long psx;
+  SuiteSparse_long nscol;
+  SuiteSparse_long nsrow;
+} superStruct;
+
+/* structures for holding pointers to syrk,gemm,potrf,trsm parameters in pinned memory */
+typedef struct cholmod_syrk_ptrs_t {
+  int *d;
+  int *n;
+  int *k;
+  int *lda;
+  int *ldc;
+  double **A;
+  double **C;
+} syrkPtrsStruct;
+
+typedef struct cholmod_gemm_ptrs_t {
+  int *m;
+  int *n;
+  int *k;
+  int *lda;
+  int *ldb;
+  int *ldc;
+  double **A;
+  double **B;
+  double **C;
+} gemmPtrsStruct;
+
+typedef struct cholmod_potrf_ptrs_t {
+  int *n;
+  int *lda;
+  double **A;
+} potrfPtrsStruct;
+
+typedef struct cholmod_trsm_ptrs_t {
+  int *m;
+  int *n;
+  int *lda;
+  int *ldb;
+  double **A;
+  double **B;
+} trsmPtrsStruct;
+
+typedef struct cholmod_desc_ptrs_t {
+  int *s;
+  int *pdi1;
+  int *ndrow1;
+  int *ndrow2;
+  double **C;
+} descptrsStruct;
+
+typedef struct cholmod_super_ptrs_t {
+  int *s;
+  int *k1;
+  int *k2;
+  int *psi;
+  int *psx;
+  int *nscol;
+  int *nsrow;
+} superPtrsStruct;
+
+
+/* structure for holding subtree info for sorting */
+typedef struct cholmod_subtree_order_t {
+  int id;
+  double size;
+} cholmodSubtreeOrder;
+
+
+/* structure for holding descendant info for sorting */
 typedef struct cholmod_descendant_score_t {
   double score;
   SuiteSparse_long d;
@@ -1325,6 +1453,40 @@ int cholmod_score_comp (struct cholmod_descendant_score_t *i,
 
 int cholmod_l_score_comp (struct cholmod_descendant_score_t *i,
 			       struct cholmod_descendant_score_t *j);
+
+/* function to sort subtrees with qsort */
+int cholmod_subtree_comp (struct cholmod_subtree_order_t *a, struct cholmod_subtree_order_t *b);
+int cholmod_l_subtree_comp (struct cholmod_subtree_order_t *a, struct cholmod_subtree_order_t *b);
+
+
+/* function to sort descendants with qsort */
+int cholmod_score_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
+int cholmod_l_score_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
+
+
+/* function to sort syrk with qsort */
+int cholmod_sort_syrk (struct cholmod_syrk_t *i, struct cholmod_syrk_t *j);
+int cholmod_l_sort_syrk (struct cholmod_syrk_t *i, struct cholmod_syrk_t *j);
+
+
+/* function to sort gemm with qsort */
+int cholmod_sort_gemm (struct cholmod_gemm_t *i, struct cholmod_gemm_t *j);
+int cholmod_l_sort_gemm (struct cholmod_gemm_t *i, struct cholmod_gemm_t *j);
+
+
+/* function to sort potrf with qsort */
+int cholmod_sort_potrf (struct cholmod_potrf_t *i, struct cholmod_potrf_t *j);
+int cholmod_l_sort_potrf (struct cholmod_potrf_t *i, struct cholmod_potrf_t *j);
+
+
+/* function to sort trsm with qsort */
+int cholmod_sort_trsm (struct cholmod_trsm_t *i, struct cholmod_trsm_t *j);
+int cholmod_l_sort_trsm (struct cholmod_trsm_t *i, struct cholmod_trsm_t *j);
+
+
+/* function to sort descendants with qsort */
+int cholmod_sort_desc (struct cholmod_desc_t *i, struct cholmod_desc_t *j);
+int cholmod_l_sort_desc (struct cholmod_desc_t *i, struct cholmod_desc_t *j);
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_allocate_sparse:  allocate a sparse matrix */

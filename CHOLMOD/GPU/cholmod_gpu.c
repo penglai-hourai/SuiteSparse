@@ -77,16 +77,20 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
     int device
 )
 {
-    size_t good, bad, s, total_free, total_memory ;
-    int k ;
+    /* local variables */
+    int k;
+    size_t good, bad, s, total_free, total_memory;
     /* double t ; */
 
+    /* reset variables */
     *total_mem = 0;
     *available_mem = 0;
+    /* early exit*/
 #ifndef DLONG
     return 0;
 #endif
 
+    /* early exit */
     if (Common->useGPU != 1)
     {
         return (0) ;                    /* not using the GPU at all */
@@ -302,6 +306,13 @@ void CHOLMOD(gpu_end) (cholmod_common *Common, int device)
         cublasDestroy (Common->cublasHandle[vdevice]) ;
         /* fprintf (stderr, "destroy cublas[%d] done\n", device) ; */
         Common->cublasHandle[vdevice] = NULL ;
+    }
+    if (Common->cusolverHandle[vdevice])
+    {
+        /* fprintf (stderr, "destroy cusolver[%d] %p\n", device, Common->cusolverHandle[vdevice]) ; */
+        cusolverDnDestroy (Common->cusolverHandle[vdevice]) ;
+        /* fprintf (stderr, "destroy cusolver[%d] done\n", device) ; */
+        Common->cusolverHandle[vdevice] = NULL ;
     }
 
     {
@@ -524,6 +535,75 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     }
 
     Common->dev_mempool_size[device] = requestedDeviceMemory;
+
+    for (vdevice = device * Common->cuda_gpu_parallel; vdevice < (device + 1) * Common->cuda_gpu_parallel; vdevice++)
+    {
+        /* create cuBlas handle */
+        if ( ! Common->cublasHandle[vdevice] ) {
+            cudaErr = cublasCreate (&(Common->cublasHandle[vdevice])) ;
+            if (cudaErr != CUBLAS_STATUS_SUCCESS) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
+                return 1;
+            }
+        }
+
+        /* create cuSolver handle */
+        if ( ! Common->cusolverHandle[vdevice] ) {
+            cudaErr = cusolverDnCreate (&(Common->cusolverHandle[vdevice])) ;
+            if (cudaErr != CUSOLVER_STATUS_SUCCESS) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "cusolver initialization") ;
+                return 1;
+            }
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* create each CUDA stream */
+        /* ------------------------------------------------------------------ */
+
+        if (!(Common->gpuStream[vdevice][0])) {
+
+            for ( k=0; k<CHOLMOD_DEVICE_STREAMS; k++ ) {
+                cudaErr = cudaStreamCreate ( &(Common->gpuStream[vdevice][k]) );
+                if (cudaErr != cudaSuccess) {
+                    ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
+                    return (0) ;
+                }
+#ifdef MAGMA
+                magma_queue_create_from_cuda(device, Common->gpuStream[vdevice][k], Common->cublasHandle[vdevice], NULL, &(Common->magmaQueue[vdevice][k]));
+#endif
+            }
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* create each CUDA event */
+        /* ------------------------------------------------------------------ */
+
+        for (k = 0 ; k < 3 ; k++) {
+            cudaErr = cudaEventCreateWithFlags
+                (&(Common->cublasEventPotrf[vdevice] [k]), cudaEventDisableTiming) ;
+            if (cudaErr != cudaSuccess) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
+                return (0) ;
+            }
+        }
+
+        for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++) {
+            cudaErr = cudaEventCreateWithFlags
+                (&(Common->updateCBuffersFree[vdevice][k]), cudaEventDisableTiming) ;
+            if (cudaErr != cudaSuccess) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
+                return (0) ;
+            }
+        }
+
+        cudaErr = cudaEventCreateWithFlags ( &(Common->updateCKernelsComplete[vdevice]),
+                cudaEventDisableTiming );
+        if (cudaErr != cudaSuccess) {
+            ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCKernelsComplete event") ;
+            return (0) ;
+        }
+
+    }
 
 #endif
 
