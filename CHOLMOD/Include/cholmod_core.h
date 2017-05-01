@@ -979,7 +979,9 @@ typedef struct cholmod_common_struct
     /*             environment CHOLMOD_USE_GPU will be queried and used. */
     /*             useGPU=-1 is only used by CHOLMOD and treated as 0 by SPQR */
     int useGPU;
+    int useHybrid;    		/* useHybrid: hybrid computing (1 to enable, 0 to disable) */
     int ompNumThreads;
+    int partialFactorization;
 
     /* for CHOLMOD: */
     size_t maxGpuMemBytes;
@@ -999,6 +1001,7 @@ typedef struct cholmod_common_struct
 
 #ifdef SUITESPARSE_CUDA
     /* in CUDA, these three types are pointers */
+    #define CHOLMOD_CUSOLVER_HANDLE cusolverDnHandle_t
     #define CHOLMOD_CUBLAS_HANDLE cublasHandle_t
     #define CHOLMOD_CUDASTREAM    cudaStream_t
     #define CHOLMOD_CUDAEVENT     cudaEvent_t
@@ -1007,6 +1010,7 @@ typedef struct cholmod_common_struct
 #endif
 #else
     /* ... so make them void * pointers if the GPU is not being used */
+    #define CHOLMOD_CUSOLVER_HANDLE void *
     #define CHOLMOD_CUBLAS_HANDLE void *
     #define CHOLMOD_CUDASTREAM    void *
     #define CHOLMOD_CUDAEVENT     void *
@@ -1021,6 +1025,7 @@ typedef struct cholmod_common_struct
     int cuda_vgpu_num;
 
     CHOLMOD_CUBLAS_HANDLE cublasHandle[CUDA_VGPU_NUM];
+    CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CUDA_VGPU_NUM];
 
     /* a set of streams for general use */
     CHOLMOD_CUDASTREAM    gpuStream[CUDA_VGPU_NUM][CHOLMOD_DEVICE_STREAMS];

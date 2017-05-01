@@ -180,7 +180,7 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    const char *env_omp_num_threads;
+    const char *env_omp_num_threads, *env_partial_factorization;
     int vdevice;
     Int *height, *leaf_height;
     Int *pending, *leaf;
@@ -239,6 +239,27 @@ int CHOLMOD(super_symbolic2)
 
     if (Common->ompNumThreads > CHOLMOD_OMP_NUM_THREADS)
         Common->ompNumThreads = CHOLMOD_OMP_NUM_THREADS;
+
+    /* Query OS environment variables for request.*/
+    env_partial_factorization  = getenv("CHOLMOD_PARTIAL_FACTORIZATION");
+
+    /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable is set */
+    if ( env_partial_factorization )
+    {
+        if ( atoi ( env_partial_factorization ) == 0 )
+        {
+            Common->partialFactorization = 0;                              /* don't use partialFactorization */
+        }
+        else
+        {
+            Common->partialFactorization = 1;                              /* use partialFactorization (serial CPU only) */
+        }
+    }
+    /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable not set */
+    else
+    {
+        Common->partialFactorization = 0;                                  /* default is no partialFactorization */
+    }
 
     /* ---------------------------------------------------------------------- */
     /* allocate workspace */

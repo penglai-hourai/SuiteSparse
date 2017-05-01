@@ -230,9 +230,6 @@ int CHOLMOD(start)
     Common->cholmod_gpu_trsm_calls = 0 ;
     Common->cholmod_gpu_potrf_calls = 0 ;
 
-    Common->maxGpuMemBytes = 0;
-    Common->maxGpuMemFraction = 0.0;
-
     /* SPQR statistics and settings */
     Common->gpuMemorySize = 1 ;         /* default: no GPU memory available */
     Common->gpuKernelTime = 0.0 ;
@@ -387,6 +384,12 @@ int CHOLMOD(defaults)
     /* GPU acceleration is not supported for int version of CHOLMOD */
     Common->useGPU = 0 ;
 #endif
+
+    Common->useHybrid = 0 ;
+    Common->partialFactorization = 0 ;
+    Common->maxGpuMemBytes = 0;
+    Common->maxGpuMemFraction = 0.0;
+
     Common->ompNumThreads = 1;
 
     return (TRUE) ;

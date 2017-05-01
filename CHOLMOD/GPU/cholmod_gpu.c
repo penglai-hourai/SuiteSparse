@@ -79,7 +79,7 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 {
     size_t good, bad, s, total_free, total_memory ;
     int k ;
-    double t ;
+    /* double t ; */
 
     *total_mem = 0;
     *available_mem = 0;
@@ -97,9 +97,9 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
 #ifdef SUITESPARSE_CUDA
 
     /* find the total amount of free memory */
-    t = SuiteSparse_time ( ) ;
+    /* t = SuiteSparse_time ( ) ; */
     cudaMemGetInfo (&total_free, &total_memory) ;
-    t = SuiteSparse_time ( ) - t ;
+    /* t = SuiteSparse_time ( ) - t ; */
     /* printf ("free %lu tot %lu time %g\n", total_free, total_memory, t) ; */
 
     *total_mem = total_memory;
@@ -163,37 +163,60 @@ int CHOLMOD(gpu_memorysize)      /* returns 1 on error, 0 otherwise */
  * more than 1 GB of device memory.
  */
 
-#if 0
-int CHOLMOD(gpu_probe) ( cholmod_common *Common, int device )
+#if 1
+int CHOLMOD(gpu_probe) ( cholmod_common *Common )
 {
 
 #ifdef SUITESPARSE_CUDA
-    int ngpus, idevice;
+    int device, idevice, count = 0;
     double tstart, tend;
-    struct cudaDeviceProp gpuProp;
+    struct cudaDeviceProp gpuProp, gpuProp0;
 
     if (Common->useGPU != 1)
     {
         return (0) ;
     }
 
-    cudaSetDevice(device);
-
-    cudaGetDeviceCount(&ngpus);
-
-    if ( ngpus ) {
-        cudaGetDevice ( &idevice );
-        cudaGetDeviceProperties ( &gpuProp, idevice );
-        if ( gpuProp.major > 1 && 1.0e-9*gpuProp.totalGlobalMem > 1.0 ) {
-            return 1;  /* useGPU = 1 */
-        }
+    /* make sure requested # GPUs does not exceed max */
+    if (Common->cuda_gpu_num > CUDA_GPU_NUM)
+    {
+      Common->cuda_gpu_num = CUDA_GPU_NUM;
     }
+
+
+    if ( Common->cuda_gpu_num ) {
+        cudaSetDevice ( 0 );
+        cudaGetDevice ( &idevice );
+        cudaGetDeviceProperties ( &gpuProp0, idevice );
+        count = 1;
+
+        /* loop over all other GPUs */
+        for (device = 1; device < Common->cuda_gpu_num; device++)
+        {
+            /* set GPU, fetch GPU, fetch GPU properties  */
+            cudaSetDevice ( device );
+            cudaGetDevice ( &idevice );
+            cudaGetDeviceProperties ( &gpuProp, idevice );
+            if(gpuProp.major == gpuProp0.major) {
+                if ( gpuProp.major > 1 && 1.0e-9*gpuProp.totalGlobalMem > 1.0 ) {
+                    count++;
+                }
+            }
+        }
+
+      /* set # GPUs */
+      Common->cuda_gpu_num = count;
+    }
+
     CHOLMOD_GPU_PRINTF (("GPU WARNING: useGPUs was selected, "
         "but no applicable GPUs were found. useGPU reset to FALSE.\n")) ;
 #endif
 
-    /* no GPU is available */
-    return 0;  /* useGPU = 0 */
+    if ( Common->cuda_gpu_num > 0 )
+        return 1;  /* useGPU = 1 */
+    else
+        /* no GPU is available */
+        return 0;  /* useGPU = 0 */
 }
 #endif
 

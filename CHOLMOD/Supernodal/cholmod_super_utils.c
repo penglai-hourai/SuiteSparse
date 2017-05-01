@@ -95,7 +95,7 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
 {
     const int pdev = Common->pdev;
 
-    const char *env_use_gpu, *env_max_bytes, *env_max_fraction;
+    const char *env_use_gpu, *env_hybrid_gpu, *env_num_gpu, *env_max_bytes, *env_max_fraction;
     size_t max_bytes;
     double max_fraction;
 #ifdef SUITESPARSE_CUDA
@@ -108,8 +108,21 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
     /* allocate GPU workspace */
     /* ---------------------------------------------------------------------- */
 
-#ifdef SUITESPARSE_CUDA
+#ifndef SUITESPARSE_CUDA
+    /* GPU module is not installed */
+    Common->useGPU = 0;
+    Common->cuda_gpu_num = 0;
+    Common->useHybrid = 0;
+#endif
 
+#ifndef DLONG
+    /* GPU module supported only for long int */
+    Common->useGPU = 0;
+    Common->cuda_gpu_num = 0;
+    Common->useHybrid = 0;
+#endif
+
+#ifdef SUITESPARSE_CUDA
     /* GPU module is installed */
     if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY )
     {
@@ -126,9 +139,9 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
              * prohibited either.  Query OS environment variables for request.*/
             env_use_gpu  = getenv("CHOLMOD_USE_GPU");
 
+            /* CHOLMOD_USE_GPU environment variable is set */
             if ( env_use_gpu )
             {
-                /* CHOLMOD_USE_GPU environment variable is set to something */
                 if ( atoi ( env_use_gpu ) == 0 )
                 {
                     Common->useGPU = 0; /* don't use the gpu */
@@ -136,20 +149,49 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
                 else
                 {
                     Common->useGPU = 1; /* use the gpu */
+                    /* Query OS environment variables for request.*/
+                    env_hybrid_gpu  = getenv("CHOLMOD_GPU_HYBRID");
+                    /* CHOLMOD_GPU_HYBRID environment variable is set */
+                    if ( env_hybrid_gpu )
+                    {
+                        if ( atoi ( env_hybrid_gpu ) == 0 )
+                        {
+                            Common->useHybrid = 0;                           	/* don't use hybrid (GPU only) */
+                        }
+                        else
+                        {
+                            Common->useHybrid = 1; 				/* use hybrid (GPU + CPU) */
+                        }
+                    }
+                    /* CHOLMOD_GPU_HYBRID environment variable not set */
+                    else
+                    {
+                        Common->useHybrid = 0;                              	/* default, hybrid is not defined */
+                    }
+                    env_num_gpu  = getenv("CHOLMOD_NUM_GPUS");
+                    if ( env_num_gpu )
+                    {	    
+                        Common->cuda_gpu_num = atoi ( env_num_gpu );              	/* set # GPUs */	
+                    }
+                    /* CHOLMOD_USE_GPU environment variable not set */
+                    else
+                    {
+                        Common->cuda_gpu_num = 0;				    	/* default, #GPUs is not defined */
+                    }	        	
                     env_max_bytes = getenv("CHOLMOD_GPU_MEM_BYTES");
-                    env_max_fraction = getenv("CHOLMOD_GPU_MEM_FRACTION");
                     if ( env_max_bytes )
                     {
                         max_bytes = atol(env_max_bytes);
                         Common->maxGpuMemBytes = max_bytes;
                     }
+                    env_max_fraction = getenv("CHOLMOD_GPU_MEM_FRACTION");
                     if ( env_max_fraction )
                     {
                         max_fraction = atof (env_max_fraction);
                         if ( max_fraction < 0 ) max_fraction = 0;
                         if ( max_fraction > 1 ) max_fraction = 1;
                         Common->maxGpuMemFraction = max_fraction;
-                    }	  
+                    }	
                 }
             }
             else
@@ -159,6 +201,12 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
                 Common->useGPU = 0;
             }
             /* fprintf (stderr, "useGPU queried: %d\n", Common->useGPU) ; */
+        }
+
+        if ( !Common->useGPU || Common->partialFactorization )
+        {
+            Common->useGPU = 0;
+            Common->useHybrid = 0;
         }
 
         /* Ensure that a GPU is present */
@@ -179,29 +227,16 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
         Common->cuda_gpu_num = 0;
 #endif
 
-        /*
-        if (Common->cuda_gpu_num > 0)
-        {
-            Common->cuda_gpu_parallel = (L->nleaves - 1) / Common->cuda_gpu_num + 1;
-            if (Common->cuda_gpu_parallel > CUDA_GPU_PARALLEL)
-                Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
-            else if (Common->cuda_gpu_parallel <= 0)
-                Common->cuda_gpu_parallel = 1;
-        }
-        else
-        */
-            Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
-
-        Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
-        if (Common->cuda_vgpu_num > 0)
-            Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
-        else
-            Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
-
 #ifdef DLONG
         timestamp = SuiteSparse_time();
         if ( Common->useGPU == 1 )
         {
+            /* fprintf (stderr, "\nprobe GPU:\n") ; */
+#if 0
+            Common->useGPU = CHOLMOD(gpu_probe) (Common);
+#endif
+            /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
+
             if (pdev < 0)
             {
                 dev_l = 0;
@@ -212,9 +247,6 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
                 dev_l = pdev;
                 dev_h = dev_l + 1;
             }
-            /* fprintf (stderr, "\nprobe GPU:\n") ; */
-            //Common->useGPU = CHOLMOD(gpu_probe) (Common, dev_l); 
-            /* fprintf (stderr, "\nprobe GPU: result %d\n", Common->useGPU) ; */
             /* Cholesky + GPU, so allocate space */
             for (device = dev_l; device < dev_h; device++)
             {
@@ -226,6 +258,26 @@ void CHOLMOD (init_gpus) (int for_whom, cholmod_common *Common)
         printf ("GPU memory allocation time = %lf\n", SuiteSparse_time() - timestamp);
     }
 #endif
+
+    Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
+
+    /*
+    if (Common->cuda_gpu_num > 0)
+    {
+        Common->cuda_gpu_parallel = (L->nleaves - 1) / Common->cuda_gpu_num + 1;
+        if (Common->cuda_gpu_parallel > CUDA_GPU_PARALLEL)
+            Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
+        else if (Common->cuda_gpu_parallel <= 0)
+            Common->cuda_gpu_parallel = 1;
+    }
+    else
+    */
+        Common->cuda_vgpu_num = Common->cuda_gpu_num * Common->cuda_gpu_parallel;
+
+    if (Common->cuda_vgpu_num > 0)
+        Common->cholmod_parallel_num_threads = Common->cuda_vgpu_num;
+    else
+        Common->cholmod_parallel_num_threads = CPU_THREAD_NUM;
 #else
     /* GPU module is not installed */
     Common->useGPU = 0 ;
