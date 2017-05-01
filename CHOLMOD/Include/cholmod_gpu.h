@@ -28,10 +28,10 @@
 /* define supernode requirements for processing on GPU */
 #define CHOLMOD_ND_COL_LIMIT 32  /* required descendnat cols */
 #define CHOLMOD_ND_ROW_LIMIT 256 /* required descendant rows */
-#define CHOLMOD_POTRF_LIMIT  256 /* required cols for POTRF & TRSM on GPU */
+#define CHOLMOD_POTRF_LIMIT  512 /* required cols for POTRF & TRSM on GPU */
 
 /* # of host supernodes to perform before checking for free pinned buffers */
-#define CHOLMOD_GPU_SKIP     0
+#define CHOLMOD_GPU_SKIP     3
 
 #define CHOLMOD_HANDLE_CUDA_ERROR(e,s) {if (e) {ERROR(CHOLMOD_GPU_PROBLEM,s);}}
 

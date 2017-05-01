@@ -845,11 +845,9 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     /* heuristic to get the block size depending of the problem size */
     /* ---------------------------------------------------------------------- */
 
-    nb = CHOLMOD_POTRF_LIMIT;
-    if (nscol2 >= 64) nb = 64;
-    if (nscol2 >= 128) nb = 128;
-    if (nscol2 >= 256) nb = 256;
-    if (nscol2 >= 384) nb = 384;
+    nb = 128 ;
+    if (nscol2 > 4096) nb = 256 ;
+    if (nscol2 > 8192) nb = 384 ;
     n  = nscol2 ;
     gpu_lda = ((nscol2+31)/32)*32 ;
     lda = nsrow ;
