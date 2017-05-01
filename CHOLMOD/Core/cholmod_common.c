@@ -772,3 +772,73 @@ int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i,
 	return (-1) ;
     }
 }
+
+
+/* function for sorting syrk with qsort */
+int CHOLMOD(sort_syrk) (struct cholmod_syrk_t *i, struct cholmod_syrk_t *j)
+{
+  if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else
+    {
+        return (-1) ;
+    }
+}
+
+
+/* fucntion for sorting gemm with qsort */
+int CHOLMOD(sort_gemm) (struct cholmod_gemm_t *i, struct cholmod_gemm_t *j)
+{
+  if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else
+    {
+        return (-1) ;
+    }
+}
+
+
+/* function for sorting potrf with qsort */
+int CHOLMOD(sort_potrf) (struct cholmod_potrf_t *i, struct cholmod_potrf_t *j)
+{
+  if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else
+    {
+        return (-1) ;
+    }
+}
+
+
+/* function for sorting trsm with qsort */
+int CHOLMOD(sort_trsm) (struct cholmod_trsm_t *i, struct cholmod_trsm_t *j)
+{
+  if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else
+    {
+        return (-1) ;
+    }
+}
+
+
+/* function for sorting descendants with qsort */
+int CHOLMOD(sort_desc) (struct cholmod_desc_t *i, struct cholmod_desc_t *j)
+{
+  if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else
+    {
+        return (-1) ;
+    }
+}
