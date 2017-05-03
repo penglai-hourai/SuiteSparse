@@ -277,11 +277,11 @@
 #endif
 
 #ifndef CUDA_GPU_PARALLEL
-#define CUDA_GPU_PARALLEL 4
+#define CUDA_GPU_PARALLEL 16
 #endif
 
 #ifndef CUDA_GPU_NUM
-#define CUDA_GPU_NUM 16
+#define CUDA_GPU_NUM 64
 #endif
 
 #ifndef CUDA_VGPU_NUM
@@ -289,7 +289,7 @@
 #endif
 
 #ifndef CPU_THREAD_NUM
-#define CPU_THREAD_NUM 4
+#define CPU_THREAD_NUM 32
 #endif
 
 #ifndef CHOLMOD_PARALLEL_NUM_THREADS

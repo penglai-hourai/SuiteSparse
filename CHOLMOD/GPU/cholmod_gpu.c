@@ -517,7 +517,8 @@ int CHOLMOD(gpu_allocate) ( cholmod_common *Common, int device )
     /* Split up the memory allocations into required device buffers. */
     devBuffSize = (requestedDeviceMemory - CHOLMOD_DEVICE_LS_SIZE_T)
         / (Common->cuda_gpu_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
-    devBuffSize -= devBuffSize%0x20000;
+    //devBuffSize -= devBuffSize%0x20000;
+    devBuffSize -= devBuffSize % sizeof(double);
     if (Common->devBuffSize <= 0 || Common->devBuffSize > devBuffSize)
         Common->devBuffSize = devBuffSize;
 
