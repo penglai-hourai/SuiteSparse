@@ -108,7 +108,7 @@ static int TEMPLATE (cholmod_super_numeric)
 {
     const int pdev = Common->pdev;
 
-    omp_lock_t *front_lock;
+    omp_lock_t global_lock, *front_lock;
     const double one  [2] = {1, 0} ;    /* ALPHA for *syrk, *herk, *gemm, and *trsm */
     const double zero [2] = {0, 0} ;    /* BETA for *syrk, *herk, and *gemm */
 
@@ -129,13 +129,14 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* these variables are not used if the GPU module is not installed */
 
-    int device, vdevice, vdev_l, vdev_h;
+    int threadSeq, device, vdevice, vdev_l, vdev_h;
 #ifdef SUITESPARSE_CUDA
 #ifdef USE_CPU_FREE
     int cpu_free = CPU_THREAD_NUM;
 #endif
     int useGPU_queue[CUDA_VGPU_NUM];
     cholmod_gpu_pointers gpu_p_queue[CUDA_VGPU_NUM];
+    int vgpu_free, vgpu_busy [CUDA_VGPU_NUM];
 #endif
 
     double timestamp;
@@ -295,9 +296,16 @@ static int TEMPLATE (cholmod_super_numeric)
     }
 #endif
 
+    omp_init_lock(&global_lock);
+
 //#pragma omp parallel for num_threads(Common->ompNumThreads) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_init_lock(&front_lock[s]);
+
+#ifdef SUITESPARSE_CUDA
+    for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
+        vgpu_busy[vdevice] = 0;
+#endif
 
     printf ("init time = %lf\n", SuiteSparse_time() - timestamp);
     timestamp = SuiteSparse_time();
@@ -306,12 +314,16 @@ static int TEMPLATE (cholmod_super_numeric)
     /* supernodal numerical factorization */
     /* ---------------------------------------------------------------------- */
 
-#pragma omp parallel for private (s, t, device, vdevice) schedule (static)
-    for (vdevice = vdev_l; vdevice < vdev_h; vdevice++)
+#pragma omp parallel for private (s, t, threadSeq) schedule (static)
+    for (threadSeq = vdev_l; threadSeq < vdev_h; threadSeq++)
     {
-        Int * const Map = (Int *) (L->Map_queue[vdevice]);
-        Int * const RelativeMap = (Int *) (L->RelativeMap_queue[vdevice]);
-        double * const C = (double *) (L->C_queue[vdevice]);
+        int device, vdevice;
+        int device_allocated;
+        int blocks, block_power, block_frame;
+        size_t mem_size;
+
+        Int *Map, *RelativeMap;
+        double *C;
         Int ss, sparent;
         Int k1, k2, nscol, nscol2, nscol_new, psi, psend, nsrow, nsrow2, ndrow3, psx, pend, px, p, pk, q;
         Int pf, pfend;
@@ -336,11 +348,76 @@ static int TEMPLATE (cholmod_super_numeric)
         cholmod_gpu_pointers *gpu_p ;
 #endif
 
+        /* clear the Map so that changes in the pattern of A can be detected */
+
+        t = 0;
+        if (t < t_max)
+            s = leaf[t];
+        while (t < t_max && s < nsuper)
+        {
+            if (pending[s] <= 0 && omp_test_lock(&front_lock[s]))
+            {
+                mem_size = sizeof(double) * (Super[s+1] - Super[s]) * (Lpi[s+1] - Lpi[s]);
+                blocks = (mem_size - 1) / Common->devBuffSize + 1;
+#ifdef SUITESPARSE_CUDA
+#pragma omp critical
+                {
+                    block_power = 0;
+                    block_frame = blocks;
+                    vdevice = threadSeq;
+                    while (block_frame > 1)
+                    {
+                        block_power++;
+                        block_frame /= 2;
+                        vdevice /= 2;
+                    }
+                    block_frame = 1;
+                    while (block_power > 0)
+                    {
+                        block_power--;
+                        block_frame *= 2;
+                        vdevice *= 2;
+                    }
+
+                    block_power = 0;
+                    block_frame = blocks - 1;
+                    while (block_frame > 0)
+                    {
+                        block_power++;
+                        block_frame /= 2;
+                    }
+                    block_frame = 1;
+                    while (block_power > 0)
+                    {
+                        block_power--;
+                        block_frame *= 2;
+                    }
+
+                    device_allocated = FALSE;
+                    while (device_allocated == FALSE)
+                    {
+                        vdevice = (vdevice + block_frame) % (vdev_h - vdev_l) + vdev_l;
+                        device_allocated = TRUE;
+                        for (k = 0; k < blocks; k++)
+                            if (vgpu_busy[vdevice + k])
+                                device_allocated = FALSE;
+                    }
+                    for (k = 0; k < blocks; k++)
+                        vgpu_busy[vdevice + k] = 1;
+                }
+#else
+    vdevice = threadSeq;
+#endif
+
 #ifdef SUITESPARSE_CUDA
         Int ndescendants, mapCreatedOnGpu, supernodeUsedGPU,
             idescendant, dlarge, dsmall, skips ;
         int iHostBuff, iDevBuff, GPUavailable ;
 #endif
+
+        Map = (Int *) (L->Map_queue[vdevice]);
+        RelativeMap = (Int *) (L->RelativeMap_queue[vdevice]);
+        C = (double *) (L->C_queue[vdevice]);
 
 #ifdef SUITESPARSE_CUDA
         if (vdevice >= vdev_l && vdevice < vdev_h && useGPU_queue[vdevice])
@@ -356,15 +433,6 @@ static int TEMPLATE (cholmod_super_numeric)
         }
 #endif
 
-        /* clear the Map so that changes in the pattern of A can be detected */
-
-        t = vdevice - vdev_l;
-        if (t < t_max)
-            s = leaf[t];
-        while (t < t_max && s < nsuper)
-        {
-            if (pending[s] <= 0 && omp_test_lock(&front_lock[s]))
-            {
                 nscol_new = 0;
                 info = 0;
                 repeat_supernode = FALSE;
@@ -1191,6 +1259,11 @@ label:
                     pending[sparent]--;
 ret:
                 s = sparent;
+
+#ifdef SUITESPARSE_CUDA
+                for (k = 0; k < blocks; k++)
+                    vgpu_busy[vdevice + k] = 0;
+#endif
             }
             else
             {
@@ -1213,6 +1286,8 @@ ret:
 //#pragma omp parallel for num_threads(Common->ompNumThreads) if (nsuper > 256) schedule (static)
     for (s = 0; s < nsuper; s++)
         omp_destroy_lock(&front_lock[s]);
+
+    omp_destroy_lock(&global_lock);
 
     /* success; matrix is positive definite */
     L->minor = n ;

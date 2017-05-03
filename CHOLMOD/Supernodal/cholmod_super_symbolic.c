@@ -387,7 +387,7 @@ int CHOLMOD(super_symbolic2)
 		 (j-Super[nfsuper-1]+1) * 
 		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2
          //+ (ColCount[Super[nfsuper-1]]+1) * sizeof(Int)
-         >= Common->devBuffSize)
+         >= Common->devBuffSize * Common->cuda_gpu_parallel)
 #endif
 	    )
 	{
@@ -548,7 +548,8 @@ int CHOLMOD(super_symbolic2)
 	  double xns = (double) ns;
 	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2
               //+ ((nscol0+lnz1)+1) * sizeof(Int)
-              >= Common->devBuffSize ) {
+              >= Common->devBuffSize * Common->cuda_gpu_parallel )
+      {
 	    merge = FALSE;
 	  }
 	}
