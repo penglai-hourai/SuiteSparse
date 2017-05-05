@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Partition Module.
  * Copyright (C) 2005-2013, Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Partition Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD interface to the CSYMAMD ordering routine.  Finds a permutation
@@ -83,7 +86,7 @@ int CHOLMOD(csymamd)
     /* order the matrix (does not affect A->p or A->i) */
     /* ---------------------------------------------------------------------- */
 
-    perm = (Int *) (Common->Head) ;	/* size nrow+1 (i/l/l) */
+    perm = Common->Head ;	/* size nrow+1 (i/l/l) */
 
     /* get parameters */
 #ifdef LONG
@@ -99,12 +102,12 @@ int CHOLMOD(csymamd)
     }
     {
 #ifdef LONG
-	csymamd_l (nrow, (Int *) (A->i), (Int *) (A->p), perm, knobs, stats,
+	csymamd_l (nrow, A->i, A->p, perm, knobs, stats,
                 SuiteSparse_config.calloc_func,
                 SuiteSparse_config.free_func,
                 Cmember, A->stype) ;
 #else
-	csymamd (nrow, (Int *) (A->i), (Int *) (A->p), perm, knobs, stats,
+	csymamd (nrow, A->i, A->p, perm, knobs, stats,
                 SuiteSparse_config.calloc_func,
                 SuiteSparse_config.free_func,
                 Cmember, A->stype) ;
@@ -129,7 +132,7 @@ int CHOLMOD(csymamd)
     }
 
     /* clear Head workspace (used for perm, in csymamd): */
-    Head = (Int *) (Common->Head) ;
+    Head = Common->Head ;
     for (i = 0 ; i <= nrow ; i++)
     {
 	Head [i] = EMPTY ;

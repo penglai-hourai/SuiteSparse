@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Partition Module. 
  * Copyright (C) 2005-2013, Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Partition Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD interface to the CCOLAMD ordering routine.  Finds a permutation
@@ -91,16 +94,16 @@ static int ccolamd_interface
     {
 
 #ifdef LONG
-	ccolamd_l (ncol, nrow, alen, (Int *) (C->i), (Int *) (C->p), knobs, stats, Cmember) ;
+	ccolamd_l (ncol, nrow, alen, C->i, C->p, knobs, stats, Cmember) ;
 #else
-	ccolamd (ncol, nrow, alen, (Int *) (C->i), (Int *) (C->p), knobs, stats, Cmember) ;
+	ccolamd (ncol, nrow, alen, C->i, C->p, knobs, stats, Cmember) ;
 #endif
 
 	ok = stats [CCOLAMD_STATUS] ;
 
 	ok = (ok == CCOLAMD_OK || ok == CCOLAMD_OK_BUT_JUMBLED) ;
 	/* permutation returned in C->p, if the ordering succeeded */
-	Cp = (Int *) (C->p) ;
+	Cp = C->p ;
 	for (k = 0 ; k < nrow ; k++)
 	{
 	    Perm [k] = Cp [k] ;

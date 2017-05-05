@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_check.h.  Copyright (C) 2005-2006, Timothy A. Davis
+ * CHOLMOD/Include/cholmod_check.h is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -63,12 +66,8 @@
 #ifndef CHOLMOD_CHECK_H
 #define CHOLMOD_CHECK_H
 
-#include <stdio.h>
 #include "cholmod_core.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdio.h>
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_check_common:  check the Common object */
@@ -95,12 +94,6 @@ int cholmod_print_common
 
 int cholmod_l_print_common (const char *, cholmod_common *) ;
 
-/* -------------------------------------------------------------------------- */
-/* cholmod_gpu_stats:  print the GPU / CPU statistics */
-/* -------------------------------------------------------------------------- */
-
-int cholmod_gpu_stats   (cholmod_common *) ;
-int cholmod_l_gpu_stats (cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_check_sparse:  check a sparse matrix */
@@ -330,10 +323,8 @@ cholmod_sparse *cholmod_read_sparse
     /* --------------- */
     cholmod_common *Common
 ) ;
-cholmod_sparse *cholmod_read_sparse_batched (FILE *[], cholmod_common *) ;
 
 cholmod_sparse *cholmod_l_read_sparse (FILE *, cholmod_common *) ;
-cholmod_sparse *cholmod_l_read_sparse_batched (FILE *[], cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_read_triplet: read a triplet matrix from a file */
@@ -346,10 +337,8 @@ cholmod_triplet *cholmod_read_triplet
     /* --------------- */
     cholmod_common *Common
 ) ;
-cholmod_triplet *cholmod_read_triplet_batched (FILE *[], cholmod_common *) ;
 
 cholmod_triplet *cholmod_l_read_triplet (FILE *, cholmod_common *) ;
-cholmod_triplet *cholmod_l_read_triplet_batched (FILE *[], cholmod_common *) ;
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_read_dense: read a dense matrix from a file */
@@ -429,9 +418,4 @@ int cholmod_write_dense
 
 int cholmod_l_write_dense (FILE *, cholmod_dense *, const char *,
     cholmod_common *) ;
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif

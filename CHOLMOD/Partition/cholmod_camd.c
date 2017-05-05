@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Partition Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Partition Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -107,13 +110,13 @@ int CHOLMOD(camd)
 	return (FALSE) ;
     }
 
-    p = (Int *) (Common->Iwork) ;
+    p = Common->Iwork ;
     Degree = p ; p += n ;	/* size n */
     Elen   = p ; p += n ;	/* size n */
     Len    = p ; p += n ;	/* size n */
     Nv     = p ; p += n ;	/* size n */
 
-    Work3n = (Int *) CHOLMOD(malloc) (n+1, 3*sizeof (Int), Common) ;
+    Work3n = CHOLMOD(malloc) (n+1, 3*sizeof (Int), Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (FALSE) ;
@@ -123,7 +126,7 @@ int CHOLMOD(camd)
     Wi   = p ; p += (n+1) ;	/* size n+1 */
     BucketSet = p ;		/* size n */
 
-    Head = (Int *) (Common->Head) ;	/* size n+1 */
+    Head = Common->Head ;	/* size n+1 */
 
     /* ---------------------------------------------------------------------- */
     /* construct the input matrix for CAMD */
@@ -149,7 +152,7 @@ int CHOLMOD(camd)
 	return (FALSE) ;
     }
 
-    Cp = (Int *) (C->p) ;
+    Cp = C->p ;
     for (j = 0 ; j < n ; j++)
     {
 	Len [j] = Cp [j+1] - Cp [j] ;
@@ -179,11 +182,11 @@ int CHOLMOD(camd)
 
 #ifdef LONG
     /* DEBUG (camd_l_debug_init ("cholmod_l_camd")) ; */
-    camd_l2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    camd_l2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info, Cmember, BucketSet) ;
 #else
     /* DEBUG (camd_debug_init ("cholmod_camd")) ; */
-    camd_2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    camd_2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info, Cmember, BucketSet) ;
 #endif
 

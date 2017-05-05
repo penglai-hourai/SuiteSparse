@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Supernodal Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Supernodal Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -34,17 +37,17 @@ static void TEMPLATE (cholmod_super_lsolve)
     /* ---------------------------------------------------------------------- */
 
     nrhs = X->ncol ;
-    Ex = (double *) (E->x) ;
-    Xx = (double *) (X->x) ;
+    Ex = E->x ;
+    Xx = X->x ;
     n = L->n ;
     d = X->d ;
 
     nsuper = L->nsuper ;
-    Lpi = (Int *) (L->pi) ;
-    Lpx = (Int *) (L->px) ;
-    Ls = (Int *) (L->s) ;
-    Super = (Int *) (L->super) ;
-    Lx = (double *) (L->x) ;
+    Lpi = L->pi ;
+    Lpx = L->px ;
+    Ls = L->s ;
+    Super = L->super ;
+    Lx = L->x ;
     minus_one [0] = -1.0 ;
     minus_one [1] = 0 ;
     one [0] = 1.0 ;
@@ -242,17 +245,17 @@ static void TEMPLATE (cholmod_super_ltsolve)
     /* ---------------------------------------------------------------------- */
 
     nrhs = X->ncol ;
-    Ex = (double *) (E->x) ;
-    Xx = (double *) (X->x) ;
+    Ex = E->x ;
+    Xx = X->x ;
     n = L->n ;
     d = X->d ;
 
     nsuper = L->nsuper ;
-    Lpi = (Int *) (L->pi) ;
-    Lpx = (Int *) (L->px) ;
-    Ls = (Int *) (L->s) ;
-    Super = (Int *) (L->super) ;
-    Lx = (double *) (L->x) ;
+    Lpi = L->pi ;
+    Lpx = L->px ;
+    Ls = L->s ;
+    Super = L->super ;
+    Lx = L->x ;
     minus_one [0] = -1.0 ;
     minus_one [1] = 0 ;
     one [0] = 1.0 ;

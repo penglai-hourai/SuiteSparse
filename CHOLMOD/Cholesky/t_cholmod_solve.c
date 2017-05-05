@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine for cholmod_solve.  Supports any numeric xtype (real,
@@ -70,10 +73,10 @@ static void TEMPLATE (ldl_dsolve)
 
     nrhs = Y->nrow ;
     n = L->n ;
-    Lp = (Int *) (L->p) ;
-    Lx = (double *) (L->x) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Lp = L->p ;
+    Lx = L->x ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     kkiters = Yseti ? ysetlen : n ;
     for (kk = 0 ; kk < kkiters ; kk++)
     {

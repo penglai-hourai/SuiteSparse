@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine for cholmod_rowfac.  Supports any numeric xtype
@@ -63,14 +66,6 @@ static int TEMPLATE (cholmod_rowfac)
     n = A->nrow ;
     stype = A->stype ;
 
-    Ap = (Int *) (A->p) ;		/* size A->ncol+1, column pointers of A */
-    Ai = (Int *) (A->i) ;		/* size nz = Ap [A->ncol], row indices of A */
-    Ax = (double *) (A->x) ;		/* size nz, numeric values of A */
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
-    packed = A->packed ;
-    sorted = A->sorted ;
-
     if (stype > 0)
     {
 	/* symmetric upper case: F is not needed.  It may be NULL */
@@ -84,13 +79,21 @@ static int TEMPLATE (cholmod_rowfac)
     else
     {
 	/* unsymmetric case: F is required. */
-	Fp = (Int *) (F->p) ;
-	Fi = (Int *) (F->i) ;
-	Fx = (double *) (F->x) ;
-	Fz = (double *) (F->z) ;
-	Fnz = (Int *) (F->nz) ;
+	Fp = F->p ;
+	Fi = F->i ;
+	Fx = F->x ;
+	Fz = F->z ;
+	Fnz = F->nz ;
 	Fpacked = F->packed ;
     }
+
+    Ap = A->p ;		/* size A->ncol+1, column pointers of A */
+    Ai = A->i ;		/* size nz = Ap [A->ncol], row indices of A */
+    Ax = A->x ;		/* size nz, numeric values of A */
+    Az = A->z ;
+    Anz = A->nz ;
+    packed = A->packed ;
+    sorted = A->sorted ;
 
     use_dbound = IS_GT_ZERO (Common->dbound) ;
 
@@ -118,7 +121,7 @@ static int TEMPLATE (cholmod_rowfac)
 	/* ------------------------------------------------------------------ */
 
 	L->minor = n ;
-	Lnz = (Int *) (L->nz) ;
+	Lnz = L->nz ;
 	for (k = 0 ; k < n ; k++)
 	{
 	    Lnz [k] = 1 ;
@@ -132,15 +135,15 @@ static int TEMPLATE (cholmod_rowfac)
     DEBUG (if (stype == 0) CHOLMOD(dump_sparse) (F, "F ready", Common)) ;
 
     /* inputs, can be modified on output: */
-    Lp = (Int *) (L->p) ;		/* size n+1 */
+    Lp = L->p ;		/* size n+1 */
     ASSERT (Lp != NULL) ;
 
     /* outputs, contents defined on input for incremental case only: */
-    Lnz = (Int *) (L->nz) ;	/* size n */
-    Lnext = (Int *) (L->next) ;	/* size n+2 */
-    Li = (Int *) (L->i) ;		/* size L->nzmax, can change in size */
-    Lx = (double *) (L->x) ;		/* size L->nzmax or 2*L->nzmax, can change in size */
-    Lz = (double *) (L->z) ;		/* size L->nzmax for zomplex case, can change in size */
+    Lnz = L->nz ;	/* size n */
+    Lnext = L->next ;	/* size n+2 */
+    Li = L->i ;		/* size L->nzmax, can change in size */
+    Lx = L->x ;		/* size L->nzmax or 2*L->nzmax, can change in size */
+    Lz = L->z ;		/* size L->nzmax for zomplex case, can change in size */
     nzmax = L->nzmax ;
     ASSERT (Lnz != NULL && Li != NULL && Lx != NULL) ;
 
@@ -148,10 +151,10 @@ static int TEMPLATE (cholmod_rowfac)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
     Stack = Iwork ;		/* size n (i/i/l) */
-    Flag = (Int *) (Common->Flag) ;	/* size n, Flag [i] < mark must hold */
-    Wx = (double *) (Common->Xwork) ;	/* size n if real, 2*n if complex or 
+    Flag = Common->Flag ;	/* size n, Flag [i] < mark must hold */
+    Wx = Common->Xwork ;	/* size n if real, 2*n if complex or 
 				 * zomplex.  Xwork [i] == 0 must hold. */
     Wz = Wx + n ;		/* size n for zomplex case only */
     mark = Common->mark ;
@@ -387,9 +390,9 @@ static int TEMPLATE (cholmod_rowfac)
 		    ASSERT (CHOLMOD(dump_work) (TRUE, TRUE, n, Common)) ;
 		    return (FALSE) ;
 		}
-		Li = (Int *) (L->i) ;		/* L->i, L->x, L->z may have moved */
-		Lx = (double *) (L->x) ;
-		Lz = (double *) (L->z) ;
+		Li = L->i ;		/* L->i, L->x, L->z may have moved */
+		Lx = L->x ;
+		Lz = L->z ;
 		p = Lp [i] + lnz ;	/* contents of L->p changed */
 		ASSERT (p < Lp [Lnext [i]]) ;
 	    }

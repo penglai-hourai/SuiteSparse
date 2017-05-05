@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Modify Module.  Copyright (C) 2005-2006,
  * Timothy A. Davis and William W. Hager.
+ * The CHOLMOD/Modify Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -103,10 +106,10 @@ static void NUMERIC (WDIM, r)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
-    Cnz = (Int *) (C->nz) ;
+    Ci = C->i ;
+    Cx = C->x ;
+    Cp = C->p ;
+    Cnz = C->nz ;
     packed = C->packed ;
     ASSERT (IMPLIES (!packed, Cnz != NULL)) ;
     ASSERT (L->n == C->nrow) ;

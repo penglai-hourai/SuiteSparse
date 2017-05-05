@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* C = A, which allocates C and copies A into C, with possible change of
@@ -82,10 +85,10 @@ static cholmod_sparse *copy_sym_to_unsym
 
     nrow = A->nrow ;
     ncol = A->ncol ;
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     packed = A->packed ;
     values = (mode > 0) && (A->xtype != CHOLMOD_PATTERN) ;
     diag = (mode >= 0) ;
@@ -99,7 +102,7 @@ static cholmod_sparse *copy_sym_to_unsym
     /* create an unsymmetric copy of a symmetric matrix */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
     Wj = Iwork ;		    /* size ncol (i/i/l) */
 
     /* In MATLAB notation, for converting a symmetric/upper matrix:
@@ -162,9 +165,9 @@ static cholmod_sparse *copy_sym_to_unsym
 	return (NULL) ;
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* construct the column pointers for C */
     p = 0 ;

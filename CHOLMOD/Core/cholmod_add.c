@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* C = alpha*A + beta*B, or spones(A+B).  Result is packed, with sorted or
@@ -125,22 +128,22 @@ cholmod_sparse *CHOLMOD(add)
     up = (A->stype > 0) ;
     lo = (A->stype < 0) ;
 
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     apacked = A->packed ;
 
     /* get the B matrix */
-    Bp  = (Int *) (B->p) ;
-    Bnz = (Int *) (B->nz) ;
-    Bi  = (Int *) (B->i) ;
-    Bx  = (double *) (B->x) ;
+    Bp  = B->p ;
+    Bnz = B->nz ;
+    Bi  = B->i ;
+    Bx  = B->x ;
     bpacked = B->packed ;
 
     /* get workspace */
-    W = (double *) (Common->Xwork) ;	    /* size nrow, used if values is TRUE */
-    Flag = (Int *) (Common->Flag) ;   /* size nrow, Flag [0..nrow-1] < mark on input */
+    W = Common->Xwork ;	    /* size nrow, used if values is TRUE */
+    Flag = Common->Flag ;   /* size nrow, Flag [0..nrow-1] < mark on input */
 
     /* ---------------------------------------------------------------------- */
     /* allocate the result C */
@@ -160,9 +163,9 @@ cholmod_sparse *CHOLMOD(add)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* ---------------------------------------------------------------------- */
     /* compute C = alpha*A + beta*B */

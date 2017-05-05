@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* C = A*A' or C = A(:,f)*A(:,f)'
@@ -88,15 +91,15 @@ cholmod_sparse *CHOLMOD(aat)
     ASSERT (CHOLMOD(dump_sparse) (A, "A", Common) >= 0) ;
 
     /* get the A matrix */
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     packed = A->packed ;
 
     /* get workspace */
-    W = (double *) (Common->Xwork) ;		/* size n, unused if values is FALSE */
-    Flag = (Int *) (Common->Flag) ;	/* size n, Flag [0..n-1] < mark on input*/
+    W = Common->Xwork ;		/* size n, unused if values is FALSE */
+    Flag = Common->Flag ;	/* size n, Flag [0..n-1] < mark on input*/
 
     /* ---------------------------------------------------------------------- */
     /* F = A' or A(:,f)' */
@@ -109,9 +112,9 @@ cholmod_sparse *CHOLMOD(aat)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Fp = (Int *) (F->p) ;
-    Fi = (Int *) (F->i) ;
-    Fx = (double *) (F->x) ;
+    Fp = F->p ;
+    Fi = F->i ;
+    Fx = F->x ;
 
     /* ---------------------------------------------------------------------- */
     /* count the number of entries in the result C */
@@ -185,9 +188,9 @@ cholmod_sparse *CHOLMOD(aat)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* ---------------------------------------------------------------------- */
     /* C = A*A' */

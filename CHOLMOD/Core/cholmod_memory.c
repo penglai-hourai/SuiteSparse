@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2013,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Core memory management routines:
@@ -527,8 +530,8 @@ int CHOLMOD(realloc_multiple)
 	/* New space was allocated.  Clear the first entry so that valgrind
 	 * doesn't complain about its access in change_complexity
 	 * (Core/cholmod_complex.c). */
-	xx = (double *) (*Xblock) ;
-	zz = (double *) (*Zblock) ;
+	xx = *Xblock ;
+	zz = *Zblock ;
 	switch (xtype)
 	{
 	    case CHOLMOD_REAL:

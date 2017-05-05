@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_cholesky.h. Copyright (C) 2005-2013, Timothy A. Davis
+ * CHOLMOD/Include/cholmod_cholesky.h is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -62,10 +65,6 @@
 
 #ifndef NSUPERNODAL
 #include "cholmod_supernodal.h"
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -586,9 +585,5 @@ SuiteSparse_long cholmod_postorder	/* return # of nodes postordered */
 
 SuiteSparse_long cholmod_l_postorder (SuiteSparse_long *, size_t,
     SuiteSparse_long *, SuiteSparse_long *, cholmod_common *) ;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

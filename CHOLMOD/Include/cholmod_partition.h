@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_partition.h.
  * Copyright (C) 2005-2013, Univ. of Florida.  Author: Timothy A. Davis
+ * CHOLMOD/Include/cholmod_partition.h is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD Partition module.
@@ -36,10 +39,6 @@
 
 #include "cholmod_core.h"
 #include "cholmod_camd.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_nested_dissection */
@@ -168,9 +167,5 @@ SuiteSparse_long cholmod_collapse_septree
 
 SuiteSparse_long cholmod_l_collapse_septree (size_t, size_t, double, size_t,
     SuiteSparse_long *, SuiteSparse_long *, cholmod_common *) ;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

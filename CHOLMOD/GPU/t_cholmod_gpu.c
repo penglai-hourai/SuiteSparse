@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/GPU Module.  Copyright (C) 2005-2012, Timothy A. Davis
+ * The CHOLMOD/GPU Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -15,11 +18,8 @@
 
 #ifdef SUITESPARSE_CUDA
 
-#include <cuda_runtime.h>
-
 #include <string.h>
 #include "cholmod_template.h"
-#include "cholmod_gpu_kernels.h"
 
 #undef L_ENTRY
 #ifdef REAL
@@ -77,7 +77,7 @@ void TEMPLATE2 (CHOLMOD (gpu_clear_memory))
 
 int TEMPLATE2 (CHOLMOD (gpu_init))
 (
-    //void *Cwork,
+    void *Cwork,
     cholmod_factor *L,
     cholmod_common *Common,
     Int nsuper,
@@ -91,24 +91,16 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     cudaError_t cudaErr ;
     size_t maxBytesSize, HostPinnedSize ;
 
-    const int device = gpu_p->device;
-    const int vdevice = gpu_p->vdevice;
-    const int voffset = vdevice % Common->cuda_gpu_parallel;
-
-    cudaSetDevice(device);
-
     feenableexcept (FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 
     maxSize = L->maxcsize;
 
     /* #define PAGE_SIZE (4*1024) */
-    /*
     CHOLMOD_GPU_PRINTF (("gpu_init : %p\n",
         (void *) ((size_t) Cwork & ~(4*1024-1)))) ;
-        */
 
     /* make sure the assumed buffer sizes are large enough */
-    if ( nls * sizeof(Int) > CHOLMOD_DEVICE_LS_SIZE_T ) {
+    if ( (nls+2*n+4)*sizeof(Int) > Common->devBuffSize ) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
                "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
                "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -122,27 +114,72 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     }
 
     /* divvy up the memory in dev_mempool */
-    for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
-    gpu_p->d_Lx[k]  = (double *) (Common->dev_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
-    gpu_p->d_A[0]   = (double *) (Common->dev_mempool[device] + (0 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
-    gpu_p->d_A[1]   = (double *) (Common->dev_mempool[device] + (1 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
-    gpu_p->d_C      = (double *) (Common->dev_mempool[device] + (2 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
-    gpu_p->d_Ls     = Common->dev_mempool[device] + (3 + CHOLMOD_DEVICE_STREAMS) * Common->cuda_gpu_parallel * Common->devBuffSize;
-    gpu_p->d_Map            = gpu_p->d_A[1];
-    gpu_p->d_RelativeMap    = gpu_p->d_A[1] + n * sizeof(Int);
+    gpu_p->d_Lx[0] = Common->dev_mempool;
+    gpu_p->d_Lx[1] = Common->dev_mempool + Common->devBuffSize;
+    gpu_p->d_C = Common->dev_mempool + 2*Common->devBuffSize;
+    gpu_p->d_A[0] = Common->dev_mempool + 3*Common->devBuffSize;
+    gpu_p->d_A[1] = Common->dev_mempool + 4*Common->devBuffSize;
+    gpu_p->d_Ls = Common->dev_mempool + 5*Common->devBuffSize;
+    gpu_p->d_Map = gpu_p->d_Ls + (nls+1)*sizeof(Int) ;
+    gpu_p->d_RelativeMap = gpu_p->d_Map + (n+1)*sizeof(Int) ;
 
     /* Copy all of the Ls and Lpi data to the device.  If any supernodes are
      * to be computed on the device then this will be needed, so might as
      * well do it now.   */
 
-    if (voffset == 0)
-    {
-    cudaErr = cudaMemcpy ( gpu_p->d_Ls, L->s, nls*sizeof(Int), cudaMemcpyHostToDevice );
+    cudaErr = cudaMemcpy ( gpu_p->d_Ls, L->s, nls*sizeof(Int),
+                           cudaMemcpyHostToDevice );
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
+
+    if (!(Common->gpuStream[0])) {
+
+        /* ------------------------------------------------------------------ */
+        /* create each CUDA stream */
+        /* ------------------------------------------------------------------ */
+
+        for ( i=0; i<CHOLMOD_HOST_SUPERNODE_BUFFERS; i++ ) {
+            cudaErr = cudaStreamCreate ( &(Common->gpuStream[i]) );
+            if (cudaErr != cudaSuccess) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA stream") ;
+                return (0) ;
+            }
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* create each CUDA event */
+        /* ------------------------------------------------------------------ */
+
+        for (i = 0 ; i < 3 ; i++) {
+            cudaErr = cudaEventCreateWithFlags
+                (&(Common->cublasEventPotrf [i]), cudaEventDisableTiming) ;
+            if (cudaErr != cudaSuccess) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
+                return (0) ;
+            }
+        }
+
+        for (i = 0 ; i < CHOLMOD_HOST_SUPERNODE_BUFFERS ; i++) {
+            cudaErr = cudaEventCreateWithFlags
+                (&(Common->updateCBuffersFree[i]), cudaEventDisableTiming) ;
+            if (cudaErr != cudaSuccess) {
+                ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event") ;
+                return (0) ;
+            }
+        }
+
+        cudaErr = cudaEventCreateWithFlags ( &(Common->updateCKernelsComplete),
+                                             cudaEventDisableTiming );
+        if (cudaErr != cudaSuccess) {
+            ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCKernelsComplete event") ;
+            return (0) ;
+        }
+
     }
 
-    for ( k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
-        gpu_p->h_Lx[k] = (double *) (Common->host_pinned_mempool[device] + k * Common->cuda_gpu_parallel * Common->devBuffSize + voffset * Common->devBuffSize);
+    gpu_p->h_Lx[0] = (double*)(Common->host_pinned_mempool);
+    for ( k=1; k<CHOLMOD_HOST_SUPERNODE_BUFFERS; k++ ) {
+        gpu_p->h_Lx[k] = (double*)((char *)(Common->host_pinned_mempool) +
+                                   k*Common->devBuffSize);
     }
 
     return (1);  /* initialization successfull, useGPU = 1 */
@@ -195,9 +232,6 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants))
     int nreverse = 1;
     int previousd;
 
-    const int device = gpu_p->device;
-
-    cudaSetDevice(device);
 
     d = Head[*locals];
     prevd = -1;
@@ -328,10 +362,6 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode))
 
     cudaError_t cuErr;
 
-    const int device = gpu_p->device;
-
-    cudaSetDevice(device);
-
     /* initialize the device supernode assemby memory to zero */
     cuErr = cudaMemset ( gpu_p->d_A[0], 0, nscol*nsrow*L_ENTRY*sizeof(double) );
     CHOLMOD_HANDLE_CUDA_ERROR(cuErr,"cudaMemset(d_A)");
@@ -383,25 +413,16 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 )
 {
     double *devPtrLx, *devPtrC ;
+    double alpha, beta ;
     cublasStatus_t cublasStatus ;
     cudaError_t cudaStat [2] ;
     Int ndrow3 ;
     int icol, irow;
     int iHostBuff, iDevBuff ;
 
-    const double alpha = 1.0 ;
-    const double beta = 0.0 ;
-    const cuDoubleComplex calpha  = {1.0,0.0} ;
-    const cuDoubleComplex cbeta   = {0.0,0.0} ;
-
 #ifndef NTIMER
     double tstart = 0;
 #endif
-
-    const int device = gpu_p->device;
-    const int vdevice = gpu_p->vdevice;
-
-    cudaSetDevice(device);
 
     if ((ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) ||
         (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT))
@@ -413,7 +434,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     ndrow3 = ndrow2 - ndrow1 ;
 
 #ifndef NTIMER
-    Common->syrkStart[vdevice] = SuiteSparse_time ( ) ;
+    Common->syrkStart = SuiteSparse_time ( ) ;
     Common->CHOLMOD_GPU_SYRK_CALLS++ ;
 #endif
 
@@ -421,8 +442,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     /* allocate workspace on the GPU */
     /* ---------------------------------------------------------------------- */
 
-    iHostBuff = (Common->ibuffer[vdevice])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    iDevBuff = (Common->ibuffer[vdevice])%CHOLMOD_DEVICE_STREAMS;
+    iHostBuff = (Common->ibuffer)%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+    iDevBuff = (Common->ibuffer)%CHOLMOD_DEVICE_STREAMS;
 
     /* cycle the device Lx buffer, d_Lx, through CHOLMOD_DEVICE_STREAMS,
        usually 2, so we can overlap the copy of this descendent supernode
@@ -450,7 +471,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         gpu_p->h_Lx[iHostBuff],
         ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
         cudaMemcpyHostToDevice,
-        Common->gpuStream[vdevice][iDevBuff] );
+        Common->gpuStream[iDevBuff] );
 
     if ( cudaStat[0] ) {
         CHOLMOD_GPU_PRINTF ((" ERROR cudaMemcpyAsync = %d \n", cudaStat[0]));
@@ -458,8 +479,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     }
 
     /* make the current stream wait for kernels in previous streams */
-    cudaStreamWaitEvent ( Common->gpuStream[vdevice][iDevBuff],
-                          Common->updateCKernelsComplete[vdevice], 0 ) ;
+    cudaStreamWaitEvent ( Common->gpuStream[iDevBuff],
+                          Common->updateCKernelsComplete, 0 ) ;
 
     /* ---------------------------------------------------------------------- */
     /* create the relative map for this descendant supernode */
@@ -469,22 +490,24 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
                                 (Int *)(gpu_p->d_Ls),
                                 (Int *)(gpu_p->d_RelativeMap),
                                 pdi1, ndrow2,
-                                &(Common->gpuStream[vdevice][iDevBuff]) );
+                                &(Common->gpuStream[iDevBuff]) );
 
     /* ---------------------------------------------------------------------- */
     /* do the CUDA SYRK */
     /* ---------------------------------------------------------------------- */
 
-    cublasStatus = cublasSetStream (Common->cublasHandle[vdevice],
-                                    Common->gpuStream[vdevice][iDevBuff]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle,
+                                    Common->gpuStream[iDevBuff]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS)
     {
         ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     }
 
+    alpha  = 1.0 ;
+    beta   = 0.0 ;
+
 #ifdef REAL
-#ifndef MAGMA
-    cublasStatus = cublasDsyrk (Common->cublasHandle[vdevice],
+    cublasStatus = cublasDsyrk (Common->cublasHandle,
         CUBLAS_FILL_MODE_LOWER,
         CUBLAS_OP_N,
         (int) ndrow1,
@@ -496,21 +519,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
 #else
-    magma_dsyrk(
-        MagmaLower, MagmaNoTrans,
-        (int) ndrow1,
-        (int) ndcol,    /* N, K: L1 is ndrow1-by-ndcol */
-        alpha,          /* ALPHA:  1 */
-        devPtrLx,
-        ndrow2,         /* A, LDA: L1, ndrow2 */
-        beta,           /* BETA:   0 */
-        devPtrC,
-        ndrow2,         /* C, LDC: C1 */
-        Common->magmaQueue[vdevice][iDevBuff]);
-#endif
-#else
-#ifndef MAGMA
-    cublasStatus = cublasZherk (Common->cublasHandle[vdevice],
+    cublasStatus = cublasZherk (Common->cublasHandle,
         CUBLAS_FILL_MODE_LOWER,
         CUBLAS_OP_N,
         (int) ndrow1,
@@ -521,19 +530,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
         &beta,          /* BETA:   0 */
         (cuDoubleComplex *) devPtrC,
         ndrow2) ;       /* C, LDC: C1 */
-#else
-    magma_zherk(
-        MagmaLower, MagmaNoTrans,
-        (int) ndrow1,
-        (int) ndcol,    /* N, K: L1 is ndrow1-by-ndcol*/
-        alpha,          /* ALPHA:  1 */
-        (const cuDoubleComplex *) devPtrLx,
-        ndrow2,         /* A, LDA: L1, ndrow2 */
-        beta,           /* BETA:   0 */
-        (cuDoubleComplex *) devPtrC,
-        ndrow2,         /* C, LDC: C1 */
-        Common->magmaQueue[vdevice][iDevBuff]);
-#endif
 #endif
 
     if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -542,7 +538,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
     }
 
 #ifndef NTIMER
-    Common->CHOLMOD_GPU_SYRK_TIME += SuiteSparse_time() - Common->syrkStart[vdevice];
+    Common->CHOLMOD_GPU_SYRK_TIME += SuiteSparse_time() - Common->syrkStart;
 #endif
 
     /* ---------------------------------------------------------------------- */
@@ -556,14 +552,19 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 
     if (ndrow3 > 0)
     {
+#ifndef REAL
+        cuDoubleComplex calpha  = {1.0,0.0} ;
+        cuDoubleComplex cbeta   = {0.0,0.0} ;
+#endif
 
         /* ------------------------------------------------------------------ */
         /* do the CUDA BLAS dgemm */
         /* ------------------------------------------------------------------ */
 
 #ifdef REAL
-#ifndef MAGMA
-        cublasStatus = cublasDgemm (Common->cublasHandle[vdevice],
+        alpha  = 1.0 ;
+        beta   = 0.0 ;
+        cublasStatus = cublasDgemm (Common->cublasHandle,
             CUBLAS_OP_N, CUBLAS_OP_T,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
             &alpha,                         /* ALPHA:  1 */
@@ -575,22 +576,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             devPtrC + L_ENTRY*ndrow1,       /* C, LDC: C2 */
             ndrow2) ;
 #else
-        magma_dgemm(
-            MagmaNoTrans, MagmaTrans,
-            ndrow3, ndrow1, ndcol,          /* M, N, K */
-            alpha,                          /* ALPHA:  1 */
-            devPtrLx + L_ENTRY*(ndrow1),    /* A, LDA: L2*/
-            ndrow2,                         /* ndrow */
-            devPtrLx,                       /* B, LDB: L1 */
-            ndrow2,                         /* ndrow */
-            beta,                           /* BETA:   0 */
-            devPtrC + L_ENTRY*ndrow1,       /* C, LDC: C2 */
-            ndrow2,
-            Common->magmaQueue[vdevice][iDevBuff]);
-#endif
-#else
-#ifndef MAGMA
-        cublasStatus = cublasZgemm (Common->cublasHandle[vdevice],
+        cublasStatus = cublasZgemm (Common->cublasHandle,
             CUBLAS_OP_N, CUBLAS_OP_C,
             ndrow3, ndrow1, ndcol,          /* M, N, K */
             &calpha,                        /* ALPHA:  1 */
@@ -601,20 +587,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
             &cbeta,                         /* BETA:   0 */
             (cuDoubleComplex *)devPtrC + ndrow1,
             ndrow2) ;
-#else
-        magma_zgemm(
-            MagmaNoTrans, MagmaConjTrans,
-            ndrow3, ndrow1, ndcol,          /* M, N, K */
-            calpha,                         /* ALPHA:  1 */
-            (const cuDoubleComplex*) devPtrLx + ndrow1,
-            ndrow2,                         /* ndrow */
-            (const cuDoubleComplex *) devPtrLx,
-            ndrow2,                         /* ndrow */
-            cbeta,                          /* BETA:   0 */
-            (cuDoubleComplex *)devPtrC + ndrow1,
-            ndrow2,
-            Common->magmaQueue[vdevice][iDevBuff]);
-#endif
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -634,20 +606,20 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC))
 
 #ifdef REAL
     addUpdateOnDevice ( gpu_p->d_A[0], devPtrC,
-        (Int *) (gpu_p->d_RelativeMap), ndrow1, ndrow2, nsrow,
-        &(Common->gpuStream[vdevice][iDevBuff]) );
+        gpu_p->d_RelativeMap, ndrow1, ndrow2, nsrow,
+        &(Common->gpuStream[iDevBuff]) );
 #else
     addComplexUpdateOnDevice ( gpu_p->d_A[0], devPtrC,
-        (Int *) (gpu_p->d_RelativeMap), ndrow1, ndrow2, nsrow,
-        &(Common->gpuStream[vdevice][iDevBuff]) );
+        gpu_p->d_RelativeMap, ndrow1, ndrow2, nsrow,
+        &(Common->gpuStream[iDevBuff]) );
 #endif
 
     /* Record an event indicating that kernels for
        this descendant are complete */
-    cudaEventRecord ( Common->updateCKernelsComplete[vdevice],
-                      Common->gpuStream[vdevice][iDevBuff]);
-    cudaEventRecord ( Common->updateCBuffersFree[vdevice][iHostBuff],
-                      Common->gpuStream[vdevice][iDevBuff]);
+    cudaEventRecord ( Common->updateCKernelsComplete,
+                      Common->gpuStream[iDevBuff]);
+    cudaEventRecord ( Common->updateCBuffersFree[iHostBuff],
+                      Common->gpuStream[iDevBuff]);
 
     return (1) ;
 }
@@ -677,11 +649,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly))
     Int iHostBuff2 ;
     Int iDevBuff2 ;
 
-    const int device = gpu_p->device;
-    const int vdevice = gpu_p->vdevice;
-
-    cudaSetDevice(device);
-
     if ( supernodeUsedGPU ) {
 
         /* ------------------------------------------------------------------ */
@@ -689,8 +656,8 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly))
         /* the supernode. */
         /* ------------------------------------------------------------------ */
 
-        *iHostBuff = (Common->ibuffer[vdevice])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-        *iDevBuff = (Common->ibuffer[vdevice])%CHOLMOD_DEVICE_STREAMS;
+        *iHostBuff = (Common->ibuffer)%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+        *iDevBuff = (Common->ibuffer)%CHOLMOD_DEVICE_STREAMS;
 
         if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
@@ -699,7 +666,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly))
              * CPU.  So copy that to a pinned buffer an H2D copy to device. */
 
             /* wait until a buffer is free */
-            cudaEventSynchronize ( Common->updateCBuffersFree[vdevice][*iHostBuff] );
+            cudaEventSynchronize ( Common->updateCBuffersFree[*iHostBuff] );
 
             /* copy update assembled on CPU to a pinned buffer */
 
@@ -717,22 +684,22 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly))
             cudaMemcpyAsync ( gpu_p->d_A[1], gpu_p->h_Lx[*iHostBuff],
                               nscol*nsrow*L_ENTRY*sizeof(double),
                               cudaMemcpyHostToDevice,
-                              Common->gpuStream[vdevice][*iDevBuff] );
+                              Common->gpuStream[*iDevBuff] );
         }
 
-        Common->ibuffer[vdevice]++;
+        Common->ibuffer++;
 
-        iHostBuff2 = (Common->ibuffer[vdevice])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-        iDevBuff2 = (Common->ibuffer[vdevice])%CHOLMOD_DEVICE_STREAMS;
+        iHostBuff2 = (Common->ibuffer)%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+        iDevBuff2 = (Common->ibuffer)%CHOLMOD_DEVICE_STREAMS;
 
         /* wait for all kernels to complete */
-        cudaEventSynchronize( Common->updateCKernelsComplete[vdevice] );
+        cudaEventSynchronize( Common->updateCKernelsComplete );
 
         /* copy assembled Schur-complement updates computed on GPU */
         cudaMemcpyAsync ( gpu_p->h_Lx[iHostBuff2], gpu_p->d_A[0],
                           nscol*nsrow*L_ENTRY*sizeof(double),
                           cudaMemcpyDeviceToHost,
-                          Common->gpuStream[vdevice][iDevBuff2] );
+                          Common->gpuStream[iDevBuff2] );
 
         if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
@@ -814,19 +781,14 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 )
 {
     double *devPtrA, *devPtrB, *A ;
+    double alpha, beta ;
     cudaError_t cudaStat ;
     cublasStatus_t cublasStatus ;
     Int j, nsrow2, nb, n, gpu_lda, lda, gpu_ldb ;
-
+    int ilda, ijb, iinfo ;
 #ifndef NTIMER
     double tstart ;
 #endif
-
-    int work_size;
-    const int device = gpu_p->device;
-    const int vdevice = gpu_p->vdevice;
-
-    cudaSetDevice(device);
 
     if (nscol2 * L_ENTRY < CHOLMOD_POTRF_LIMIT)
     {
@@ -852,7 +814,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     gpu_lda = ((nscol2+31)/32)*32 ;
     lda = nsrow ;
 
-    A = gpu_p->h_Lx[(Common->ibuffer[vdevice]+CHOLMOD_HOST_SUPERNODE_BUFFERS-1)%
+    A = gpu_p->h_Lx[(Common->ibuffer+CHOLMOD_HOST_SUPERNODE_BUFFERS-1)%
                     CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     /* ---------------------------------------------------------------------- */
@@ -883,7 +845,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
        nscol2 * L_ENTRY * sizeof (devPtrA[0]),
        nscol2,
        cudaMemcpyDeviceToDevice,
-       Common->gpuStream[vdevice][0] );
+       Common->gpuStream[0] );
 
     if ( cudaStat ) {
         ERROR ( CHOLMOD_GPU_PROBLEM, "GPU memcopy device to device");
@@ -902,7 +864,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
             nsrow2 * L_ENTRY * sizeof (devPtrB [0]),
             nscol2,
             cudaMemcpyDeviceToDevice,
-            Common->gpuStream[vdevice][0]) ;
+            Common->gpuStream[0]) ;
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
@@ -913,8 +875,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
     /* define the dpotrf stream */
     /* ------------------------------------------------------------------ */
 
-    cublasStatus = cublasSetStream (Common->cublasHandle[vdevice],
-                                    Common->gpuStream[vdevice] [0]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle,
+                                    Common->gpuStream [0]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
         ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     }
@@ -931,35 +893,22 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         /* do the CUDA BLAS dsyrk */
         /* ------------------------------------------------------------------ */
 
-        const double alpha = -1.0 ;
-        const double beta  = 1.0 ;
+        alpha = -1.0 ;
+        beta  = 1.0 ;
 #ifdef REAL
-#ifndef MAGMA
-        cublasStatus = cublasDsyrk (Common->cublasHandle[vdevice],
+        cublasStatus = cublasDsyrk (Common->cublasHandle,
             CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, jb, j,
             &alpha, devPtrA + j, gpu_lda,
             &beta,  devPtrA + j + j*gpu_lda, gpu_lda) ;
-#else
-        magma_dsyrk(
-            MagmaLower, MagmaNoTrans, jb, j,
-            alpha, devPtrA + j, gpu_lda,
-            beta,  devPtrA + j + j*gpu_lda, gpu_lda,
-            Common->magmaQueue[vdevice][0]) ;
-#endif
 
 #else
-#ifndef MAGMA
-        cublasStatus = cublasZherk (Common->cublasHandle[vdevice],
+        cublasStatus = cublasZherk (Common->cublasHandle,
             CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, jb, j,
-            &alpha, (cuDoubleComplex*)devPtrA + j, gpu_lda,
-            &beta, (cuDoubleComplex*)devPtrA + j + j*gpu_lda, gpu_lda) ;
-#else
-        magma_zherk (
-            MagmaLower, MagmaNoTrans, jb, j,
-            alpha, (cuDoubleComplex*)devPtrA + j, gpu_lda,
-            beta, (cuDoubleComplex*)devPtrA + j + j*gpu_lda, gpu_lda,
-            Common->magmaQueue[vdevice][0]) ;
-#endif
+            &alpha, (cuDoubleComplex*)devPtrA + j,
+            gpu_lda,
+            &beta,
+            (cuDoubleComplex*)devPtrA + j + j*gpu_lda,
+            gpu_lda) ;
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -969,15 +918,15 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
 
         /* ------------------------------------------------------------------ */
 
-        cudaStat = cudaEventRecord (Common->cublasEventPotrf[vdevice] [0],
-                                    Common->gpuStream[vdevice] [0]) ;
+        cudaStat = cudaEventRecord (Common->cublasEventPotrf [0],
+                                    Common->gpuStream [0]) ;
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
         }
 
-        cudaStat = cudaStreamWaitEvent (Common->gpuStream[vdevice] [1],
-                                        Common->cublasEventPotrf[vdevice] [0], 0) ;
+        cudaStat = cudaStreamWaitEvent (Common->gpuStream [1],
+                                        Common->cublasEventPotrf [0], 0) ;
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
@@ -994,7 +943,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
             L_ENTRY * sizeof (double)*jb,
             jb,
             cudaMemcpyDeviceToHost,
-            Common->gpuStream[vdevice] [1]) ;
+            Common->gpuStream [1]) ;
 
         if (cudaStat)
         {
@@ -1009,10 +958,9 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         {
 
 #ifdef REAL
-            const double alpha = -1.0 ;
-            const double beta  = 1.0 ;
-#ifndef MAGMA
-            cublasStatus = cublasDgemm (Common->cublasHandle[vdevice],
+            alpha = -1.0 ;
+            beta  = 1.0 ;
+            cublasStatus = cublasDgemm (Common->cublasHandle,
                 CUBLAS_OP_N, CUBLAS_OP_T,
                 (n-j-jb), jb, j,
                 &alpha,
@@ -1020,23 +968,11 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 devPtrA + (j)  , gpu_lda,
                 &beta,
                 devPtrA + (j+jb + j*gpu_lda), gpu_lda) ;
-#else
-            magma_dgemm (
-                MagmaNoTrans, MagmaTrans,
-                (n-j-jb), jb, j,
-                alpha,
-                devPtrA + (j+jb), gpu_lda,
-                devPtrA + (j)  , gpu_lda,
-                beta,
-                devPtrA + (j+jb + j*gpu_lda), gpu_lda,
-                Common->magmaQueue[vdevice][0]) ;
-#endif
 
 #else
-            const cuDoubleComplex calpha = {-1.0,0.0} ;
-            const cuDoubleComplex cbeta  = { 1.0,0.0} ;
-#ifndef MAGMA
-            cublasStatus = cublasZgemm (Common->cublasHandle[vdevice],
+            cuDoubleComplex calpha = {-1.0,0.0} ;
+            cuDoubleComplex cbeta  = { 1.0,0.0} ;
+            cublasStatus = cublasZgemm (Common->cublasHandle,
                 CUBLAS_OP_N, CUBLAS_OP_C,
                 (n-j-jb), jb, j,
                 &calpha,
@@ -1048,21 +984,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 (cuDoubleComplex*)devPtrA +
                 (j+jb + j*gpu_lda),
                 gpu_lda ) ;
-#else
-            magma_zgemm (
-                MagmaNoTrans, MagmaConjTrans,
-                (n-j-jb), jb, j,
-                calpha,
-                (cuDoubleComplex*)devPtrA + (j+jb),
-                gpu_lda,
-                (cuDoubleComplex*)devPtrA + (j),
-                gpu_lda,
-                cbeta,
-                (cuDoubleComplex*)devPtrA +
-                (j+jb + j*gpu_lda),
-                gpu_lda,
-                Common->magmaQueue[vdevice][0]) ;
-#endif
 #endif
 
             if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1071,7 +992,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
             }
         }
 
-        cudaStat = cudaStreamSynchronize (Common->gpuStream[vdevice] [1]) ;
+        cudaStat = cudaStreamSynchronize (Common->gpuStream [1]) ;
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
@@ -1081,19 +1002,14 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         /* compute the Cholesky factorization of the jbxjb block on the CPU */
         /* ------------------------------------------------------------------ */
 
+        ilda = (int) lda ;
+        ijb  = jb ;
 #ifdef REAL
-#ifndef MAGMA
-        LAPACK_DPOTRF ("L", &jb, A + L_ENTRY * (j + j*lda), &lda, info) ;
+        LAPACK_DPOTRF ("L", &ijb, A + L_ENTRY * (j + j*lda), &ilda, &iinfo) ;
 #else
-        magma_dpotrf (MagmaLower, jb, A + L_ENTRY * (j + j*lda), lda, info) ;
+        LAPACK_ZPOTRF ("L", &ijb, A + L_ENTRY * (j + j*lda), &ilda, &iinfo) ;
 #endif
-#else
-#ifndef MAGMA
-        LAPACK_ZPOTRF ("L", &jb, A + L_ENTRY * (j + j*lda), &lda, info) ;
-#else
-        magma_zpotrf (MagmaLower, jb, A + L_ENTRY * (j + j*lda), lda, info) ;
-#endif
-#endif
+        *info = iinfo ;
 
         if (*info != 0)
         {
@@ -1112,7 +1028,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
             L_ENTRY * sizeof (double) * jb,
             jb,
             cudaMemcpyHostToDevice,
-            Common->gpuStream[vdevice] [0]) ;
+            Common->gpuStream [0]) ;
 
         if (cudaStat)
         {
@@ -1127,9 +1043,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
         {
 
 #ifdef REAL
-            const double alpha  = 1.0 ;
-#ifndef MAGMA
-            cublasStatus = cublasDtrsm (Common->cublasHandle[vdevice],
+            alpha  = 1.0 ;
+            cublasStatus = cublasDtrsm (Common->cublasHandle,
                 CUBLAS_SIDE_RIGHT,
                 CUBLAS_FILL_MODE_LOWER,
                 CUBLAS_OP_T, CUBLAS_DIAG_NON_UNIT,
@@ -1138,20 +1053,8 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 devPtrA + (j + j*gpu_lda), gpu_lda,
                 devPtrA + (j+jb + j*gpu_lda), gpu_lda) ;
 #else
-            magma_dtrsm (
-                MagmaRight,
-                MagmaLower,
-                MagmaTrans, MagmaNonUnit,
-                (n-j-jb), jb,
-                alpha,
-                devPtrA + (j + j*gpu_lda), gpu_lda,
-                devPtrA + (j+jb + j*gpu_lda), gpu_lda,
-                Common->magmaQueue[vdevice][0]) ;
-#endif
-#else
-            const cuDoubleComplex calpha  = {1.0,0.0};
-#ifndef MAGMA
-            cublasStatus = cublasZtrsm (Common->cublasHandle[vdevice],
+            cuDoubleComplex calpha  = {1.0,0.0};
+            cublasStatus = cublasZtrsm (Common->cublasHandle,
                 CUBLAS_SIDE_RIGHT,
                 CUBLAS_FILL_MODE_LOWER,
                 CUBLAS_OP_C, CUBLAS_DIAG_NON_UNIT,
@@ -1163,21 +1066,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                 (cuDoubleComplex *)devPtrA +
                 (j+jb + j*gpu_lda),
                 gpu_lda) ;
-#else
-            magma_ztrsm (
-                MagmaRight,
-                MagmaLower,
-                MagmaConjTrans, MagmaNonUnit,
-                (n-j-jb), jb,
-                calpha,
-                (cuDoubleComplex *)devPtrA +
-                (j + j*gpu_lda),
-                gpu_lda,
-                (cuDoubleComplex *)devPtrA +
-                (j+jb + j*gpu_lda),
-                gpu_lda,
-                Common->magmaQueue[vdevice][0]) ;
-#endif
 #endif
 
             if (cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -1189,15 +1077,15 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
             /* Copy factored column back to host.                             */
             /* -------------------------------------------------------------- */
 
-            cudaStat = cudaEventRecord (Common->cublasEventPotrf[vdevice][2],
-                                        Common->gpuStream[vdevice][0]) ;
+            cudaStat = cudaEventRecord (Common->cublasEventPotrf[2],
+                                        Common->gpuStream[0]) ;
             if (cudaStat)
             {
                 ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
             }
 
-            cudaStat = cudaStreamWaitEvent (Common->gpuStream[vdevice][1],
-                                            Common->cublasEventPotrf[vdevice][2], 0) ;
+            cudaStat = cudaStreamWaitEvent (Common->gpuStream[1],
+                                            Common->cublasEventPotrf[2], 0) ;
             if (cudaStat)
             {
                 ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
@@ -1211,7 +1099,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf))
                   L_ENTRY * sizeof (double)*
                   (n - j - jb), jb,
                   cudaMemcpyDeviceToHost,
-                  Common->gpuStream[vdevice][1]) ;
+                  Common->gpuStream[1]) ;
 
             if (cudaStat)
             {
@@ -1262,7 +1150,8 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
     Int gpu_row_max_chunk, gpu_row_chunk;
     int ibuf = 0;
     int iblock = 0;
-    int iHostBuff;
+    int iHostBuff = (Common->ibuffer+CHOLMOD_HOST_SUPERNODE_BUFFERS-1) %
+        CHOLMOD_HOST_SUPERNODE_BUFFERS;
     int i, j;
     Int iidx;
     int iwrap;
@@ -1272,20 +1161,12 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
 #endif
 
 #ifdef REAL
-    const double alpha  = 1.0 ;
+    double alpha  = 1.0 ;
     gpu_row_max_chunk = 768;
 #else
-    const cuDoubleComplex calpha  = {1.0,0.0} ;
+    cuDoubleComplex calpha  = {1.0,0.0} ;
     gpu_row_max_chunk = 256;
 #endif
-
-    const int device = gpu_p->device;
-    const int vdevice = gpu_p->vdevice;
-
-    cudaSetDevice(device);
-
-    iHostBuff = (Common->ibuffer[vdevice]+CHOLMOD_HOST_SUPERNODE_BUFFERS-1) %
-        CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
     if ( nsrow2 <= 0 )
     {
@@ -1304,7 +1185,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
     devPtrB = gpu_p->d_Lx[1];
 
     /* make sure the copy of B has completed */
-    cudaStreamSynchronize( Common->gpuStream[vdevice][0] );
+    cudaStreamSynchronize( Common->gpuStream[0] );
 
     /* ---------------------------------------------------------------------- */
     /* do the CUDA BLAS dtrsm */
@@ -1318,8 +1199,8 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             gpu_row_chunk = gpu_row_max_chunk;
         }
 
-        cublasStatus = cublasSetStream ( Common->cublasHandle[vdevice],
-                                         Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS] );
+        cublasStatus = cublasSetStream ( Common->cublasHandle,
+                                         Common->gpuStream[ibuf] );
 
         if ( cublasStatus != CUBLAS_STATUS_SUCCESS )
         {
@@ -1327,8 +1208,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
         }
 
 #ifdef REAL
-#ifndef MAGMA
-        cublasStatus = cublasDtrsm (Common->cublasHandle[vdevice],
+        cublasStatus = cublasDtrsm (Common->cublasHandle,
                                     CUBLAS_SIDE_RIGHT,
                                     CUBLAS_FILL_MODE_LOWER,
                                     CUBLAS_OP_T,
@@ -1341,23 +1221,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
                                     devPtrB + gpu_row_start,
                                     gpu_ldb) ;
 #else
-        magma_dtrsm (
-            MagmaRight,
-            MagmaLower,
-            MagmaTrans,
-            MagmaNonUnit,
-            gpu_row_chunk,
-            nscol2,
-            alpha,
-            devPtrA,
-            gpu_lda,
-            devPtrB + gpu_row_start,
-            gpu_ldb,
-            Common->magmaQueue[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]) ;
-#endif
-#else
-#ifndef MAGMA
-        cublasStatus = cublasZtrsm (Common->cublasHandle[vdevice],
+        cublasStatus = cublasZtrsm (Common->cublasHandle,
                                     CUBLAS_SIDE_RIGHT,
                                     CUBLAS_FILL_MODE_LOWER,
                                     CUBLAS_OP_C,
@@ -1369,21 +1233,6 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
                                     gpu_lda,
                                     (cuDoubleComplex *)devPtrB + gpu_row_start ,
                                     gpu_ldb) ;
-#else
-        magma_ztrsm (
-            MagmaRight,
-            MagmaLower,
-            MagmaConjTrans,
-            MagmaNonUnit,
-            gpu_row_chunk,
-            nscol2,
-            calpha,
-            (const cuDoubleComplex *) devPtrA,
-            gpu_lda,
-            (cuDoubleComplex *)devPtrB + gpu_row_start ,
-            gpu_ldb,
-            Common->magmaQueue[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]) ;
-#endif
 #endif
         if (cublasStatus != CUBLAS_STATUS_SUCCESS)
         {
@@ -1404,18 +1253,19 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             sizeof (devPtrB [0]),
             nscol2,
             cudaMemcpyDeviceToHost,
-            Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS]);
+            Common->gpuStream[ibuf]);
 
         if (cudaStat)
         {
             ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
         }
 
-        cudaEventRecord ( Common->updateCBuffersFree[vdevice][ibuf%CHOLMOD_HOST_SUPERNODE_BUFFERS],
-                          Common->gpuStream[vdevice][ibuf%CHOLMOD_DEVICE_STREAMS] );
+        cudaEventRecord ( Common->updateCBuffersFree[ibuf],
+                          Common->gpuStream[ibuf] );
 
         gpu_row_start += gpu_row_chunk;
         ibuf++;
+        ibuf = ibuf % CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
         iblock ++;
 
@@ -1427,7 +1277,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve))
             /* then CHOLMOD_HOST_SUPERNODE_BUFFERS worth of work has been
              *  scheduled, so check for completed events and copy result into
              *  Lx before continuing. */
-            cudaEventSynchronize ( Common->updateCBuffersFree[vdevice]
+            cudaEventSynchronize ( Common->updateCBuffersFree
                                    [iblock%CHOLMOD_HOST_SUPERNODE_BUFFERS] );
 
             /* copy into Lx */
@@ -1474,7 +1324,7 @@ private ( iidx ) if ( nscol2 > 32 )
             Int iidx;
             Int gpu_row_end = gpu_row_start2+gpu_row_max_chunk;
             if ( gpu_row_end > nsrow ) gpu_row_end = nsrow;
-            cudaEventSynchronize ( Common->updateCBuffersFree[vdevice]
+            cudaEventSynchronize ( Common->updateCBuffersFree
                                    [iblock%CHOLMOD_HOST_SUPERNODE_BUFFERS] );
             /* copy into Lx */
 
@@ -1524,11 +1374,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
 )
 {
     Int iidx, i, j;
-
-    const int device = gpu_p->device;
-
-    cudaSetDevice(device);
-
     if ( supernodeUsedGPU && nscol2 * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
         cudaDeviceSynchronize();
 

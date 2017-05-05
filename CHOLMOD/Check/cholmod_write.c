@@ -299,9 +299,9 @@ static Int ntriplets
 	return (0) ;
     }
     stype = A->stype ;
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Anz = A->nz ;
     packed = A->packed ;
     ncol = A->ncol ;
     for (j = 0 ; j < ncol ; j++)
@@ -395,11 +395,11 @@ int CHOLMOD(write_sparse)
     /* get the A matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
     nrow = A->nrow ;
     ncol = A->ncol ;
     xtype = A->xtype ;
@@ -457,9 +457,9 @@ int CHOLMOD(write_sparse)
     zpacked = TRUE ;
     if (Z != NULL)
     {
-	Zp = (Int *) (Z->p) ;
-	Zi = (Int *) (Z->i) ;
-	Znz = (Int *) (Z->nz) ;
+	Zp = Z->p ;
+	Zi = Z->i ;
+	Znz = Z->nz ;
 	zpacked = Z->packed ;
     }
 
@@ -682,8 +682,8 @@ int CHOLMOD(write_dense)
     /* get the X matrix */
     /* ---------------------------------------------------------------------- */
 
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
     nrow = X->nrow ;
     ncol = X->ncol ;
     xtype = X->xtype ;
@@ -716,8 +716,8 @@ int CHOLMOD(write_dense)
     /* write the first data line, with nrow and ncol */
     ok = ok && (fprintf (f, ID " " ID "\n", nrow, ncol) > 0) ;
 
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
     for (j = 0 ; ok && j < ncol ; j++)
     {
 	for (i = 0 ; ok && i < nrow ; i++)

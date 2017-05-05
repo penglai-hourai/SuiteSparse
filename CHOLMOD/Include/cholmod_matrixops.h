@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_matrixops.h.
  * Copyright (C) 2005-2006, Timothy A. Davis
+ * CHOLMOD/Include/cholmod_matrixops.h is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -33,10 +36,6 @@
 #define CHOLMOD_MATRIXOPS_H
 
 #include "cholmod_core.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* cholmod_drop:  drop entries with small absolute value */
@@ -234,9 +233,5 @@ int cholmod_symmetry
 int cholmod_l_symmetry (cholmod_sparse *, int, SuiteSparse_long *,
     SuiteSparse_long *, SuiteSparse_long *, SuiteSparse_long *,
     cholmod_common *) ;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

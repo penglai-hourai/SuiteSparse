@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Core utility routines for the cholmod_common object:
@@ -54,14 +57,11 @@ int CHOLMOD(start)
 )
 {
     int k ;
-    int device, vdevice;
 
     if (Common == NULL)
     {
 	return (FALSE) ;
     }
-
-    Common->pdev = -1;
 
     /* ---------------------------------------------------------------------- */
     /* user error handling routine */
@@ -172,70 +172,43 @@ int CHOLMOD(start)
     /* GPU initializations */
     /* ---------------------------------------------------------------------- */
 
-    Common->cholmod_parallel_num_threads = 0;
-    Common->cuda_gpu_parallel = CUDA_GPU_PARALLEL;
-    Common->cuda_gpu_num = 0;
-    Common->cuda_vgpu_num = 0;
-
-    for (device = 0; device < CUDA_GPU_NUM; device++)
-    {
-        /* these are destroyed by cholmod_gpu_deallocate */
-        Common->dev_mempool[device] = NULL;
-        Common->dev_mempool_size[device] = 0;
-        Common->host_pinned_mempool[device] = NULL;
-    }
 
     /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
-    for (vdevice = 0; vdevice < CUDA_VGPU_NUM; vdevice++)
+    for (k = 0; k < CHOLMOD_MAX_NUM_GPUS; k++)
     {
-        Common->cublasHandle[vdevice] = NULL ;
-        Common->cusolverHandle[vdevice] = NULL ;
-        Common->cublasEventPotrf[vdevice] [0] = NULL ;
-        Common->cublasEventPotrf[vdevice] [1] = NULL ;
-        Common->cublasEventPotrf[vdevice] [2] = NULL ;
-        for (k = 0 ; k < CHOLMOD_HOST_SUPERNODE_BUFFERS ; k++)
-        {
-            Common->gpuStream[vdevice] [k] = NULL ;
-#ifdef MAGMA
-            Common->magmaQueue[vdevice][k] = NULL ;
-#endif
-            Common->updateCBuffersFree[vdevice] [k] = NULL ;
-        }
-        Common->updateCKernelsComplete[vdevice] = NULL;
-
-        Common->host_pinned_mempool_size[vdevice] = 0;
-
-        Common->syrkStart[vdevice] = 0 ;
+      Common->cublasHandle[k] = NULL ;
+      Common->cusolverHandle[k] = NULL ;
+      Common->cublasEventPotrf[k][0] = NULL ;
+      Common->cublasEventPotrf[k][1] = NULL ;
+      Common->cublasEventPotrf[k][2] = NULL ;
+      Common->updateCKernelsComplete[k] = NULL;
     }
 
-    Common->devBuffSize = 0;
 
-    Common->cholmod_cpu_gemm_time = 0 ;
-    Common->cholmod_cpu_syrk_time = 0 ;
-    Common->cholmod_cpu_trsm_time = 0 ;
-    Common->cholmod_cpu_potrf_time = 0 ;
-    Common->cholmod_gpu_gemm_time = 0 ;
-    Common->cholmod_gpu_syrk_time = 0 ;
-    Common->cholmod_gpu_trsm_time = 0 ;
-    Common->cholmod_gpu_potrf_time = 0 ;
-    Common->cholmod_assemble_time = 0 ;
-    Common->cholmod_assemble_time2 = 0 ;
+    int gpuid;
+    for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
+      for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
+        Common->gpuStream[gpuid][k] = NULL ;
+        Common->updateCBuffersFree[gpuid][k] = NULL ;
+      }
+    }
 
-    Common->cholmod_cpu_gemm_calls = 0 ;
-    Common->cholmod_cpu_syrk_calls = 0 ;
-    Common->cholmod_cpu_trsm_calls = 0 ;
-    Common->cholmod_cpu_potrf_calls = 0 ;
 
-    Common->cholmod_gpu_gemm_calls = 0 ;
-    Common->cholmod_gpu_syrk_calls = 0 ;
-    Common->cholmod_gpu_trsm_calls = 0 ;
-    Common->cholmod_gpu_potrf_calls = 0 ;
+    /* these are destroyed by cholmod_gpu_deallocate */
+    for (k = 0; k < CHOLMOD_MAX_NUM_GPUS; k++)
+    {
+      Common->dev_mempool[k] = NULL;
+      Common->dev_mempool_size = 0;
+      Common->host_pinned_mempool[k] = NULL;
+      Common->host_pinned_mempool_size = 0;
+    }
 
     /* SPQR statistics and settings */
     Common->gpuMemorySize = 1 ;         /* default: no GPU memory available */
     Common->gpuKernelTime = 0.0 ;
     Common->gpuFlops = 0 ;
     Common->gpuNumKernelLaunches = 0 ;
+
 
     DEBUG_INIT ("cholmod start", Common) ;
 
@@ -380,18 +353,21 @@ int CHOLMOD(defaults)
     /* ---------------------------------------------------------------------- */
 
 #ifdef DLONG
-    Common->useGPU = EMPTY ;
+    Common->useGPU 		= EMPTY ;
+    Common->maxGpuMemBytes	= EMPTY ;
+    Common->numGPU 		= EMPTY ;
+    Common->useHybrid 		= EMPTY ;
+    Common->ompNumThreads 	= EMPTY ;    
+    Common->partialFactorization 	= EMPTY ;
 #else
     /* GPU acceleration is not supported for int version of CHOLMOD */
-    Common->useGPU = 0 ;
+    Common->useGPU 		= 0 ;
+    Common->maxGpuMemBytes      = 0 ;
+    Common->numGPU 		= 0 ;
+    Common->useHybrid 		= 0 ;
+    Common->ompNumThreads 	= EMPTY ;
+    Common->partialFactorization   = EMPTY ;
 #endif
-
-    Common->useHybrid = 0 ;
-    Common->partialFactorization = 0 ;
-    Common->maxGpuMemBytes = 0;
-    Common->maxGpuMemFraction = 0.0;
-
-    Common->ompNumThreads = 1;
 
     return (TRUE) ;
 }
@@ -499,7 +475,7 @@ int CHOLMOD(allocate_work)
 	/* initialize Flag and Head */
 	Common->mark = EMPTY ;
 	CHOLMOD(clear_flag) (Common) ;
-	Head = (Int *) (Common->Head) ;
+	Head = Common->Head ;
 	for (i = 0 ; i <= (Int) (nrow) ; i++)
 	{
 	    Head [i] = EMPTY ;
@@ -569,7 +545,7 @@ int CHOLMOD(allocate_work)
 	}
 
 	/* initialize Xwork */
-	W = (double *) (Common->Xwork) ;
+	W = Common->Xwork ;
 	for (i = 0 ; i < (Int) xworksize ; i++)
 	{
 	    W [i] = 0. ;
@@ -594,10 +570,6 @@ int CHOLMOD(free_work)
     cholmod_common *Common
 )
 {
-#ifdef SUITESPARSE_CUDA
-    int device;
-#endif
-
     RETURN_IF_NULL_COMMON (FALSE) ;
     Common->Flag  = CHOLMOD(free) (Common->nrow, sizeof (Int),
 	    Common->Flag, Common) ;
@@ -612,8 +584,12 @@ int CHOLMOD(free_work)
     Common->xworksize = 0 ;
 
 #ifdef SUITESPARSE_CUDA
-    for (device = 0; device < Common->cuda_gpu_num; device++)
-    CHOLMOD(gpu_deallocate) (Common, device) ;
+    int k;
+    for(k = 0; k < Common->numGPU; k++) {
+      cudaSetDevice(k);
+      CHOLMOD(gpu_deallocate) (0, Common) ;
+    }
+    cudaSetDevice(0);	
 #endif
     return (TRUE) ;
 }
@@ -643,7 +619,7 @@ SuiteSparse_long CHOLMOD(clear_flag)
     if (Common->mark <= 0)
     {
 	nrow = Common->nrow ;
-	Flag = (Int *) (Common->Flag) ;
+	Flag = Common->Flag ;
 	PRINT2 (("reset Flag: nrow "ID"\n", nrow)) ;
 	PRINT2 (("reset Flag: mark %ld\n", Common->mark)) ;
 	for (i = 0 ; i < nrow ; i++)
@@ -756,20 +732,27 @@ double CHOLMOD(dbound)	/* returns modified diagonal entry of D */
 
 
 /* ========================================================================== */
-/* === scorecomp ============================================================ */
+/* === sort comp ============================================================ */
 /* ========================================================================== */
 
-/* For sorting descendant supernodes with qsort */
-int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i, 
-			       struct cholmod_descendant_score_t *j)
+/* function for sorting subtrees in qsort */
+int CHOLMOD(subtree_comp) (struct cholmod_subtree_order_t *a, struct cholmod_subtree_order_t *b)
+{
+  if( (*a).size < (*b).size) return 1;
+  else return -1;
+}
+
+
+/* function for sorting descendants with qsort */
+int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j)
 {
   if ((*i).score < (*j).score)
     {
-	return (1) ;
+        return (1) ;
     }
     else
     {
-	return (-1) ;
+        return (-1) ;
     }
 }
 
@@ -842,3 +825,8 @@ int CHOLMOD(sort_desc) (struct cholmod_desc_t *i, struct cholmod_desc_t *j)
         return (-1) ;
     }
 }
+
+
+
+
+

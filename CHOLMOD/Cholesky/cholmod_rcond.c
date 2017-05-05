@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Return a rough estimate of the reciprocal of the condition number:
@@ -103,10 +106,10 @@ double CHOLMOD(rcond)	    /* return min(diag(L)) / max(diag(L)) */
     {
 	/* L is supernodal */
 	nsuper = L->nsuper ;	/* number of supernodes in L */
-	Lpi = (Int *) (L->pi) ;		/* column pointers for integer pattern */
-	Lpx = (Int *) (L->px) ;		/* column pointers for numeric values */
-	Super = (Int *) (L->super) ;	/* supernode sizes */
-	Lx = (double *) (L->x) ;		/* numeric values */
+	Lpi = L->pi ;		/* column pointers for integer pattern */
+	Lpx = L->px ;		/* column pointers for numeric values */
+	Super = L->super ;	/* supernode sizes */
+	Lx = L->x ;		/* numeric values */
 	FIRST_LMINMAX (Lx [0], lmin, lmax) ;	/* first diagonal entry of L */
 	for (s = 0 ; s < nsuper ; s++)
 	{
@@ -126,8 +129,8 @@ double CHOLMOD(rcond)	    /* return min(diag(L)) / max(diag(L)) */
     else
     {
 	/* L is simplicial */
-	Lp = (Int *) (L->p) ;
-	Lx = (double *) (L->x) ;
+	Lp = L->p ;
+	Lx = L->x ;
 	if (L->is_ll)
 	{
 	    /* LL' factorization */

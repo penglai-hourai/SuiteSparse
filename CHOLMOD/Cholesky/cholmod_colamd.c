@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD interface to the COLAMD ordering routine (version 2.4 or later).
@@ -148,12 +151,12 @@ int CHOLMOD(colamd)
     {
 	Int *Cp ;
 	Int stats [COLAMD_STATS] ;
-	Cp = (Int *) (C->p) ;
+	Cp = C->p ;
 
 #ifdef LONG
-	colamd_l (ncol, nrow, alen, (Int *) (C->i), Cp, knobs, stats) ;
+	colamd_l (ncol, nrow, alen, C->i, Cp, knobs, stats) ;
 #else
-	colamd (ncol, nrow, alen, (Int *) (C->i), Cp, knobs, stats) ;
+	colamd (ncol, nrow, alen, C->i, Cp, knobs, stats) ;
 #endif
 
 	ok = stats [COLAMD_STATUS] ;
@@ -174,7 +177,7 @@ int CHOLMOD(colamd)
     if (postorder)
     {
 	/* use the last 2*n space in Iwork for Parent and Post */
-	Work2n = (Int *) (Common->Iwork) ;
+	Work2n = Common->Iwork ;
 	Work2n += 2*((size_t) nrow) + ncol ;
 	Parent = Work2n ;		/* size nrow (i/i/l) */
 	Post   = Work2n + nrow ;	/* size nrow (i/i/l) */
@@ -186,7 +189,7 @@ int CHOLMOD(colamd)
 	/* combine the colamd permutation with its postordering */
 	if (ok)
 	{
-	    NewPerm = (Int *) (Common->Iwork) ;		/* size nrow (i/i/l) */
+	    NewPerm = Common->Iwork ;		/* size nrow (i/i/l) */
 	    for (k = 0 ; k < nrow ; k++)
 	    {
 		NewPerm [k] = Perm [Post [k]] ;

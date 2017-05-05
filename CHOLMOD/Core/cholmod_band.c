@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* C = tril (triu (A,k1), k2)
@@ -87,10 +90,10 @@ static cholmod_sparse *band		/* returns C, or NULL if failure */
 
 
     PRINT1 (("k1 %ld k2 %ld\n", k1, k2)) ;
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     sorted = A->sorted ;
 
 
@@ -187,9 +190,9 @@ static cholmod_sparse *band		/* returns C, or NULL if failure */
 	}
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* ---------------------------------------------------------------------- */
     /* construct C */

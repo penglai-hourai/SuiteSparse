@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/MatrixOps Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/MatrixOps Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -66,16 +69,16 @@ static void TEMPLATE (cholmod_sdmult)
     nrow = A->nrow ;
     ncol = A->ncol ;
 
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
-    Az  = (double *) (A->z) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
+    Az  = A->z ;
     packed = A->packed ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     kcol = X->ncol ;
     dy = Y->d ;
     dx = X->d ;
@@ -123,8 +126,8 @@ static void TEMPLATE (cholmod_sdmult)
     /* Y += alpha * op(A) * X, where op(A)=A or A' */
     /* ---------------------------------------------------------------------- */
 
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Yx = Y->x ;
+    Yz = Y->z ;
 
     k = 0 ;
 

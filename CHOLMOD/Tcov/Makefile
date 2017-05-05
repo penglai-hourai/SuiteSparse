@@ -37,9 +37,9 @@ C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(NANTESTS)
 # LDLIBS = $(METIS) -lm -llapack_plain -lblas_plain -lgfortran -lgfortranbegin
 # LDLIBS = $(METIS) -lm -llapack -lblas -lgfortran -lgfortranbegin
 # Linux:
-# LDLIBS = $(METIS) -lm -llapack_plain -lblas_plain -lgfortran -lgfortranbegin -lrt
+# LDLIBS = $(METIS) -lm -llapack_plain -lblas_plain -lgfortran -lgfortranbegin -lpthread -lrt
 # Mac:
-# LDLIBS = $(METIS) -lm -llapack -lblas -lgfortran -lgfortranbegin
+# LDLIBS = $(METIS) -lm -llapack -lblas -lgfortran -lgfortranbegin -lpthread
 
 # Solaris
 # LDLIBS = $(METIS) -xlic_lib=sunperf

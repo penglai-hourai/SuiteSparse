@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/MatrixOps Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/MatrixOps Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -118,16 +121,16 @@ cholmod_sparse *CHOLMOD(horzcat)
 	B = B2 ;
     }
 
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     apacked = A->packed ;
 
-    Bp  = (Int *) (B->p) ;
-    Bnz = (Int *) (B->nz) ;
-    Bi  = (Int *) (B->i) ;
-    Bx  = (double *) (B->x) ;
+    Bp  = B->p ;
+    Bnz = B->nz ;
+    Bi  = B->i ;
+    Bx  = B->x ;
     bpacked = B->packed ;
 
     /* ---------------------------------------------------------------------- */
@@ -148,9 +151,9 @@ cholmod_sparse *CHOLMOD(horzcat)
 	CHOLMOD(free_sparse) (&B2, Common) ;
 	return (NULL) ;
     }
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* ---------------------------------------------------------------------- */
     /* C = [A , B] */

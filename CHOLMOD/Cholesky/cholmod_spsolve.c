@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Given an LL' or LDL' factorization of A, solve one of the following systems:
@@ -46,9 +49,9 @@ if (xnz >= nzmax) \
 	CHOLMOD(free_dense) (&B4, Common) ; \
 	return (NULL) ; \
     } \
-    Xi = (Int *) (X->i) ; \
-    Xx = (double *) (X->x) ; \
-    Xz = (double *) (X->z) ; \
+    Xi = X->i ; \
+    Xx = X->x ; \
+    Xz = X->z ; \
 }
 
 
@@ -122,22 +125,22 @@ cholmod_sparse *CHOLMOD(spsolve)	    /* returns the sparse solution X */
 	return (NULL) ;
     }
 
-    Bp = (Int *) (B->p) ;
-    Bi = (Int *) (B->i) ;
-    Bx = (double *) (B->x) ;
-    Bz = (double *) (B->z) ;
-    Bnz = (Int *) (B->nz) ;
+    Bp = B->p ;
+    Bi = B->i ;
+    Bx = B->x ;
+    Bz = B->z ;
+    Bnz = B->nz ;
     packed = B->packed ;
 
-    Xp = (Int *) (X->p) ;
-    Xi = (Int *) (X->i) ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xp = X->p ;
+    Xi = X->i ;
+    Xx = X->x ;
+    Xz = X->z ;
 
     xnz = 0 ;
 
-    B4x = (double *) (B4->x) ;
-    B4z = (double *) (B4->z) ;
+    B4x = B4->x ;
+    B4z = B4->z ;
 
     /* ---------------------------------------------------------------------- */
     /* solve in chunks of 4 columns at a time */
@@ -206,8 +209,8 @@ cholmod_sparse *CHOLMOD(spsolve)	    /* returns the sparse solution X */
 	    return (NULL) ;
 	}
 	ASSERT (X4->xtype == xtype) ;
-	X4x = (double *) (X4->x) ;
-	X4z = (double *) (X4->z) ;
+	X4x = X4->x ;
+	X4z = X4->z ;
 
 	/* ------------------------------------------------------------------ */
 	/* append the solution onto X */

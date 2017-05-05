@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Compute the elimination tree of A or A'*A
@@ -124,7 +127,7 @@ int CHOLMOD(etree)
     }
 
     ASSERT (CHOLMOD(dump_sparse) (A, "etree", Common) >= 0) ;
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
 
     /* ---------------------------------------------------------------------- */
     /* get inputs */
@@ -132,9 +135,9 @@ int CHOLMOD(etree)
 
     ncol = A->ncol ;	/* the number of columns of A */
     nrow = A->nrow ;	/* the number of rows of A */
-    Ap = (Int *) (A->p) ;		/* size ncol+1, column pointers for A */
-    Ai = (Int *) (A->i) ;		/* the row indices of A */
-    Anz = (Int *) (A->nz) ;	/* number of nonzeros in each column of A */
+    Ap = A->p ;		/* size ncol+1, column pointers for A */
+    Ai = A->i ;		/* the row indices of A */
+    Anz = A->nz ;	/* number of nonzeros in each column of A */
     packed = A->packed ;
     Ancestor = Iwork ;	/* size ncol (i/i/l) */
 

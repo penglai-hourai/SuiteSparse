@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Check Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Check Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Routines to check and print the contents of the 5 CHOLMOD objects:
@@ -521,8 +524,8 @@ static int check_common
 
     mark = Common->mark ;
     nrow = Common->nrow ;
-    Flag = (Int *) (Common->Flag) ;
-    Head = (Int *) (Common->Head) ;
+    Flag = Common->Flag ;
+    Head = Common->Head ;
     if (nrow > 0)
     {
 	if (mark < 0 || Flag == NULL || Head == NULL)
@@ -547,7 +550,7 @@ static int check_common
 	}
     }
     xworksize = Common->xworksize ;
-    Xwork = (double *) (Common->Xwork) ;
+    Xwork = Common->Xwork ;
     if (xworksize > 0)
     {
 	if (Xwork == NULL)
@@ -592,58 +595,6 @@ int CHOLMOD(print_common)
     return (check_common (print, name, Common)) ;
 }
 
-
-/* ========================================================================== */
-/* === cholmod_gpu_stats ==================================================== */
-/* ========================================================================== */
-
-/* Print CPU / GPU statistics.  If the timer is not installed, the times are
-   reported as zero, but this function still works.  Likewise, the function
-   still works if the GPU BLAS is not installed. */
-
-int CHOLMOD(gpu_stats)
-(
-    cholmod_common *Common      /* input */
-)
-{
-    double cpu_time, gpu_time ;
-    int print ;
-
-    RETURN_IF_NULL_COMMON (FALSE) ;
-    print = Common->print ;
-
-    P2 ("%s", "\nCHOLMOD GPU/CPU statistics:\n") ;
-    P2 ("SYRK  CPU calls %12.0f", (double) Common->CHOLMOD_CPU_SYRK_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_CPU_SYRK_TIME) ;
-    P2 ("      GPU calls %12.0f", (double) Common->CHOLMOD_GPU_SYRK_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_GPU_SYRK_TIME) ;
-    P2 ("GEMM  CPU calls %12.0f", (double) Common->CHOLMOD_CPU_GEMM_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_CPU_GEMM_TIME) ;
-    P2 ("      GPU calls %12.0f", (double) Common->CHOLMOD_GPU_GEMM_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_GPU_GEMM_TIME) ;
-    P2 ("POTRF CPU calls %12.0f", (double) Common->CHOLMOD_CPU_POTRF_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_CPU_POTRF_TIME) ;
-    P2 ("      GPU calls %12.0f", (double) Common->CHOLMOD_GPU_POTRF_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_GPU_POTRF_TIME) ;
-    P2 ("TRSM  CPU calls %12.0f", (double) Common->CHOLMOD_CPU_TRSM_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_CPU_TRSM_TIME) ;
-    P2 ("      GPU calls %12.0f", (double) Common->CHOLMOD_GPU_TRSM_CALLS) ;
-    P2 (" time %12.4e\n", Common->CHOLMOD_GPU_TRSM_TIME) ;
-
-    cpu_time = Common->CHOLMOD_CPU_SYRK_TIME + Common->CHOLMOD_CPU_TRSM_TIME +
-               Common->CHOLMOD_CPU_GEMM_TIME + Common->CHOLMOD_CPU_POTRF_TIME ;
-
-    gpu_time = Common->CHOLMOD_GPU_SYRK_TIME + Common->CHOLMOD_GPU_TRSM_TIME +
-               Common->CHOLMOD_GPU_GEMM_TIME + Common->CHOLMOD_GPU_POTRF_TIME ;
-
-    P2 ("time in the BLAS: CPU %12.4e", cpu_time) ;
-    P2 (" GPU %12.4e", gpu_time) ;
-    P2 (" total: %12.4e\n", cpu_time + gpu_time) ;
-
-    P2 ("assembly time %12.4e", Common->CHOLMOD_ASSEMBLE_TIME) ;
-    P2 ("  %12.4e\n", Common->CHOLMOD_ASSEMBLE_TIME2) ;
-    return (TRUE) ;
-}
 
 
 /* ========================================================================== */
@@ -694,11 +645,11 @@ static SuiteSparse_long check_sparse
     sorted = A->sorted ;
     packed = A->packed ;
     xtype = A->xtype ;
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
     nz = CHOLMOD(nnz) (A, Common) ;
 
     P3 (" "ID"", nrow) ;
@@ -809,7 +760,7 @@ static SuiteSparse_long check_sparse
 	if (Wi == NULL)
 	{
 	    CHOLMOD(allocate_work) (0, nrow, 0, Common) ;
-	    Wi = (Int *) (Common->Iwork) ;	/* size nrow, (i/i/l) */
+	    Wi = Common->Iwork ;	/* size nrow, (i/i/l) */
 	}
 	if (Common->status < CHOLMOD_OK)
 	{
@@ -976,8 +927,8 @@ static int check_dense
     ncol = X->ncol ;
     nzmax = X->nzmax ;
     d = X->d ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
     xtype = X->xtype ;
 
     P3 (" "ID"", nrow) ;
@@ -1252,7 +1203,7 @@ static int check_perm
     {
 	/* use the Common->Flag array if it's big enough */
 	mark = CHOLMOD(clear_flag) (Common) ;
-	Flag = (Int *) (Common->Flag) ;
+	Flag = Common->Flag ;
 	ASSERT (CHOLMOD(dump_work) (TRUE, FALSE, 0, Common)) ;
 	if (print >= 4)
 	{
@@ -1292,7 +1243,7 @@ static int check_perm
 	{
 	    /* use Common->Iwork instead, but initialize it first */
 	    CHOLMOD(allocate_work) (0, n, 0, Common) ;
-	    Wi = (Int *) (Common->Iwork) ;		    /* size n, (i/i/i) is OK */
+	    Wi = Common->Iwork ;		    /* size n, (i/i/i) is OK */
 	}
 	if (Common->status < CHOLMOD_OK)
 	{
@@ -1525,8 +1476,8 @@ static int check_factor
     ordering = L->ordering ;
     xtype = L->xtype ;
 
-    Perm = (Int *) (L->Perm) ;
-    ColCount = (Int *) (L->ColCount) ;
+    Perm = L->Perm ;
+    ColCount = L->ColCount ;
     lnz = 0 ;
 
     precise = Common->precise ;
@@ -1667,13 +1618,13 @@ static int check_factor
 	nzmax = L->nzmax ;
 	P3 (" nzmax "ID".", nzmax) ;
 	P4 ("%s", "\n") ;
-	Lp = (Int *) (L->p) ;
-	Li = (Int *) (L->i) ;
-	Lx = (double *) (L->x) ;
-	Lz = (double *) (L->z) ;
-	Lnz = (Int *) (L->nz) ;
-	Lnext = (Int *) (L->next) ;
-	Lprev = (Int *) (L->prev) ;
+	Lp = L->p ;
+	Li = L->i ;
+	Lx = L->x ;
+	Lz = L->z ;
+	Lnz = L->nz ;
+	Lnext = L->next ;
+	Lprev = L->prev ;
 
 	/* check for existence of Lp, Li, Lnz, Lnext, Lprev, and Lx arrays */
 	if (Lp == NULL)
@@ -1831,11 +1782,11 @@ static int check_factor
 	xsize = L->xsize ;
 	maxcsize = L->maxcsize ;
 	maxesize = L->maxesize ;
-	Ls = (Int *) (L->s) ;
-	Lpi = (Int *) (L->pi) ;
-	Lpx = (Int *) (L->px) ;
-	Super = (Int *) (L->super) ;
-	Lx = (double *) (L->x) ;
+	Ls = L->s ;
+	Lpi = L->pi ;
+	Lpx = L->px ;
+	Super = L->super ;
+	Lx = L->x ;
 	ETC_START (count, 8) ;
 
 	P4 ("  ssize "ID" ", ssize) ;
@@ -2086,10 +2037,10 @@ static int check_triplet
     ncol = T->ncol ;
     nzmax = T->nzmax ;
     nz = T->nnz ;
-    Ti = (Int *) (T->i) ;
-    Tj = (Int *) (T->j) ;
-    Tx = (double *) (T->x) ;
-    Tz = (double *) (T->z) ;
+    Ti = T->i ;
+    Tj = T->j ;
+    Tx = T->x ;
+    Tz = T->z ;
     xtype = T->xtype ;
 
 

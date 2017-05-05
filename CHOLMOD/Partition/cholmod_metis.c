@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Partition Module.
  * Copyright (C) 2005-2006, Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Partition Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD interface to the METIS package (Version 5.1.0):
@@ -241,8 +244,8 @@ SuiteSparse_long CHOLMOD(metis_bisector)	/* returns separator size */
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
+    Ap = A->p ;
+    Ai = A->i ;
     nz = Ap [n] ;
 
     if (Anw != NULL) DEBUG (for (j = 0 ; j < n ; j++) ASSERT (Anw [j] > 0)) ;
@@ -262,10 +265,10 @@ SuiteSparse_long CHOLMOD(metis_bisector)	/* returns separator size */
     else
     {
 	/* idx_t and Int differ; copy the graph into the METIS idx_t */
-	Mi    = (idx_t *) CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
-	Mp    = (idx_t *) CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
-	Mnw   = Anw ? (idx_t *) (CHOLMOD(malloc) (n,  sizeof (idx_t), Common)) : NULL ;
-	Mpart = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mi    = CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
+	Mp    = CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
+	Mnw   = Anw ? (CHOLMOD(malloc) (n,  sizeof (idx_t), Common)) : NULL ;
+	Mpart = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    CHOLMOD(free) (nz, sizeof (idx_t), Mi,    Common) ;
@@ -588,11 +591,11 @@ int CHOLMOD(metis)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
     Iperm = Iwork ;		/* size n (i/i/l) */
 
-    Bp = (Int *) (B->p) ;
-    Bi = (Int *) (B->i) ;
+    Bp = B->p ;
+    Bi = B->i ;
     nz = Bp [n] ;
 
     /* B does not include the diagonal, and both upper and lower parts.
@@ -614,10 +617,10 @@ int CHOLMOD(metis)
     else
     {
 	/* allocate graph for METIS only if Int and idx_t differ */
-	Miperm = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
-	Mperm  = (idx_t *) CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
-	Mp     = (idx_t *) CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
-	Mi     = (idx_t *) CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
+	Miperm = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mperm  = CHOLMOD(malloc) (n,  sizeof (idx_t), Common) ;
+	Mp     = CHOLMOD(malloc) (n1, sizeof (idx_t), Common) ;
+	Mi     = CHOLMOD(malloc) (nz, sizeof (idx_t), Common) ;
 	if (Common->status < CHOLMOD_OK)
 	{
 	    /* out of memory */

@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Core utility routines for the cholmod_sparse object:
@@ -95,7 +98,7 @@ cholmod_sparse *CHOLMOD(allocate_sparse)
     /* allocate header */
     /* ---------------------------------------------------------------------- */
 
-    A = (cholmod_sparse *) CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
+    A = CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -149,14 +152,14 @@ cholmod_sparse *CHOLMOD(allocate_sparse)
     /* initialize A->p and A->nz so that A is an empty matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
+    Ap = A->p ;
     for (j = 0 ; j <= (Int) ncol ; j++)
     {
 	Ap [j] = 0 ;
     }
     if (!packed)
     {
-	Anz = (Int *) (A->nz) ;
+	Anz = A->nz ;
 	for (j = 0 ; j < (Int) ncol ; j++)
 	{
 	    Anz [j] = 0 ;
@@ -221,7 +224,7 @@ int CHOLMOD(free_sparse)
 	    break ;
     }
 
-    *AHandle = (cholmod_sparse *) CHOLMOD(free) (1, sizeof (cholmod_sparse), (*AHandle), Common) ;
+    *AHandle = CHOLMOD(free) (1, sizeof (cholmod_sparse), (*AHandle), Common) ;
     return (TRUE) ;
 }
 
@@ -315,10 +318,10 @@ cholmod_sparse *CHOLMOD(speye)
     /* create the identity matrix */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
 
     for (j = 0 ; j < n ; j++)
     {
@@ -438,13 +441,13 @@ SuiteSparse_long CHOLMOD(nnz)
     ncol = A->ncol ;
     if (A->packed)
     {
-	Ap = (Int *) (A->p) ;
+	Ap = A->p ;
 	RETURN_IF_NULL (Ap, EMPTY) ;
 	nz = Ap [ncol] ;
     }
     else
     {
-	Anz = (Int *) (A->nz) ;
+	Anz = A->nz ;
 	RETURN_IF_NULL (Anz, EMPTY) ;
 	nz = 0 ;
 	for (j = 0 ; j < ncol ; j++)
@@ -506,11 +509,11 @@ cholmod_sparse *CHOLMOD(copy_sparse)
     ncol = A->ncol ;
     nzmax = A->nzmax ;
     packed = A->packed ;
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
     xtype = A->xtype ;
 
     /* ---------------------------------------------------------------------- */
@@ -525,11 +528,11 @@ cholmod_sparse *CHOLMOD(copy_sparse)
 	return (NULL) ;	    /* out of memory */
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
-    Cz = (double *) (C->z) ;
-    Cnz = (Int *) (C->nz) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
+    Cz = C->z ;
+    Cnz = C->nz ;
 
     /* ---------------------------------------------------------------------- */
     /* copy the matrix */

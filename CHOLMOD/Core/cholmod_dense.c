@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2013,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Core utility routines for the cholmod_dense object:
@@ -108,7 +111,7 @@ cholmod_dense *CHOLMOD(allocate_dense)
     /* allocate header */
     /* ---------------------------------------------------------------------- */
 
-    X = (cholmod_dense *) CHOLMOD(malloc) (sizeof (cholmod_dense), 1, Common) ;
+    X = CHOLMOD(malloc) (sizeof (cholmod_dense), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -175,8 +178,8 @@ cholmod_dense *CHOLMOD(zeros)
 	return (NULL) ;	    /* NULL Common, out of memory, or inputs invalid */
     }
 
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
     nz = MAX (1, X->nzmax) ;
 
     switch (xtype)
@@ -242,8 +245,8 @@ cholmod_dense *CHOLMOD(ones)
 	return (NULL) ;	    /* NULL Common, out of memory, or inputs invalid */
     }
 
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
     nz = MAX (1, X->nzmax) ;
 
     switch (xtype)
@@ -311,8 +314,8 @@ cholmod_dense *CHOLMOD(eye)
     }
 
     nz = MAX (1, nrow*ncol) ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
 
     n = MIN (nrow, ncol) ;
 
@@ -386,7 +389,7 @@ int CHOLMOD(free_dense)
 	    break ;
     }
 
-    *XHandle = (cholmod_dense *) CHOLMOD(free) (1, sizeof (cholmod_dense), (*XHandle), Common) ;
+    *XHandle = CHOLMOD(free) (1, sizeof (cholmod_dense), (*XHandle), Common) ;
     return (TRUE) ;
 }
 

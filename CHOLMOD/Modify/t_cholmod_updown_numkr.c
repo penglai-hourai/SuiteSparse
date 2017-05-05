@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Modify Module.  Copyright (C) 2005-2006,
  * Timothy A. Davis and William W. Hager.
+ * The CHOLMOD/Modify Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -388,10 +391,10 @@ static void NUMERIC (WDIM, RANK)
     Int j1, j2, j3, p0, p1, p2, p3, parent, lnz, pend, k ;
     Int use_dbound = IS_GT_ZERO (Common->dbound) ;
 
-    Lp = (Int *) (L->p) ;
-    Li = (Int *) (L->i) ;
-    Lx = (double *) (L->x) ;
-    Lnz = (Int *) (L->nz) ;
+    Li = L->i ;
+    Lx = L->x ;
+    Lp = L->p ;
+    Lnz = L->nz ;
 
     /* walk up the etree from node j to its ancestor e */
     for ( ; j <= e ; j = parent)

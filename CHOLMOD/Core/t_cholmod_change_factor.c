@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine for cholmod_change_factor.  All xtypes supported. */
@@ -39,11 +42,11 @@ static void TEMPLATE (change_simplicial_numeric)
     Int n, j, len, pnew, pold, k, p, pend ;
 
     n = L->n ;
-    Lp = (Int *) (L->p) ;
-    Li = (Int *) (L->i) ;
-    Lx = (double *) (L->x) ;
-    Lz = (double *) (L->z) ;
-    Lnz = (Int *) (L->nz) ;
+    Lp = L->p ;
+    Li = L->i ;
+    Lx = L->x ;
+    Lz = L->z ;
+    Lnz = L->nz ;
 
     if (make_ll)
     {
@@ -457,18 +460,18 @@ static void TEMPLATE (ll_super_to_simplicial_numeric)
 
     L->is_ll = to_ll ;
 
-    Lp = (Int *) (L->p) ;
-    Li = (Int *) (L->i) ;
-    Lx = (double *) (L->x) ;
-    Lnz = (Int *) (L->nz) ;
+    Lp = L->p ;
+    Li = L->i ;
+    Lx = L->x ;
+    Lnz = L->nz ;
     lnz = L->nzmax ;
 
     n = L->n ;
     nsuper = L->nsuper ;
-    Lpi = (Int *) (L->pi) ;
-    Lpx = (Int *) (L->px) ;
-    Ls = (Int *) (L->s) ;
-    Super = (Int *) (L->super) ;
+    Lpi = L->pi ;
+    Lpx = L->px ;
+    Ls = L->s ;
+    Super = L->super ;
 
     p = 0 ;
 

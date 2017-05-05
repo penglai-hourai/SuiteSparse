@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Compute the row and column counts of the Cholesky factor L of the matrix
@@ -261,9 +264,9 @@ int CHOLMOD(rowcolcounts)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;	/* size ncol+1, column pointers for A */
-    Ai = (Int *) (A->i) ;	/* the row indices of A, of size nz=Ap[ncol+1] */
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;	/* size ncol+1, column pointers for A */
+    Ai = A->i ;	/* the row indices of A, of size nz=Ap[ncol+1] */
+    Anz = A->nz ;
     packed = A->packed ;
     ASSERT (IMPLIES (!packed, Anz != NULL)) ;
 
@@ -271,12 +274,12 @@ int CHOLMOD(rowcolcounts)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
     SetParent = Iwork ;		    /* size nrow (i/i/l) */
     PrevNbr   = Iwork + nrow ;	    /* size nrow (i/i/l) */
     Anext     = Iwork + 2*((size_t) nrow) ;    /* size ncol (i/i/l) (unsym only) */
-    PrevLeaf  = (Int *) (Common->Flag) ;	    /* size nrow */
-    Head      = (Int *) (Common->Head) ;	    /* size nrow+1 (unsym only)*/
+    PrevLeaf  = Common->Flag ;	    /* size nrow */
+    Head      = Common->Head ;	    /* size nrow+1 (unsym only)*/
 
     /* ---------------------------------------------------------------------- */
     /* find the first descendant and level of each node in the tree */

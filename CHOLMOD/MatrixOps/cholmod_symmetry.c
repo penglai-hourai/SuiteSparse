@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/MatrixOps Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/MatrixOps Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -213,11 +216,11 @@ int CHOLMOD(symmetry)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
     packed = A->packed ;
     ncol = A->ncol ;
     nrow = A->nrow ;
@@ -251,7 +254,7 @@ int CHOLMOD(symmetry)
 	return (EMPTY) ;
     }
 
-    munch = (Int *) (Common->Iwork) ;	    /* the munch array is size ncol */
+    munch = Common->Iwork ;	    /* the munch array is size ncol */
 
     /* ---------------------------------------------------------------------- */
     /* determine symmetry of a square matrix */

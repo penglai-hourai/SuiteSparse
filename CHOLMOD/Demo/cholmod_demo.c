@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Demo Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Demo Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Read in a matrix from a file, and use CHOLMOD to solve Ax=b if A is
@@ -128,9 +131,6 @@ int main (int argc, char **argv)
     printf ("cholmod version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
     SuiteSparse_version (ver) ;
     printf ("SuiteSparse version %d.%d.%d\n", ver [0], ver [1], ver [2]) ;
-
-    cholmod_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, cm);
-
     A = cholmod_read_sparse (f, cm) ;
     if (ff != NULL)
     {
@@ -161,7 +161,7 @@ int main (int argc, char **argv)
 
     n = A->nrow ;
     B = cholmod_zeros (n, 1, xtype, cm) ;
-    Bx = (double *) (B->x) ;
+    Bx = B->x ;
 
 #if GHS
     {
@@ -324,12 +324,12 @@ int main (int argc, char **argv)
             if (timelog) fprintf (timelog, "results = [\n") ;
 
             B2 = cholmod_zeros (n, 1, xtype, cm) ;
-            B2x = (double *) (B2->x) ;
+            B2x = B2->x ;
 
             Bset = cholmod_allocate_sparse (n, 1, 1, FALSE, TRUE, 0,
                 CHOLMOD_PATTERN, cm) ;
-            Bsetp = (int *) (Bset->p) ;
-            Bseti = (int *) (Bset->i) ;
+            Bsetp = Bset->p ;
+            Bseti = Bset->i ;
             Bsetp [0] = 0 ;     /* nnz(B) is 1 (it can be anything) */
             Bsetp [1] = 1 ;
             resid [3] = 0 ;
@@ -378,12 +378,12 @@ int main (int argc, char **argv)
                 t = MAX (t, 0) / NTRIALS ;
 
                 /* check the solution and log the time */
-                Xsetp = (int *) (Xset->p) ;
-                Xseti = (int *) (Xset->i) ;
+                Xsetp = Xset->p ;
+                Xseti = Xset->i ;
                 xlen = Xsetp [1] ;
-                X1x = (double *) (X->x) ;
-                X2x = (double *) (X2->x) ;
-                Lnz = (int *) (L->nz) ;
+                X1x = X->x ;
+                X2x = X2->x ;
+                Lnz = L->nz ;
 
                 /*
                 printf ("\ni %d xlen %d  (%p %p)\n", i, xlen, X1x, X2x) ;
@@ -469,8 +469,8 @@ int main (int argc, char **argv)
                 /* R = B - beta*X */
                 cholmod_free_dense (&R, cm) ;
                 R = cholmod_zeros (n, 1, xtype, cm) ;
-                Rx = (double *) (R->x) ;
-                Xx = (double *) (X->x) ;
+                Rx = R->x ;
+                Xx = X->x ;
                 if (xtype == CHOLMOD_REAL)
                 {
                     for (i = 0 ; i < n ; i++)
@@ -525,8 +525,8 @@ int main (int argc, char **argv)
 	/* R2 = A\(B-A*X) */
 	R2 = cholmod_solve (CHOLMOD_A, L, R, cm) ;
 	/* compute X = X + A\(B-A*X) */
-	Xx = (double *) (X->x) ;
-	Rx = (double *) (R2->x) ;
+	Xx = X->x ;
+	Rx = R2->x ;
 	for (i = 0 ; i < n ; i++)
 	{
 	    Xx [i] = Xx [i] + Rx [i] ;
@@ -624,11 +624,6 @@ int main (int argc, char **argv)
     }
 
     printf ("rcond    %8.1e\n\n", rcond) ;
-
-    if (L_is_super)
-    {
-        cholmod_gpu_stats (cm) ;
-    }
 
     cholmod_free_factor (&L, cm) ;
     cholmod_free_dense (&X, cm) ;

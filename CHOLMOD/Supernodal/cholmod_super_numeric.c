@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Supernodal Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Supernodal Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -59,12 +62,7 @@
 #include "cholmod_internal.h"
 #include "cholmod_supernodal.h"
 
-#ifdef SUITESPARSE_CUDA
-#ifdef MAGMA
-#include <magmablas_v2.h>
-#endif
-#include "cholmod_gpu.h"
-#endif
+#include "cholmod_subtree.h"
 
 /* ========================================================================== */
 /* === TEMPLATE codes for GPU and regular numeric factorization ============= */
@@ -72,19 +70,40 @@
 
 #ifdef DLONG
 #ifdef SUITESPARSE_CUDA
+
 #define REAL
-#include "../GPU/t_cholmod_gpu.c"
+#include "../GPU/t_cholmod_subtree.c"
+#include "../GPU/t_cholmod_root.c"
+
 #define COMPLEX
-#include "../GPU/t_cholmod_gpu.c"
+#include "../GPU/t_cholmod_subtree.c"
+#include "../GPU/t_cholmod_root.c"
+
 #define ZOMPLEX
 /* no #include of "../GPU/t_cholmod_gpu.c".  Zomplex case relies on complex */
+
 #endif
 #endif
 
+
 #define REAL
+#include "../GPU/t_initialize_subtree.c"
+#include "../GPU/t_factorize_subtree.c"
+#include "../GPU/t_factorize_root.c"
+#include "../GPU/t_factorize_root_parallel.c"
+#include "../GPU/t_factorize_cpu_parallel.c"
+#include "../GPU/t_factorize_cpu_serial.c"
 #include "t_cholmod_super_numeric.c"
+
 #define COMPLEX
+#include "../GPU/t_initialize_subtree.c"
+#include "../GPU/t_factorize_subtree.c"
+#include "../GPU/t_factorize_root.c"
+#include "../GPU/t_factorize_root_parallel.c"
+#include "../GPU/t_factorize_cpu_parallel.c"
+#include "../GPU/t_factorize_cpu_serial.c"
 #include "t_cholmod_super_numeric.c"
+
 #define ZOMPLEX
 #include "t_cholmod_super_numeric.c"
 
@@ -109,8 +128,6 @@ int CHOLMOD(super_numeric)
     cholmod_common *Common
 )
 {
-    const int pdev = Common->pdev;
-
     cholmod_dense *C ;
     Int *Super, *Map, *SuperMap ;
     size_t maxcsize ;
@@ -191,9 +208,9 @@ int CHOLMOD(super_numeric)
     PRINT1 (("nsuper "ID" maxcsize %g\n", nsuper, (double) maxcsize)) ;
     ASSERT (nsuper >= 0 && maxcsize > 0) ;
 
-    /* w = 2*n + 7*nsuper */
+    /* w = 2*n + 5*nsuper */
     w = CHOLMOD(mult_size_t) (n, 2, &ok) ;
-    t = CHOLMOD(mult_size_t) (nsuper, 7, &ok) ;
+    t = CHOLMOD(mult_size_t) (nsuper, 5, &ok) ;
     w = CHOLMOD(add_size_t) (w, t, &ok) ;
     if (!ok)
     {
@@ -212,7 +229,7 @@ int CHOLMOD(super_numeric)
     /* get the current factor L and allocate numerical part, if needed */
     /* ---------------------------------------------------------------------- */
 
-    Super = (Int *) (L->super) ;
+    Super = L->super ;
     symbolic = (L->xtype == CHOLMOD_PATTERN) ;
     if (symbolic)
     {
@@ -256,8 +273,8 @@ int CHOLMOD(super_numeric)
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    SuperMap = (Int *) (Common->Iwork) ;		/* size n (i/i/l) */
-    Map = (Int *) (Common->Flag) ;    /* size n, use Flag as workspace for Map array */
+    SuperMap = Common->Iwork ;		/* size n (i/i/l) */
+    Map = Common->Flag ;    /* size n, use Flag as workspace for Map array */
     for (i = 0 ; i < n ; i++)
     {
 	Map [i] = EMPTY ;

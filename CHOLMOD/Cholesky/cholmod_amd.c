@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* CHOLMOD interface to the AMD ordering routine.  Orders A if the matrix is
@@ -104,7 +107,7 @@ int CHOLMOD(amd)
 	return (FALSE) ;
     }
 
-    Iwork  = (Int *) (Common->Iwork) ;
+    Iwork  = Common->Iwork ;
     Degree = Iwork ;			/* size n */
     Wi     = Iwork + n ;		/* size n */
     Len    = Iwork + 2*((size_t) n) ;	/* size n */
@@ -112,7 +115,7 @@ int CHOLMOD(amd)
     Next   = Iwork + 4*((size_t) n) ;   /* size n */
     Elen   = Iwork + 5*((size_t) n) ;   /* size n */
 
-    Head = (Int *) (Common->Head) ;   /* size n+1, but only n is used */
+    Head = Common->Head ;   /* size n+1, but only n is used */
 
     /* ---------------------------------------------------------------------- */
     /* construct the input matrix for AMD */
@@ -137,7 +140,7 @@ int CHOLMOD(amd)
 	return (FALSE) ;
     }
 
-    Cp = (Int *) (C->p) ;
+    Cp = C->p ;
     for (j = 0 ; j < n ; j++)
     {
 	Len [j] = Cp [j+1] - Cp [j] ;
@@ -166,10 +169,10 @@ int CHOLMOD(amd)
     }
 
 #ifdef LONG
-    amd_l2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    amd_l2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info) ;
 #else
-    amd_2 (n, (Int *) (C->p),  (Int *) (C->i), Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
+    amd_2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
 	    Degree, Wi, Control, Info) ;
 #endif
 

@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Compute the postorder of a tree. */
@@ -184,8 +187,8 @@ SuiteSparse_long CHOLMOD(postorder)	/* return # of nodes postordered */
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Head  = (Int *) (Common->Head) ;	/* size n+1, initially all EMPTY */
-    Iwork = (Int *) (Common->Iwork) ;
+    Head  = Common->Head ;	/* size n+1, initially all EMPTY */
+    Iwork = Common->Iwork ;
     Next  = Iwork ;		/* size n (i/i/l) */
     Pstack = Iwork + n ;	/* size n (i/i/l) */
 

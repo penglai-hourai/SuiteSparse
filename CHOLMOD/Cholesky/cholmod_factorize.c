@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Computes the numerical factorization of a symmetric matrix.  The primary
@@ -81,8 +84,6 @@ int CHOLMOD(factorize)
     cholmod_common *Common
 )
 {
-    const int pdev = Common->pdev;
-
     double zero [2] ;
     zero [0] = 0 ;
     zero [1] = 0 ;
@@ -109,8 +110,6 @@ int CHOLMOD(factorize_p)
     cholmod_common *Common
 )
 {
-    const int pdev = Common->pdev;
-
     cholmod_sparse *S, *F, *A1, *A2 ;
     Int nrow, ncol, stype, convert, n, nsuper, grow2, status ;
     size_t s, t, uncol ;
@@ -231,14 +230,14 @@ int CHOLMOD(factorize_p)
 		/* This is the fastest option for factoring a permuted matrix */
 		/* S = tril (PAP'); F not needed */
 		/* workspace: Iwork (2*nrow) */
-		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
 		S = A1 ;
 	    }
 	    else if (stype < 0)
 	    {
 		/* A2 = triu (PAP') */
 		/* workspace: Iwork (2*nrow) */
-		A2 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
+		A2 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
 		/* S = tril (A2'); F not needed */
 		/* workspace: Iwork (nrow) */
 		A1 = CHOLMOD(ptranspose) (A2, 2, NULL, NULL, 0, Common) ;
@@ -250,7 +249,7 @@ int CHOLMOD(factorize_p)
 	    {
 		/* F = A(p,f)' */
 		/* workspace: Iwork (nrow if no fset; MAX (nrow,ncol) if fset)*/
-		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), fset, fsize, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, fset, fsize, Common) ;
 		F = A1 ;
 		/* S = F' */
 		/* workspace: Iwork (nrow) */
@@ -357,7 +356,7 @@ int CHOLMOD(factorize_p)
 	    {
 		/* F = tril (A (p,p)') */
 		/* workspace: Iwork (2*nrow) */
-		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
 		/* A2 = triu (F') */
 		/* workspace: Iwork (nrow) */
 		A2 = CHOLMOD(ptranspose) (A1, 2, NULL, NULL, 0, Common) ;
@@ -370,13 +369,13 @@ int CHOLMOD(factorize_p)
 		 * way to factorize a matrix using the simplicial routine
 		 * (cholmod_rowfac). */
 		/* workspace: Iwork (2*nrow) */
-		A2 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), NULL, 0, Common) ;
+		A2 = CHOLMOD(ptranspose) (A, 2, L->Perm, NULL, 0, Common) ;
 	    }
 	    else
 	    {
 		/* F = A (p,f)' */
 		/* workspace: Iwork (nrow if no fset; MAX (nrow,ncol) if fset)*/
-		A1 = CHOLMOD(ptranspose) (A, 2, (Int *) (L->Perm), fset, fsize, Common) ;
+		A1 = CHOLMOD(ptranspose) (A, 2, L->Perm, fset, fsize, Common) ;
 		F = A1 ;
 		/* A2 = F' */
 		/* workspace: Iwork (nrow) */

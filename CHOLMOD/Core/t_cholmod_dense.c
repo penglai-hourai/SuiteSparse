@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine for cholmod_dense.  All xtypes supported, except that there
@@ -36,11 +39,11 @@ static cholmod_dense *TEMPLATE (cholmod_sparse_to_dense)
     nrow = A->nrow ;
     ncol = A->ncol ;
     packed = A->packed ;
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Ax = (double *) (A->x) ;
-    Az = (double *) (A->z) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Ax = A->x ;
+    Az = A->z ;
+    Anz = A->nz ;
 
     /* ---------------------------------------------------------------------- */
     /* allocate result */
@@ -51,8 +54,8 @@ static cholmod_dense *TEMPLATE (cholmod_sparse_to_dense)
     {
 	return (NULL) ;	    /* out of memory */
     }
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
 
     /* ---------------------------------------------------------------------- */
     /* copy into dense matrix */
@@ -142,8 +145,8 @@ static cholmod_sparse *TEMPLATE (cholmod_dense_to_sparse)
     nrow = X->nrow ;
     ncol = X->ncol ;
     d = X->d ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
 
     /* ---------------------------------------------------------------------- */
     /* count the number of nonzeros in the result */
@@ -171,10 +174,10 @@ static cholmod_sparse *TEMPLATE (cholmod_dense_to_sparse)
     {
 	return (NULL) ;	    /* out of memory */
     }
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
-    Cz = (double *) (C->z) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
+    Cz = C->z ;
 
     /* ---------------------------------------------------------------------- */
     /* copy the dense matrix X into the sparse matrix C */
@@ -230,10 +233,10 @@ static int TEMPLATE (cholmod_copy_dense2)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     dx = X->d ;
     dy = Y->d ;
     nrow = X->nrow ;

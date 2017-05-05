@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2013,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Core utility routines for the cholmod_factor object:
@@ -74,7 +77,7 @@ cholmod_factor *CHOLMOD(allocate_factor)
     cholmod_common *Common
 )
 {
-    Int j, vdevice ;
+    Int j ;
     Int *Perm, *ColCount ;
     cholmod_factor *L ;
     int ok = TRUE ;
@@ -90,7 +93,7 @@ cholmod_factor *CHOLMOD(allocate_factor)
 	return (NULL) ;
     }
 
-    L = (cholmod_factor *) CHOLMOD(malloc) (sizeof (cholmod_factor), 1, Common) ;
+    L = CHOLMOD(malloc) (sizeof (cholmod_factor), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;	    /* out of memory */
@@ -129,17 +132,7 @@ cholmod_factor *CHOLMOD(allocate_factor)
     L->pi = NULL ;
     L->px = NULL ;
     L->s = NULL ;
-
-    L->nleaves = 0;
-
-    L->MapSize = 0 ;
-
-    for (vdevice = 0; vdevice < CHOLMOD_PARALLEL_NUM_THREADS; vdevice++)
-    {
-        L->Map_queue[vdevice] = NULL;
-        L->RelativeMap_queue[vdevice] = NULL;
-        L->C_queue[vdevice] = NULL;
-    }
+    L->useGPU = 0;
 
     /* L has not been factorized */
     L->minor = n ;
@@ -151,12 +144,12 @@ cholmod_factor *CHOLMOD(allocate_factor)
     }
 
     /* initialize Perm and ColCount */
-    Perm = (Int *) (L->Perm) ;
+    Perm = L->Perm ;
     for (j = 0 ; j < ((Int) n) ; j++)
     {
 	Perm [j] = j ;
     }
-    ColCount = (Int *) (L->ColCount) ;
+    ColCount = L->ColCount ;
     for (j = 0 ; j < ((Int) n) ; j++)
     {
 	ColCount [j] = 1 ;
@@ -239,7 +232,7 @@ int CHOLMOD(free_factor)
 	CHOLMOD(free) (xs, sizeof (double), L->z, Common) ;
     }
 
-    *LHandle = (cholmod_factor *) CHOLMOD(free) (1, sizeof (cholmod_factor), (*LHandle), Common) ;
+    *LHandle = CHOLMOD(free) (1, sizeof (cholmod_factor), (*LHandle), Common) ;
     return (TRUE) ;
 }
 
@@ -346,10 +339,10 @@ int CHOLMOD(reallocate_column)
 
     /* head = n+1 ; */
     tail = n ;
-    Lp = (Int *) (L->p) ;
-    Lnz = (Int *) (L->nz) ;
-    Lprev = (Int *) (L->prev) ;
-    Lnext = (Int *) (L->next) ;
+    Lp = L->p ;
+    Lnz = L->nz ;
+    Lprev = L->prev ;
+    Lnext = L->next ;
 
     ASSERT (Lnz != NULL) ;
     ASSERT (Lnext != NULL && Lprev != NULL) ;
@@ -415,9 +408,9 @@ int CHOLMOD(reallocate_column)
 
     Common->nrealloc_col++ ;
 
-    Li = (Int *) (L->i) ;
-    Lx = (double *) (L->x) ;
-    Lz = (double *) (L->z) ;
+    Li = L->i ;
+    Lx = L->x ;
+    Lz = L->z ;
 
     /* remove j from its current position in the list */
     Lnext [Lprev [j]] = Lnext [j] ;
@@ -533,12 +526,12 @@ int CHOLMOD(pack_factor)
 
     pnew = 0 ;
     n = L->n ;
-    Lp = (Int *) (L->p) ;
-    Li = (Int *) (L->i) ;
-    Lx = (double *) (L->x) ;
-    Lz = (double *) (L->z) ;
-    Lnz = (Int *) (L->nz) ;
-    Lnext = (Int *) (L->next) ;
+    Lp = L->p ;
+    Li = L->i ;
+    Lx = L->x ;
+    Lz = L->z ;
+    Lnz = L->nz ;
+    Lnext = L->next ;
 
     head = n+1 ;
     tail = n ;
@@ -646,7 +639,7 @@ cholmod_sparse *CHOLMOD(factor_to_sparse)
     /* ---------------------------------------------------------------------- */
 
     /* allocate the header for Lsparse, the sparse matrix version of L */
-    Lsparse = (cholmod_sparse *) CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
+    Lsparse = CHOLMOD(malloc) (sizeof (cholmod_sparse), 1, Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	return (NULL) ;		/* out of memory */
@@ -737,10 +730,10 @@ cholmod_factor *CHOLMOD(copy_factor)
     }
     ASSERT (L2->xtype == CHOLMOD_PATTERN && !(L2->is_super)) ;
 
-    Perm = (Int *) (L->Perm) ;
-    ColCount = (Int *) (L->ColCount) ;
-    Perm2 = (Int *) (L2->Perm) ;
-    ColCount2 = (Int *) (L2->ColCount) ;
+    Perm = L->Perm ;
+    ColCount = L->ColCount ;
+    Perm2 = L2->Perm ;
+    ColCount2 = L2->ColCount ;
     L2->ordering = L->ordering ;
 
     for (j = 0 ; j < n ; j++)
@@ -780,21 +773,21 @@ cholmod_factor *CHOLMOD(copy_factor)
 	/* copy the contents of a simplicial numeric factor */
 	/* ------------------------------------------------------------------ */
 
-	Lp = (Int *) (L->p) ;
-	Li = (Int *) (L->i) ;
-	Lx = (double *) (L->x) ;
-	Lz = (double *) (L->z) ;
-	Lnz = (Int *) (L->nz) ;
-	Lnext = (Int *) (L->next) ;
-	Lprev = (Int *) (L->prev) ;
+	Lp = L->p ;
+	Li = L->i ;
+	Lx = L->x ;
+	Lz = L->z ;
+	Lnz = L->nz ;
+	Lnext = L->next ;
+	Lprev = L->prev ;
 
-	L2p = (Int *) (L2->p) ;
-	L2i = (Int *) (L2->i) ;
-	L2x = (double *) (L2->x) ;
-	L2z = (double *) (L2->z) ;
-	L2nz = (Int *) (L2->nz) ;
-	L2next = (Int *) (L2->next) ;
-	L2prev = (Int *) (L2->prev) ;
+	L2p = L2->p ;
+	L2i = L2->i ;
+	L2x = L2->x ;
+	L2z = L2->z ;
+	L2nz = L2->nz ;
+	L2next = L2->next ;
+	L2prev = L2->prev ;
 	L2->xtype = L->xtype ;
 	L2->dtype = L->dtype ;
 
@@ -885,17 +878,17 @@ cholmod_factor *CHOLMOD(copy_factor)
 	/* copy the contents of a supernodal factor */
 	/* ------------------------------------------------------------------ */
 
-	Lsuper = (Int *) (L->super) ;
-	Lpi = (Int *) (L->pi) ;
-	Lpx = (Int *) (L->px) ;
-	Ls = (Int *) (L->s) ;
-	Lx = (double *) (L->x) ;
+	Lsuper = L->super ;
+	Lpi = L->pi ;
+	Lpx = L->px ;
+	Ls = L->s ;
+	Lx = L->x ;
 
-	L2super = (Int *) (L2->super) ;
-	L2pi = (Int *) (L2->pi) ;
-	L2px = (Int *) (L2->px) ;
-	L2s = (Int *) (L2->s) ;
-	L2x = (double *) (L2->x) ;
+	L2super = L2->super ;
+	L2pi = L2->pi ;
+	L2px = L2->px ;
+	L2s = L2->s ;
+	L2x = L2->x ;
 
 	L2->maxcsize = L->maxcsize ;
 	L2->maxesize = L->maxesize ;

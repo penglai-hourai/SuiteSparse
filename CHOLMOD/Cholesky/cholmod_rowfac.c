@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Full or incremental numerical LDL' or LL' factorization (simplicial, not
@@ -269,9 +272,9 @@ int CHOLMOD(row_subtree)
     else if (stype == 0)
     {
 	/* unsymmetric case: F is required. */
-	Fp = (Int *) (F->p) ;
-	Fi = (Int *) (F->i) ;
-	Fnz = (Int *) (F->nz) ;
+	Fp = F->p ;
+	Fi = F->i ;
+	Fnz = F->nz ;
 	Fpacked = F->packed ;
     }
     else
@@ -281,20 +284,20 @@ int CHOLMOD(row_subtree)
 	return (FALSE) ;
     }
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Anz = A->nz ;
     packed = A->packed ;
     sorted = A->sorted ;
 
     k = krow ;
-    Stack = (Int *) (R->i) ;
+    Stack = R->i ;
 
     /* ---------------------------------------------------------------------- */
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag = (Int *) (Common->Flag) ;	/* size nrow, Flag [i] < mark must hold */
+    Flag = Common->Flag ;	/* size nrow, Flag [i] < mark must hold */
     /* mark = CHOLMOD(clear_flag) (Common) ; */
     CHOLMOD_CLEAR_FLAG (Common) ;
     mark = Common->mark ;
@@ -341,7 +344,7 @@ int CHOLMOD(row_subtree)
 	Stack [i] = Stack [top + i] ;
     }
 
-    Rp = (Int *) (R->p) ;
+    Rp = R->p ;
     Rp [0] = 0 ;
     Rp [1] = len ;
     R->sorted = FALSE ;
@@ -490,23 +493,23 @@ int CHOLMOD(row_lsubtree)
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Anz = A->nz ;
     packed = A->packed ;
     sorted = A->sorted ;
 
-    Stack = (Int *) (R->i) ;
+    Stack = R->i ;
 
-    Lp = (Int *) (L->p) ;
-    Li = (Int *) (L->i) ;
-    Lnz = (Int *) (L->nz) ;
+    Lp = L->p ;
+    Li = L->i ;
+    Lnz = L->nz ;
 
     /* ---------------------------------------------------------------------- */
     /* get workspace */
     /* ---------------------------------------------------------------------- */
 
-    Flag = (Int *) (Common->Flag) ;	/* size nrow, Flag [i] < mark must hold */
+    Flag = Common->Flag ;	/* size nrow, Flag [i] < mark must hold */
     mark = CHOLMOD(clear_flag) (Common) ;
 
     /* ---------------------------------------------------------------------- */
@@ -552,7 +555,7 @@ int CHOLMOD(row_lsubtree)
 	Stack [i] = Stack [top + i] ;
     }
 
-    Rp = (Int *) (R->p) ;
+    Rp = R->p ;
     Rp [0] = 0 ;
     Rp [1] = len ;
     R->sorted = FALSE ;

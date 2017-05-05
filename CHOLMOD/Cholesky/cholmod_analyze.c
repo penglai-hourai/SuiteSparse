@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Order and analyze a matrix (either simplicial or supernodal), in prepartion
@@ -135,7 +138,7 @@ cholmod_factor *CHOLMOD(analyze)
     cholmod_common *Common
 )
 {
-    return (CHOLMOD(analyze_p2) (CHOLMOD_ANALYZE_FOR_CHOLESKY, A, NULL, NULL, 0, Common)) ;
+    return (CHOLMOD(analyze_p2) (TRUE, A, NULL, NULL, 0, Common)) ;
 }
 
 
@@ -159,7 +162,7 @@ cholmod_factor *CHOLMOD(analyze_p)
     cholmod_common *Common
 )
 {
-    return (CHOLMOD(analyze_p2) (CHOLMOD_ANALYZE_FOR_CHOLESKY, A, UserPerm, fset, fsize, Common)) ;
+    return (CHOLMOD(analyze_p2) (TRUE, A, UserPerm, fset, fsize, Common)) ;
 }
 
 
@@ -529,7 +532,7 @@ cholmod_factor *CHOLMOD(analyze_p2)
      * are an exception.  They can use all 6n + ncol space, since the contents
      * of Parent, First, Level, and Post are not needed across calls to those
      * routines. */
-    Work4n = (Int *) (Common->Iwork) ;
+    Work4n = Common->Iwork ;
     Work4n += 2*((size_t) n) + uncol ;
     Parent = Work4n ;
     First  = Work4n + n ;
@@ -547,16 +550,16 @@ cholmod_factor *CHOLMOD(analyze_p2)
     /* ---------------------------------------------------------------------- */
 
     L = CHOLMOD(allocate_factor) (n, Common) ;
-    Lparent  = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
-    Perm     = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
-    ColCount = (Int *) CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    Lparent  = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    Perm     = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
+    ColCount = CHOLMOD(malloc) (n, sizeof (Int), Common) ;
     if (Common->status < CHOLMOD_OK)
     {
 	/* out of memory */
 	FREE_WORKSPACE_AND_RETURN ;
     }
-    Lperm = (Int *) (L->Perm) ;
-    Lcolcount = (Int *) (L->ColCount) ;
+    Lperm = L->Perm ;
+    Lcolcount = L->ColCount ;
     Common->anz = EMPTY ;
 
     /* ---------------------------------------------------------------------- */

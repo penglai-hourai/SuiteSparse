@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_blas.h.
  * Copyright (C) 2005-2006, Univ. of Florida.  Author: Timothy A. Davis
+ * CHOLMOD/Include/cholmod_blas.h is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* This does not need to be included in the user's program. */
@@ -149,7 +152,7 @@
 /* Compile CHOLMOD, UMFPACK, and SPQR with -DBLAS64 if you have a BLAS that
  * uses 64-bit integers */
 
-#if defined (DLONG) || defined (LONGBLAS) || defined (BLAS64)
+#if defined (LONGBLAS) || defined (BLAS64)
 #define BLAS_INT SuiteSparse_long
 #else
 #define BLAS_INT int
@@ -169,12 +172,8 @@
 /* === BLAS and LAPACK prototypes and macros ================================ */
 /* ========================================================================== */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void BLAS_DGEMV (const char * const trans, BLAS_INT *m, BLAS_INT *n, const double * const alpha,
-	double *A, BLAS_INT *lda, double *X, BLAS_INT *incx, const double * const beta,
+void BLAS_DGEMV (char *trans, BLAS_INT *m, BLAS_INT *n, double *alpha,
+	double *A, BLAS_INT *lda, double *X, BLAS_INT *incx, double *beta,
 	double *Y, BLAS_INT *incy) ;
 
 #define BLAS_dgemv(trans,m,n,alpha,A,lda,X,incx,beta,Y,incy) \
@@ -191,8 +190,8 @@ void BLAS_DGEMV (const char * const trans, BLAS_INT *m, BLAS_INT *n, const doubl
     } \
 }
 
-void BLAS_ZGEMV (const char * const trans, BLAS_INT *m, BLAS_INT *n, const double * const alpha,
-	double *A, BLAS_INT *lda, double *X, BLAS_INT *incx, const double * const beta,
+void BLAS_ZGEMV (char *trans, BLAS_INT *m, BLAS_INT *n, double *alpha,
+	double *A, BLAS_INT *lda, double *X, BLAS_INT *incx, double *beta,
 	double *Y, BLAS_INT *incy) ;
 
 #define BLAS_zgemv(trans,m,n,alpha,A,lda,X,incx,beta,Y,incy) \
@@ -209,7 +208,7 @@ void BLAS_ZGEMV (const char * const trans, BLAS_INT *m, BLAS_INT *n, const doubl
     } \
 }
 
-void BLAS_DTRSV (const char * const uplo, const char * const trans, const char * const diag, BLAS_INT *n, double *A,
+void BLAS_DTRSV (char *uplo, char *trans, char *diag, BLAS_INT *n, double *A,
 	BLAS_INT *lda, double *X, BLAS_INT *incx) ;
 
 #define BLAS_dtrsv(uplo,trans,diag,n,A,lda,X,incx) \
@@ -225,7 +224,7 @@ void BLAS_DTRSV (const char * const uplo, const char * const trans, const char *
     } \
 }
 
-void BLAS_ZTRSV (const char * const uplo, const char * const trans, const char * const diag, BLAS_INT *n, double *A,
+void BLAS_ZTRSV (char *uplo, char *trans, char *diag, BLAS_INT *n, double *A,
 	BLAS_INT *lda, double *X, BLAS_INT *incx) ;
 
 #define BLAS_ztrsv(uplo,trans,diag,n,A,lda,X,incx) \
@@ -241,8 +240,8 @@ void BLAS_ZTRSV (const char * const uplo, const char * const trans, const char *
     } \
 }
 
-void BLAS_DTRSM (const char * const side, const char * const uplo, const char * const transa, const char * const diag, BLAS_INT *m,
-	BLAS_INT *n, const double * const alpha, double *A, BLAS_INT *lda, double *B,
+void BLAS_DTRSM (char *side, char *uplo, char *transa, char *diag, BLAS_INT *m,
+	BLAS_INT *n, double *alpha, double *A, BLAS_INT *lda, double *B,
 	BLAS_INT *ldb) ;
 
 #define BLAS_dtrsm(side,uplo,transa,diag,m,n,alpha,A,lda,B,ldb) \
@@ -259,8 +258,8 @@ void BLAS_DTRSM (const char * const side, const char * const uplo, const char * 
     } \
 }
 
-void BLAS_ZTRSM (const char * const side, const char * const uplo, const char * const transa, const char * const diag, BLAS_INT *m,
-	BLAS_INT *n, const double * const alpha, double *A, BLAS_INT *lda, double *B,
+void BLAS_ZTRSM (char *side, char *uplo, char *transa, char *diag, BLAS_INT *m,
+	BLAS_INT *n, double *alpha, double *A, BLAS_INT *lda, double *B,
 	BLAS_INT *ldb) ;
 
 #define BLAS_ztrsm(side,uplo,transa,diag,m,n,alpha,A,lda,B,ldb) \
@@ -277,9 +276,9 @@ void BLAS_ZTRSM (const char * const side, const char * const uplo, const char * 
     } \
 }
 
-void BLAS_DGEMM (const char * const transa, const char * const transb, BLAS_INT *m, BLAS_INT *n,
-	BLAS_INT *k, const double * const alpha, double *A, BLAS_INT *lda, double *B,
-	BLAS_INT *ldb, const double * const beta, double *C, BLAS_INT *ldc) ;
+void BLAS_DGEMM (char *transa, char *transb, BLAS_INT *m, BLAS_INT *n,
+	BLAS_INT *k, double *alpha, double *A, BLAS_INT *lda, double *B,
+	BLAS_INT *ldb, double *beta, double *C, BLAS_INT *ldc) ;
 
 #define BLAS_dgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc) \
 { \
@@ -296,9 +295,9 @@ void BLAS_DGEMM (const char * const transa, const char * const transb, BLAS_INT 
     } \
 }
 
-void BLAS_ZGEMM (const char * const transa, const char * const transb, BLAS_INT *m, BLAS_INT *n,
-	BLAS_INT *k, const double * const alpha, double *A, BLAS_INT *lda, double *B,
-	BLAS_INT *ldb, const double * const beta, double *C, BLAS_INT *ldc) ;
+void BLAS_ZGEMM (char *transa, char *transb, BLAS_INT *m, BLAS_INT *n,
+	BLAS_INT *k, double *alpha, double *A, BLAS_INT *lda, double *B,
+	BLAS_INT *ldb, double *beta, double *C, BLAS_INT *ldc) ;
 
 #define BLAS_zgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc) \
 { \
@@ -315,8 +314,8 @@ void BLAS_ZGEMM (const char * const transa, const char * const transb, BLAS_INT 
     } \
 }
 
-void BLAS_DSYRK (const char * const uplo, const char * const trans, BLAS_INT *n, BLAS_INT *k,
-	const double * const alpha, double *A, BLAS_INT *lda, const double * const beta, double *C,
+void BLAS_DSYRK (char *uplo, char *trans, BLAS_INT *n, BLAS_INT *k,
+	double *alpha, double *A, BLAS_INT *lda, double *beta, double *C,
 	BLAS_INT *ldc) ;
 
 #define BLAS_dsyrk(uplo,trans,n,k,alpha,A,lda,beta,C,ldc) \
@@ -333,8 +332,8 @@ void BLAS_DSYRK (const char * const uplo, const char * const trans, BLAS_INT *n,
     } \
 } \
 
-void BLAS_ZHERK (const char * const uplo, const char * const trans, BLAS_INT *n, BLAS_INT *k,
-	const double * const alpha, double *A, BLAS_INT *lda, const double * const beta, double *C,
+void BLAS_ZHERK (char *uplo, char *trans, BLAS_INT *n, BLAS_INT *k,
+	double *alpha, double *A, BLAS_INT *lda, double *beta, double *C,
 	BLAS_INT *ldc) ;
 
 #define BLAS_zherk(uplo,trans,n,k,alpha,A,lda,beta,C,ldc) \
@@ -351,7 +350,7 @@ void BLAS_ZHERK (const char * const uplo, const char * const trans, BLAS_INT *n,
     } \
 } \
 
-void LAPACK_DPOTRF (const char * const uplo, BLAS_INT *n, double *A, BLAS_INT *lda,
+void LAPACK_DPOTRF (char *uplo, BLAS_INT *n, double *A, BLAS_INT *lda,
 	BLAS_INT *info) ;
 
 #define LAPACK_dpotrf(uplo,n,A,lda,info) \
@@ -368,7 +367,7 @@ void LAPACK_DPOTRF (const char * const uplo, BLAS_INT *n, double *A, BLAS_INT *l
     info = INFO ; \
 }
 
-void LAPACK_ZPOTRF (const char * const uplo, BLAS_INT *n, double *A, BLAS_INT *lda,
+void LAPACK_ZPOTRF (char *uplo, BLAS_INT *n, double *A, BLAS_INT *lda,
 	BLAS_INT *info) ;
 
 #define LAPACK_zpotrf(uplo,n,A,lda,info) \
@@ -387,7 +386,7 @@ void LAPACK_ZPOTRF (const char * const uplo, BLAS_INT *n, double *A, BLAS_INT *l
 
 /* ========================================================================== */
 
-void BLAS_DSCAL (BLAS_INT *n, const double * const alpha, double *Y, BLAS_INT *incy) ;
+void BLAS_DSCAL (BLAS_INT *n, double *alpha, double *Y, BLAS_INT *incy) ;
 
 #define BLAS_dscal(n,alpha,Y,incy) \
 { \
@@ -402,7 +401,7 @@ void BLAS_DSCAL (BLAS_INT *n, const double * const alpha, double *Y, BLAS_INT *i
     } \
 }
 
-void BLAS_ZSCAL (BLAS_INT *n, const double * const alpha, double *Y, BLAS_INT *incy) ;
+void BLAS_ZSCAL (BLAS_INT *n, double *alpha, double *Y, BLAS_INT *incy) ;
 
 #define BLAS_zscal(n,alpha,Y,incy) \
 { \
@@ -417,7 +416,7 @@ void BLAS_ZSCAL (BLAS_INT *n, const double * const alpha, double *Y, BLAS_INT *i
     } \
 }
 
-void BLAS_DGER (BLAS_INT *m, BLAS_INT *n, const double * const alpha,
+void BLAS_DGER (BLAS_INT *m, BLAS_INT *n, double *alpha,
 	double *X, BLAS_INT *incx, double *Y, BLAS_INT *incy,
 	double *A, BLAS_INT *lda) ;
 
@@ -435,7 +434,7 @@ void BLAS_DGER (BLAS_INT *m, BLAS_INT *n, const double * const alpha,
     } \
 }
 
-void BLAS_ZGER (BLAS_INT *m, BLAS_INT *n, const double * const alpha,
+void BLAS_ZGER (BLAS_INT *m, BLAS_INT *n, double *alpha,
 	double *X, BLAS_INT *incx, double *Y, BLAS_INT *incy,
 	double *A, BLAS_INT *lda) ;
 
@@ -452,9 +451,5 @@ void BLAS_ZGER (BLAS_INT *m, BLAS_INT *n, const double * const alpha,
 	BLAS_ZGER (&M, &N, alpha, X, &INCX, Y, &INCY, A, &LDA) ; \
     } \
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

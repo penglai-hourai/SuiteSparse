@@ -3,7 +3,7 @@
 #===============================================================================
 
 LIBRARY = libcholmod
-VERSION = 3.0.11
+VERSION = 4.0.0
 SO_VERSION = 3
 
 default: library
@@ -17,7 +17,7 @@ include ../../SuiteSparse_config/SuiteSparse_config.mk
 LDLIBS += -lamd -lcolamd -lsuitesparseconfig \
 	$(LIB_WITH_PARTITION) $(LAPACK) $(BLAS)
 
-SO_OPTS += $(CFOPENMP) $(CFPTHREADS)
+SO_OPTS += $(CFOPENMP)
 
 #-------------------------------------------------------------------------------
 # With the CUDA BLAS:
@@ -35,6 +35,10 @@ library:
 I = -I../../AMD/Include -I../../AMD/Source -I../../COLAMD/Include \
 	$(I_WITH_PARTITION) -I../Include -I../../SuiteSparse_config \
 	$(CUDA_INC)
+
+ifneq ($(MKLROOT),)
+	I += -DMKLROOT
+endif
 
 #-------------------------------------------------------------------------------
 
@@ -67,9 +71,7 @@ INC =   ../Include/cholmod.h \
 	../Include/cholmod_partition.h \
 	../Include/cholmod_supernodal.h \
 	../Include/cholmod_template.h \
-	../Include/cholmod_subtree.h \
-	../Include/cholmod_gpu.h \
-	../Include/cholmod_super_utils.h
+	../Include/cholmod_subtree.h
 
 #-------------------------------------------------------------------------------
 # The 7 CHOLMOD library modules (int, double)
@@ -99,8 +101,7 @@ PARTITION = cholmod_ccolamd.o cholmod_csymamd.o \
 MODIFY = cholmod_rowadd.o cholmod_rowdel.o cholmod_updown.o
 
 SUPERNODAL = cholmod_super_numeric.o cholmod_super_solve.o \
-	cholmod_super_symbolic.o cholmod_super_utils.o
-			
+	cholmod_super_symbolic.o
 
 ifneq ($(GPU_CONFIG),)
 GPU = cholmod_gpu.o cholmod_gpu_kernels.o \
@@ -141,7 +142,7 @@ LPARTITION = cholmod_l_ccolamd.o cholmod_l_csymamd.o \
 LMODIFY = cholmod_l_rowadd.o cholmod_l_rowdel.o cholmod_l_updown.o
 
 LSUPERNODAL = cholmod_l_super_numeric.o cholmod_l_super_solve.o \
-	cholmod_l_super_symbolic.o cholmod_l_super_utils.o
+	cholmod_l_super_symbolic.o
 
 ifneq ($(GPU_CONFIG),)
 LGPU = cholmod_l_gpu.o cholmod_gpu_kernels.o
@@ -156,8 +157,6 @@ DL = $(LCORE) $(LCHECK) $(LCHOLESKY) $(LMATRIXOPS) $(LMODIFY) $(LSUPERNODAL) \
 
 # to compile just the double/int version, use OBJ = $(DI)
 OBJ = $(DI) $(DL)
-
-static: $(AR_TARGET)
 
 $(AR_TARGET): $(OBJ)
 	$(ARCHIVE) $@ $^
@@ -499,11 +498,7 @@ cholmod_l_updown.o: ../Modify/cholmod_updown.c \
 # Supernodal Module:
 #-------------------------------------------------------------------------------
 
-cholmod_super_utils.o: ../Supernodal/cholmod_super_utils.c
-	$(C) -c $(I) $<
-
 cholmod_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
-        ../GPU/t_cholmod_gpu.c \
         ../GPU/t_cholmod_subtree.c \
         ../GPU/t_cholmod_root.c \
         ../GPU/t_initialize_subtree.c \
@@ -523,9 +518,6 @@ cholmod_super_solve.o: ../Supernodal/cholmod_super_solve.c \
 	$(C) -c $(I) $<
 
 #-------------------------------------------------------------------------------
-
-cholmod_l_super_utils.o: ../Supernodal/cholmod_super_utils.c
-	$(C) -DDLONG -c $(I) $< -o $@
 
 cholmod_l_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
 	../Supernodal/t_cholmod_super_numeric.c

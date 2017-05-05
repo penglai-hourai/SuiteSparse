@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine to solve Lx=b with unit or non-unit diagonal, or
@@ -61,10 +64,10 @@ static void LSOLVE (PREFIX,1)
     double X [ ]                        /* n-by-1 in row form */
 )
 {
-    double *Lx = (double *) (L->x) ;
-    Int *Li = (Int *) (L->i) ;
-    Int *Lp = (Int *) (L->p) ;
-    Int *Lnz = (Int *) (L->nz) ;
+    double *Lx = L->x ;
+    Int *Li = L->i ;
+    Int *Lp = L->p ;
+    Int *Lnz = L->nz ;
     Int j, n = L->n ;
 
     for (j = 0 ; j < n ; )
@@ -180,10 +183,10 @@ static void LSOLVE (PREFIX,2)
     double X [ ][2]		/* n-by-2 in row form */
 )
 {
-    double *Lx = (double *) (L->x) ;
-    Int *Li = (Int *) (L->i) ;
-    Int *Lp = (Int *) (L->p) ;
-    Int *Lnz = (Int *) (L->nz) ;
+    double *Lx = L->x ;
+    Int *Li = L->i ;
+    Int *Lp = L->p ;
+    Int *Lnz = L->nz ;
     Int j, n = L->n ;
 
     for (j = 0 ; j < n ; )
@@ -334,10 +337,10 @@ static void LSOLVE (PREFIX,3)
     double X [ ][3]			/* n-by-3 in row form */
 )
 {
-    double *Lx = (double *) (L->x) ;
-    Int *Li = (Int *) (L->i) ;
-    Int *Lp = (Int *) (L->p) ;
-    Int *Lnz = (Int *) (L->nz) ;
+    double *Lx = L->x ;
+    Int *Li = L->i ;
+    Int *Lp = L->p ;
+    Int *Lnz = L->nz ;
     Int j, n = L->n ;
 
     for (j = 0 ; j < n ; )
@@ -529,10 +532,10 @@ static void LSOLVE (PREFIX,4)
     double X [ ][4]			    /* n-by-4 in row form */
 )
 {
-    double *Lx = (double *) (L->x) ;
-    Int *Li = (Int *) (L->i) ;
-    Int *Lp = (Int *) (L->p) ;
-    Int *Lnz = (Int *) (L->nz) ;
+    double *Lx = L->x ;
+    Int *Li = L->i ;
+    Int *Lp = L->p ;
+    Int *Lnz = L->nz ;
     Int j, n = L->n ;
 
     for (j = 0 ; j < n ; )
@@ -762,14 +765,14 @@ static void LSOLVE (PREFIX,k)
     double yx [2] ;
 #ifdef ZOMPLEX
     double yz [1] ;
-    double *Lz = (double *) (L->z) ;
-    double *Xz = (double *) (Y->z) ;
+    double *Lz = L->z ;
+    double *Xz = Y->z ;
 #endif
-    double *Lx = (double *) (L->x) ;
-    double *Xx = (double *) (Y->x) ;
-    Int *Li = (Int *) (L->i) ;
-    Int *Lp = (Int *) (L->p) ;
-    Int *Lnz = (Int *) (L->nz) ;
+    double *Lx = L->x ;
+    double *Xx = Y->x ;
+    Int *Li = L->i ;
+    Int *Lp = L->p ;
+    Int *Lnz = L->nz ;
     Int n = L->n, jj, jjiters ;
 
     ASSERT (L->xtype == Y->xtype) ; /* L and Y must have the same xtype */
@@ -791,10 +794,10 @@ static void LSOLVE (PREFIX,k)
 
         switch (Y->nrow)
         {
-            case 1: LSOLVE (PREFIX,1) (L, (double  *     ) (Y->x)) ; break ;
-            case 2: LSOLVE (PREFIX,2) (L, (double (*) [2]) (Y->x)) ; break ;
-            case 3: LSOLVE (PREFIX,3) (L, (double (*) [3]) (Y->x)) ; break ;
-            case 4: LSOLVE (PREFIX,4) (L, (double (*) [4]) (Y->x)) ; break ;
+            case 1: LSOLVE (PREFIX,1) (L, Y->x) ; break ;
+            case 2: LSOLVE (PREFIX,2) (L, Y->x) ; break ;
+            case 3: LSOLVE (PREFIX,3) (L, Y->x) ; break ;
+            case 4: LSOLVE (PREFIX,4) (L, Y->x) ; break ;
         }
 
     }

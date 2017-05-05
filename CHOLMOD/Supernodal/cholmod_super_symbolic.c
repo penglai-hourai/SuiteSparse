@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Supernodal Module. Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Supernodal Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -42,11 +45,9 @@
 
 #include "cholmod_internal.h"
 #include "cholmod_supernodal.h"
-#include "cholmod_super_utils.h"
-
-#ifdef SUITESPARSE_CUDA
-#include <cuda_runtime.h>
-#include "cholmod_gpu.h"
+#include "cholmod_subtree.h"
+#ifdef MKLROOT
+#include "mkl.h"
 #endif
 
 /* ========================================================================== */
@@ -180,10 +181,8 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    const char *env_omp_num_threads, *env_partial_factorization;
-    int vdevice;
-    Int *height, *leaf_height;
-    Int *pending, *leaf;
+    const char* env_use_gpu, *env_max_bytes, *env_num_gpu, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
+    size_t max_bytes;
 
     /* ---------------------------------------------------------------------- */
     /* check inputs */
@@ -216,52 +215,6 @@ int CHOLMOD(super_symbolic2)
     Common->status = CHOLMOD_OK ;
 
     /* ---------------------------------------------------------------------- */
-    /* determine number of OpenMP threads */
-    /* ---------------------------------------------------------------------- */
-
-    /* Query OS environment variables for request.*/
-    env_omp_num_threads  = getenv("OMP_NUM_THREADS");
-
-    /* OMP_NUM_THREADS environment variable is set */
-    if ( env_omp_num_threads )
-    {
-        Common->ompNumThreads = atoi ( env_omp_num_threads ); 	/* set # omp threads */
-    }
-    /* OMP_NUM_THREADS environment variable not set */
-    else
-    {
-#ifdef MKLROOT
-        Common->ompNumThreads = mkl_get_max_threads();            /* default is # cores in CPU */
-#else
-        Common->ompNumThreads = omp_get_max_threads();            /* default is # cores in CPU */
-#endif
-    }
-
-    if (Common->ompNumThreads > CHOLMOD_OMP_NUM_THREADS)
-        Common->ompNumThreads = CHOLMOD_OMP_NUM_THREADS;
-
-    /* Query OS environment variables for request.*/
-    env_partial_factorization  = getenv("CHOLMOD_PARTIAL_FACTORIZATION");
-
-    /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable is set */
-    if ( env_partial_factorization )
-    {
-        if ( atoi ( env_partial_factorization ) == 0 )
-        {
-            Common->partialFactorization = 0;                              /* don't use partialFactorization */
-        }
-        else
-        {
-            Common->partialFactorization = 1;                              /* use partialFactorization (serial CPU only) */
-        }
-    }
-    /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable not set */
-    else
-    {
-        Common->partialFactorization = 0;                                  /* default is no partialFactorization */
-    }
-
-    /* ---------------------------------------------------------------------- */
     /* allocate workspace */
     /* ---------------------------------------------------------------------- */
 
@@ -284,6 +237,233 @@ int CHOLMOD(super_symbolic2)
     ASSERT (CHOLMOD(dump_work) (TRUE, TRUE, 0, Common)) ;
 
     /* ---------------------------------------------------------------------- */
+    /* allocate GPU workspace */
+    /* ---------------------------------------------------------------------- */
+#ifndef SUITESPARSE_CUDA
+    /* GPU module is not installed */
+    Common->useGPU = 0;
+    Common->numGPU = 0;
+    Common->useHybrid = 0;
+#endif
+
+#ifndef DLONG
+    /* GPU module supported only for long int */
+    Common->useGPU = 0;
+    Common->numGPU = 0;
+    Common->useHybrid = 0;
+#endif
+
+
+    L->useGPU = 0 ;     /* only used for Cholesky factorization, not QR */
+
+    /* GPU module is installed */
+    if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY )
+    {
+        /* only allocate GPU workspace for supernodal Cholesky, and only when
+           the GPU is requested and available. */
+
+        max_bytes = 0;
+
+#ifdef SUITESPARSE_CUDA
+#ifdef DLONG
+        /* set useGPU parameter */
+        if ( Common->useGPU == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_use_gpu  = getenv("CHOLMOD_USE_GPU");
+
+            /* CHOLMOD_USE_GPU environment variable is set */
+            if ( env_use_gpu )
+            {
+                if ( atoi ( env_use_gpu ) == 0 )
+                {
+                    Common->useGPU = 0; 				/* don't use the gpu */
+                }
+                else
+                {
+                    Common->useGPU = 1; 				/* use the gpu */
+                }
+            }
+            /* CHOLMOD_USE_GPU environment variable not set */             
+            else
+            {
+                Common->useGPU = 0;					/* default is no GPU acceleration */
+            }
+        }
+
+
+        /* set maxGpuMemBytes parameter */
+        if ( Common->maxGpuMemBytes == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+	    env_max_bytes = getenv("CHOLMOD_GPU_MEM_BYTES");
+
+            /* CHOLMOD_GPU_MEM_BYTES environment variable is set */
+            if ( env_max_bytes )
+            {
+                /* GPU is set */
+                if(Common->useGPU)
+                {
+                    max_bytes = atol(env_max_bytes);
+                    Common->maxGpuMemBytes = max_bytes;
+                }
+            }
+        }
+
+       
+        /* set numGPU parameter */ 
+        if ( Common->numGPU == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_num_gpu  = getenv("CHOLMOD_NUM_GPUS");
+
+            /* CHOLMOD_NUM_GPUS environment variable is set */
+            if ( env_num_gpu )
+            {	    
+                Common->numGPU = atoi ( env_num_gpu );              	/* set # GPUs */	
+            }
+            /* CHOLMOD_USE_GPU environment variable not set */
+	    else
+            {
+                Common->numGPU = -1;				    	/* default, #GPUs is not defined */
+            }	        	
+        }
+
+
+        /* set useHybrid parameter */
+        if ( Common->useHybrid == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_hybrid_gpu  = getenv("CHOLMOD_GPU_HYBRID");
+
+            /* CHOLMOD_GPU_HYBRID environment variable is set */
+            if ( env_hybrid_gpu )
+            {
+                if ( atoi ( env_hybrid_gpu ) == 0 )
+                {
+                    Common->useHybrid = 0;                           	/* don't use hybrid (GPU only) */
+                }
+                else
+                {
+                    Common->useHybrid = 1; 				/* use hybrid (GPU + CPU) */
+                }
+            }
+            /* CHOLMOD_GPU_HYBRID environment variable not set */
+            else
+            {
+                Common->useHybrid = -1;                              	/* default, hybrid is not defined */
+            }
+        }
+#endif
+#endif
+
+
+        /* set ompNumThreads parameter */
+        if ( Common->ompNumThreads == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_omp_num_threads  = getenv("OMP_NUM_THREADS");
+
+            /* OMP_NUM_THREADS environment variable is set */
+            if ( env_omp_num_threads )
+            {
+                Common->ompNumThreads = atoi ( env_omp_num_threads ); 	/* set # omp threads */
+            }
+            /* OMP_NUM_THREADS environment variable not set */
+            else
+            {
+#ifdef MKLROOT
+	      Common->ompNumThreads = mkl_get_max_threads();            /* default is # cores in CPU */
+#else
+	      Common->ompNumThreads = omp_get_max_threads();            /* default is # cores in CPU */
+#endif
+            }
+        }
+
+
+        /* set partialFactorization parameter */
+        if ( Common->partialFactorization == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_partial_factorization  = getenv("CHOLMOD_PARTIAL_FACTORIZATION");
+
+            /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable is set */
+            if ( env_partial_factorization )
+            {
+                if ( atoi ( env_partial_factorization ) == 0 )
+                {
+                    Common->partialFactorization = 0;                              /* don't use partialFactorization */
+                }
+                else
+                {
+                    Common->partialFactorization = 1;                              /* use partialFactorization (serial CPU only) */
+                }
+            }
+            /* CHOLMOD_PARTIAL_FACTORIZATION   environment variable not set */
+            else
+            {
+                Common->partialFactorization = 0;                                  /* default is no partialFactorization */
+            }
+        }
+
+
+
+#ifdef SUITESPARSE_CUDA
+#ifdef DLONG
+        /* GPU is not present */
+        if ( Common->useGPU == 0 || Common->numGPU == 0 || Common->partialFactorization == 1 )
+        {
+            Common->useGPU = 0;
+            Common->numGPU = 0;
+            Common->useHybrid = 0;
+        }
+
+
+        /* Ensure that a GPU is present */
+        if ( Common->useGPU == 1 && Common->numGPU != 0 )
+        {
+            Common->useGPU = CHOLMOD(gpu_probe) (Common); 
+	    if ( Common->useGPU == 1 && Common->numGPU > 0 )
+            {
+            	CHOLMOD(gpu_allocate) ( Common );
+	    }
+        }
+
+       
+        /* GPU is present (set default behavior) */
+        if ( Common->useGPU == 1 && Common->numGPU > 0 && Common->partialFactorization == 0 )
+        {
+ 
+            /* if hybrid is not defined */
+            if(Common->useHybrid == -1) 
+            {
+                if(Common->numGPU == 1) 				/* if 1 GPU, enable CPU (hybrid) */
+                  Common->useHybrid = 1;                
+                else 
+                  Common->useHybrid = 0;				/* if multiple GPUs, disable CPU (GPU only) */
+            }
+        }
+
+
+	/* GPU is not present */
+   	if ( Common->useGPU == 0 || Common->numGPU == 0 || Common->partialFactorization == 1 )
+	{
+            Common->useGPU = 0;
+	    Common->numGPU = 0;
+            Common->useHybrid = 0;
+	}
+#endif
+#endif
+
+        /* Cache the fact that the symbolic factorization supports 
+         * GPU acceleration */
+        L->useGPU = Common->useGPU;
+
+    }
+
+
+
+    /* ---------------------------------------------------------------------- */
     /* get inputs */
     /* ---------------------------------------------------------------------- */
 
@@ -293,9 +473,9 @@ int CHOLMOD(super_symbolic2)
      * the lower triangular part may be present if A is symmetric, but these
      * are ignored. */
 
-    Ap = (Int *) (A->p) ;
-    Ai = (Int *) (A->i) ;
-    Anz = (Int *) (A->nz) ;
+    Ap = A->p ;
+    Ai = A->i ;
+    Anz = A->nz ;
 
     if (stype != 0)
     {
@@ -308,13 +488,13 @@ int CHOLMOD(super_symbolic2)
     else
     {
 	/* F = A(:,f) or A(p,f) in packed row form, either sorted or unsorted */
-	Fp = (Int *) (F->p) ;
-	Fj = (Int *) (F->i) ;
-	Fnz = (Int *) (F->nz) ;
+	Fp = F->p ;
+	Fj = F->i ;
+	Fnz = F->nz ;
 	packed = F->packed ;
     }
 
-    ColCount = (Int *) (L->ColCount) ;
+    ColCount = L->ColCount ;
 
     nrelax0 = Common->nrelax [0] ;
     nrelax1 = Common->nrelax [1] ;
@@ -336,18 +516,18 @@ int CHOLMOD(super_symbolic2)
 
     /* Sparent, Snz, and Merged could be allocated later, of size nfsuper */
 
-    Iwork = (Int *) (Common->Iwork) ;
+    Iwork = Common->Iwork ;
     Wi      = Iwork ;	    /* size n (i/l/l).  Lpi2 is i/l/l */
     Wj      = Iwork + n ;   /* size n (i/l/l).  Zeros is i/l/l */
     Sparent = Iwork + 2*((size_t) n) ; /* size nfsuper <= n [ */
     Snz     = Iwork + 3*((size_t) n) ; /* size nfsuper <= n [ */
     Merged  = Iwork + 4*((size_t) n) ; /* size nfsuper <= n [ */
 
-    Flag = (Int *) (Common->Flag) ;   /* size n */
-    Head = (Int *) (Common->Head) ;   /* size n+1 */
+    Flag = Common->Flag ;   /* size n */
+    Head = Common->Head ;   /* size n+1 */
 
     /* ---------------------------------------------------------------------- */
-    /* compute the number of elimination tree leaves */
+    /* find the fundamental supernodes */
     /* ---------------------------------------------------------------------- */
 
     /* count the number of children of each node, using Wi [ */
@@ -364,10 +544,6 @@ int CHOLMOD(super_symbolic2)
 	}
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* find the fundamental supernodes */
-    /* ---------------------------------------------------------------------- */
-
     Super = Head ;  /* use Head [0..nfsuper] as workspace for Super list ( */
 
     /* column 0 always starts a new supernode */
@@ -383,11 +559,10 @@ int CHOLMOD(super_symbolic2)
 #ifdef SUITESPARSE_CUDA
 	    /* Ensure that the supernode will fit in the GPU buffers */
 	    /* Data size of 16 bytes must be assumed for case of PATTERN */
-	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU && 
+	    || (for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU && 
 		 (j-Super[nfsuper-1]+1) * 
-		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2
-         //+ (ColCount[Super[nfsuper-1]]+1) * sizeof(Int)
-         >= Common->devBuffSize * Common->cuda_gpu_parallel)
+		 ColCount[Super[nfsuper-1]] * sizeof(double) * 2 >= 
+		 Common->devBuffSize)
 #endif
 	    )
 	{
@@ -449,7 +624,7 @@ int CHOLMOD(super_symbolic2)
 
     for (s = nfsuper-2 ; s >= 0 ; s--)
     {
-        double lnz0, lnz1 ;
+        double lnz1 ;
 
 	/* should supernodes s and s+1 merge into a new node s? */
 	PRINT1 (("\n========= Check relax of s "ID" and s+1 "ID"\n", s, s+1)) ;
@@ -486,7 +661,6 @@ int CHOLMOD(super_symbolic2)
 	PRINT2 (("ns "ID" nscol0 "ID" nscol1 "ID"\n", ns, nscol0, nscol1)) ;
 
 	totzeros = Zeros [s+1] ;	/* current # of zeros in s+1 */
-	lnz0 = (double) Snz [s] ;	/* # entries in leading column of s */
 	lnz1 = (double) (Snz [s+1]) ;	/* # entries in leading column of s+1 */
 
 	/* determine if supernodes s and s+1 should merge */
@@ -498,6 +672,7 @@ int CHOLMOD(super_symbolic2)
 	else
 	{
 	    /* use double to avoid integer overflow */
+	    double lnz0 = Snz [s] ;	/* # entries in leading column of s */
 	    double xnewzeros = nscol0 * (lnz1 + nscol0 - lnz0) ;
 
 	    /* use Int for the final update of Zeros [s] below */
@@ -542,20 +717,16 @@ int CHOLMOD(super_symbolic2)
 	}
 
 #ifdef SUITESPARSE_CUDA
-	if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && Common->useGPU ) {
+	if ( for_whom == CHOLMOD_ANALYZE_FOR_CHOLESKY && L->useGPU ) {
 	  /* Ensure that the aggregated supernode fits in the device 
 	     supernode buffers */
 	  double xns = (double) ns;
-	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2
-              //+ ((nscol0+lnz1)+1) * sizeof(Int)
-              >= Common->devBuffSize * Common->cuda_gpu_parallel )
-      {
+	  if ( ((xns * xns) + xns * (lnz1 - nscol1))*sizeof(double)*2  >= 
+	       Common->devBuffSize ) {
 	    merge = FALSE;
 	  }
 	}
 #endif
-
-    //merge = FALSE;
 
 	if (merge)
 	{
@@ -677,11 +848,11 @@ int CHOLMOD(super_symbolic2)
     DEBUG (CHOLMOD(dump_factor) (L, "L to symbolic super", Common)) ;
     ASSERT (L->is_ll && L->xtype == CHOLMOD_PATTERN && L->is_super) ;
 
-    Lpi = (Int *) (L->pi) ;
-    Lpx = (Int *) (L->px) ;
-    Ls = (Int *) (L->s) ;
+    Lpi = L->pi ;
+    Lpx = L->px ;
+    Ls = L->s ;
     Ls [0] = 0 ;    /* flag for cholmod_check_factor; supernodes are defined */
-    Lsuper = (Int *) (L->super) ;
+    Lsuper = L->super ;
 
     /* copy the list of relaxed supernodes into the final list in L */
     for (s = 0 ; s <= nsuper ; s++)
@@ -914,45 +1085,6 @@ int CHOLMOD(super_symbolic2)
     L->maxesize = maxesize ;
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
-
-    height          = Iwork + 2*((size_t) n) + 2*((size_t) nsuper);
-    leaf_height     = Iwork + 2*((size_t) n) + 3*((size_t) nsuper);
-    pending         = Iwork + 2*((size_t) n) + 5*((size_t) nsuper);
-    leaf            = Iwork + 2*((size_t) n) + 6*((size_t) nsuper);
-
-    for (s = 0; s < nsuper; s++)
-        pending[s] = 0;
-
-    for (s = 0; s < nsuper; s++)
-    {
-        sparent = Sparent[s];
-        if (sparent > s && sparent < nsuper)
-            pending[sparent]++;
-    }
-
-    L->nleaves = 0;
-
-    for (s = 0; s < nsuper; s++)
-        if (pending[s] <= 0)
-            leaf[L->nleaves++] = s;
-
-    for (s = nsuper - 1; s >= 0; s--)
-    {
-        sparent = Sparent[s];
-        if (sparent > s && sparent < nsuper)
-            height[s] = height[sparent] + 1;
-        else
-            height[s] = 0;
-    }
-
-    for (s = 0; s < L->nleaves; s++)
-        leaf_height[s] = height[leaf[s]];
-
-    CHOLMOD (qRevSort) (leaf_height, leaf, 0, L->nleaves - 1);
-
-    for (s = 0; s < nsuper; s++)
-        if (L->MapSize < Lpi[s+1] - Lpi[s])
-            L->MapSize = Lpi[s+1] - Lpi[s];
 
     /* ---------------------------------------------------------------------- */
     /* supernodal symbolic factorization is complete */

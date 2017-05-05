@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Demo Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/Demo Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Read in a real symmetric or complex Hermitian matrix from stdin in
@@ -20,7 +23,6 @@ int main (void)
     double one [2] = {1,0}, m1 [2] = {-1,0} ;	    /* basic scalars */
     cholmod_common c ;
     cholmod_start (&c) ;			    /* start CHOLMOD */
-    cholmod_init_gpus (CHOLMOD_ANALYZE_FOR_CHOLESKY, &c);
     A = cholmod_read_sparse (stdin, &c) ;	    /* read in a matrix */
     cholmod_print_sparse (A, "A", &c) ;		    /* print the matrix */
     if (A == NULL || A->stype == 0)		    /* A must be symmetric */

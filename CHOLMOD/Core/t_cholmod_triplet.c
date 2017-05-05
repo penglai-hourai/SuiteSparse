@@ -5,6 +5,9 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Core Module.  Copyright (C) 2005-2006,
  * Univ. of Florida.  Author: Timothy A. Davis
+ * The CHOLMOD/Core Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Template routine for cholmod_triplet.  All xtypes supported */
@@ -35,18 +38,18 @@ static size_t TEMPLATE (cholmod_triplet_to_sparse)
     /* ---------------------------------------------------------------------- */
 
     /* Wj contains a copy of Rp on input [ */
-    Wj = (Int *) (Common->Iwork) ;	/* size MAX (nrow,ncol). (i/l/l) */
+    Wj = Common->Iwork ;	/* size MAX (nrow,ncol). (i/l/l) */
 
-    Rp = (Int *) (R->p) ;
-    Ri = (Int *) (R->i) ;
-    Rnz = (Int *) (R->nz) ;
-    Rx = (double *) (R->x) ;
-    Rz = (double *) (R->z) ;
+    Rp = R->p ;
+    Ri = R->i ;
+    Rnz = R->nz ;
+    Rx = R->x ;
+    Rz = R->z ;
 
-    Ti = (Int *) (T->i) ;
-    Tj = (Int *) (T->j) ;
-    Tx = (double *) (T->x) ;
-    Tz = (double *) (T->z) ;
+    Ti = T->i ;
+    Tj = T->j ;
+    Tx = T->x ;
+    Tz = T->z ;
     nz = T->nnz ;
     nrow = T->nrow ;
     ncol = T->ncol ;

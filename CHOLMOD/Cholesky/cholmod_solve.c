@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Cholesky Module.  Copyright (C) 2005-2013, Timothy A. Davis
+ * The CHOLMOD/Cholesky Module is licensed under Version 2.1 of the GNU
+ * Lesser General Public License.  See lesser.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * -------------------------------------------------------------------------- */
 
 /* Solve one of the following systems.  D is identity for an LL' factorization,
@@ -126,10 +129,10 @@ static void perm
     nk = MAX (k2 - k1, 0) ;
     dual = (Y->xtype == CHOLMOD_REAL && B->xtype != CHOLMOD_REAL) ? 2 : 1 ;
     d = B->d ;
-    Bx = (double *) (B->x) ;
-    Bz = (double *) (B->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Bx = B->x ;
+    Bz = B->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     Y->nrow = nrow ;
     Y->ncol = dual*nk ;
     Y->d = nrow ;
@@ -342,10 +345,10 @@ static void iperm
     k2 = MIN (k1+ncols, ncol) ;
     nk = MAX (k2 - k1, 0) ;
     d = X->d ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     ASSERT (((Int) Y->nzmax) >= nrow*nk*
 	    ((X->xtype != CHOLMOD_REAL && Y->xtype == CHOLMOD_REAL) ? 2:1)) ;
 
@@ -548,10 +551,10 @@ static void ptrans
     nk = MAX (k2 - k1, 0) ;
     dual = (Y->xtype == CHOLMOD_REAL && B->xtype != CHOLMOD_REAL) ? 2 : 1 ;
     d = B->d ;
-    Bx = (double *) (B->x) ;
-    Bz = (double *) (B->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Bx = B->x ;
+    Bz = B->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     Y->nrow = dual*nk ;
     Y->ncol = nrow ;
     Y->d = dual*nk ;
@@ -774,10 +777,10 @@ static void iptrans
     k2 = MIN (k1+ncols, ncol) ;
     nk = MAX (k2 - k1, 0) ;
     d = X->d ;
-    Xx = (double *) (X->x) ;
-    Xz = (double *) (X->z) ;
-    Yx = (double *) (Y->x) ;
-    Yz = (double *) (Y->z) ;
+    Xx = X->x ;
+    Xz = X->z ;
+    Yx = Y->x ;
+    Yz = Y->z ;
     ASSERT (((Int) Y->nzmax) >= nrow*nk*
 	    ((X->xtype != CHOLMOD_REAL && Y->xtype == CHOLMOD_REAL) ? 2:1)) ;
 
@@ -1103,7 +1106,7 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
 	    && L->ordering != CHOLMOD_NATURAL)
     {
         /* otherwise, Perm is NULL, and the identity permutation is used */
-	Perm = (Int *) (L->Perm) ;
+	Perm = L->Perm ;
     }
 
     /* ---------------------------------------------------------------------- */
@@ -1209,14 +1212,14 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
                     /* out of memory */
                     return (FALSE) ;
                 }
-                IPerm = (Int *) (L->IPerm) ;
+                IPerm = L->IPerm ;
                 for (k = 0 ; k < n ; k++)
                 {
                     IPerm [Perm [k]] = k ;
                 }
             }
             /* x=A\b and x=Pb both need IPerm */
-            IPerm = (Int *) (L->IPerm) ;
+            IPerm = L->IPerm ;
         }
 
         if (sys == CHOLMOD_P)
@@ -1264,7 +1267,7 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
         }
 
         /* [ use Iwork (n:3n-1) for Ci and Yseti */
-        Iwork = (Int *) (Common->Iwork) ;
+        Iwork = Common->Iwork ;
         /* Iwork (0:n-1) is not used because it is used by check_perm,
            print_perm, check_sparse, and print_sparse */
         Ci = Iwork + n ;
@@ -1281,9 +1284,9 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
         /* C = IPerm (Bset) */
         DEBUG (CHOLMOD(dump_sparse) (Bset, "Bset", Common)) ;
 
-        Bsetp = (Int *) (Bset->p) ;
-        Bseti = (Int *) (Bset->i) ;
-        Bsetnz = (Int *) (Bset->nz) ;
+        Bsetp = Bset->p ;
+        Bseti = Bset->i ;
+        Bsetnz = Bset->nz ;
         blen = (Bset->packed) ? Bsetp [1] : Bsetnz [0] ;
 
         /* C = spones (P*B) or C = spones (B) if IPerm is NULL */
@@ -1358,8 +1361,8 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
         /* clear the parts of Y that we will use in the solve */
         /* -------------------------------------------------------------- */
 
-        Yx = (double *) (Y->x) ;
-        Yz = (double *) (Y->z) ;
+        Yx = Y->x ;
+        Yz = Y->z ;
         ysetlen = Ysetp [1] ;
 
         switch (L->xtype)
@@ -1399,8 +1402,8 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
         /* -------------------------------------------------------------- */
 
         /* Y (C) = B (Bset) */
-        Bx = (double *) (B->x) ;
-        Bz = (double *) (B->z) ;
+        Bx = B->x ;
+        Bz = B->z ;
 
         switch (L->xtype)
         {
@@ -1468,10 +1471,10 @@ int CHOLMOD(solve2)         /* returns TRUE on success, FALSE on failure */
         /* -------------------------------------------------------------- */
 
         /* X (Perm (Yset)) = Y (Yset) */
-        Xx = (double *) (X->x) ;
-        Xz = (double *) (X->z) ;
-        Xseti = (Int *) (Xset->i) ;
-        Xsetp = (Int *) (Xset->p) ;
+        Xx = X->x ;
+        Xz = X->z ;
+        Xseti = Xset->i ;
+        Xsetp = Xset->p ;
 
         switch (L->xtype)
         {

@@ -4,6 +4,9 @@
 
 /* -----------------------------------------------------------------------------
  * CHOLMOD/MatrixOps Module.  Copyright (C) 2005-2006, Timothy A. Davis
+ * The CHOLMOD/MatrixOps Module is licensed under Version 2.0 of the GNU
+ * General Public License.  See gpl.txt for a text of the license.
+ * CHOLMOD is also available under other licenses; contact authors for details.
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
@@ -149,17 +152,17 @@ cholmod_sparse *CHOLMOD(ssmult)
     ASSERT (CHOLMOD(dump_sparse) (B, "B", Common) >= 0) ;
 
     /* get the A matrix */
-    Ap  = (Int *) (A->p) ;
-    Anz = (Int *) (A->nz) ;
-    Ai  = (Int *) (A->i) ;
-    Ax  = (double *) (A->x) ;
+    Ap  = A->p ;
+    Anz = A->nz ;
+    Ai  = A->i ;
+    Ax  = A->x ;
     apacked = A->packed ;
 
     /* get the B matrix */
-    Bp  = (Int *) (B->p) ;
-    Bnz = (Int *) (B->nz) ;
-    Bi  = (Int *) (B->i) ;
-    Bx  = (double *) (B->x) ;
+    Bp  = B->p ;
+    Bnz = B->nz ;
+    Bi  = B->i ;
+    Bx  = B->x ;
     bpacked = B->packed ;
 
     /* get the size of C */
@@ -167,8 +170,8 @@ cholmod_sparse *CHOLMOD(ssmult)
     ncol = B->ncol ;
 
     /* get workspace */
-    W = (double *) (Common->Xwork) ;		/* size nrow, unused if values is FALSE */
-    Flag = (Int *) (Common->Flag) ;	/* size nrow, Flag [0..nrow-1] < mark on input*/
+    W = Common->Xwork ;		/* size nrow, unused if values is FALSE */
+    Flag = Common->Flag ;	/* size nrow, Flag [0..nrow-1] < mark on input*/
 
     /* ---------------------------------------------------------------------- */
     /* count the number of entries in the result C */
@@ -279,17 +282,17 @@ cholmod_sparse *CHOLMOD(ssmult)
 	    B = A2 ;
 
 	    /* get the new A matrix */
-	    Ap  = (Int *) (A->p) ;
-	    Anz = (Int *) (A->nz) ;
-	    Ai  = (Int *) (A->i) ;
-	    Ax  = (double *) (A->x) ;
+	    Ap  = A->p ;
+	    Anz = A->nz ;
+	    Ai  = A->i ;
+	    Ax  = A->x ;
 	    apacked = A->packed ;
 
 	    /* get the new B matrix */
-	    Bp  = (Int *) (B->p) ;
-	    Bnz = (Int *) (B->nz) ;
-	    Bi  = (Int *) (B->i) ;
-	    Bx  = (double *) (B->x) ;
+	    Bp  = B->p ;
+	    Bnz = B->nz ;
+	    Bi  = B->i ;
+	    Bx  = B->x ;
 	    bpacked = B->packed ;
 
 	    /* get the size of C' */
@@ -313,9 +316,9 @@ cholmod_sparse *CHOLMOD(ssmult)
 	return (NULL) ;
     }
 
-    Cp = (Int *) (C->p) ;
-    Ci = (Int *) (C->i) ;
-    Cx = (double *) (C->x) ;
+    Cp = C->p ;
+    Ci = C->i ;
+    Cx = C->x ;
 
     /* ---------------------------------------------------------------------- */
     /* C = A*B */
