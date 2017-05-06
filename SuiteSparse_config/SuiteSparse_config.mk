@@ -221,7 +221,7 @@ SUITESPARSE_VERSION = 4.5.5
         # For example, to compile CHOLMOD for 10 CPU cores when using the GPU:
         # GPU_CONFIG  = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=10
         CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
-        CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so
+        CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so $(CUDA_PATH)/lib64/libnvToolsExt.so
         CUSOLVER_LIB  = $(CUDA_PATH)/lib64/libcusolver.so
         CUDA_INC_PATH = $(CUDA_PATH)/include/
         CUDA_INC      = -I$(CUDA_INC_PATH)
