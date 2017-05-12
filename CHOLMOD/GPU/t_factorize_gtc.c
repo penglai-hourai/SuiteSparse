@@ -259,7 +259,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_gtc))
 
       gpuid = outer_tid;
       
-      cudaSetDevice(gpuid);
+      cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
       /* get supernode dimensions */

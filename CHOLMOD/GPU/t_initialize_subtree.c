@@ -666,7 +666,7 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
       int gpuid = omp_get_thread_num();
 
       /* set GPU device */
-      cudaSetDevice(gpuid);
+      cudaSetDevice(gpuid / Common->numGPU_parallel);
 
       /* initialize GPU (set pointers, copy memory, etc.) */
       TEMPLATE2 (CHOLMOD (gpu_init))( Common,

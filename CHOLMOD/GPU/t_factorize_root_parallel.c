@@ -176,7 +176,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	gpuid  		= omp_get_thread_num();			/* get gpuid */
 	Int *Map  	= &h_Map[gpuid*n];			/* set map */
 	double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */     
-	cudaSetDevice(gpuid);					/* set device */
+	cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
 
 	/* get supernode dimensions */

@@ -76,7 +76,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* set cuda device */
-  cudaSetDevice(gpuid);
+  cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
   /* compute nls */
