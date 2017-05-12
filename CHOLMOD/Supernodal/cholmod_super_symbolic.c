@@ -270,13 +270,11 @@ int CHOLMOD(super_symbolic2)
 
 #ifdef SUITESPARSE_CUDA
 #ifdef DLONG
-            printf ("PATH = %s\n", getenv("PATH"));
         /* set useGPU parameter */
         if ( Common->useGPU == EMPTY )
         {
             /* Query OS environment variables for request.*/
             env_use_gpu  = getenv("CHOLMOD_USE_GPU");
-            printf ("env_use_gpu = %lx\n", env_use_gpu);
 
             /* CHOLMOD_USE_GPU environment variable is set */
             if ( env_use_gpu )
@@ -322,7 +320,6 @@ int CHOLMOD(super_symbolic2)
         {
             /* Query OS environment variables for request.*/
             env_gpu_parallel  = getenv("CHOLMOD_GPU_PARALLEL");
-            printf ("env_gpu_parallel = %lx\n", env_gpu_parallel);
 
             /* CHOLMOD_NUM_GPUS environment variable is set */
             if ( env_gpu_parallel )
@@ -330,13 +327,11 @@ int CHOLMOD(super_symbolic2)
                 Common->numGPU_parallel = atoi ( env_gpu_parallel );              	/* set # GPUs */	
                 if (Common->numGPU_parallel > CHOLMOD_MAX_NUM_GPU_PARALLEL)
                     Common->numGPU_parallel = CHOLMOD_MAX_NUM_GPU_PARALLEL;
-        printf ("================ checkpoint 0 ================ numGPU_parallel = %d\n", Common->numGPU_parallel);
             }
             /* CHOLMOD_USE_GPU environment variable not set */
 	    else
             {
                 Common->numGPU_parallel = 1;				    	/* default, #GPUs is not defined */
-        printf ("================ checkpoint 1 ================ numGPU_parallel = %d\n", Common->numGPU_parallel);
             }	        	
         }
 
@@ -346,22 +341,18 @@ int CHOLMOD(super_symbolic2)
         {
             /* Query OS environment variables for request.*/
             env_num_gpu  = getenv("CHOLMOD_NUM_GPUS");
-            printf ("env_num_gpu = %lx\n", env_num_gpu);
 
             /* CHOLMOD_NUM_GPUS environment variable is set */
             if ( env_num_gpu )
             {	    
                 Common->numGPU_physical = atoi ( env_num_gpu );              	/* set # GPUs */	
-        printf ("================ checkpoint 0 ================ numGPU_physical = %d\n", Common->numGPU_physical);
             }
             /* CHOLMOD_USE_GPU environment variable not set */
 	    else
             {
                 Common->numGPU_physical = -1;				    	/* default, #GPUs is not defined */
-        printf ("================ checkpoint 1 ================ numGPU_physical = %d\n", Common->numGPU_physical);
             }	        	
         }
-        printf ("================ checkpoint ================ numGPU_physical = %d\n", Common->numGPU_physical);
 
 
         /* set useHybrid parameter */
@@ -493,7 +484,6 @@ int CHOLMOD(super_symbolic2)
 	}
 #endif
 #endif
-    printf ("numGPU = %d numGPU_physican = %d numGPU_parallel = %d\n", Common->numGPU, Common->numGPU_physical, Common->numGPU_parallel);
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */
