@@ -209,9 +209,9 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
 
 
     /* make sure requested # GPUs does not exceed max */
-    if(Common->numGPU_physical > CHOLMOD_MAX_NUM_GPUS)
+    if(Common->numGPU_physical > CHOLMOD_MAX_NUM_PGPUS)
     {
-      Common->numGPU_physical = CHOLMOD_MAX_NUM_GPUS;
+      Common->numGPU_physical = CHOLMOD_MAX_NUM_PGPUS;
     }
 
 
