@@ -493,6 +493,7 @@ int CHOLMOD(super_symbolic2)
 	}
 #endif
 #endif
+    printf ("numGPU = %d numGPU_physican = %d numGPU_parallel = %d\n", Common->numGPU, Common->numGPU_physical, Common->numGPU_parallel);
 
         /* Cache the fact that the symbolic factorization supports 
          * GPU acceleration */
