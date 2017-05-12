@@ -209,23 +209,23 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
 
 
     /* make sure requested # GPUs does not exceed max */
-    if(Common->numGPU > CHOLMOD_MAX_NUM_GPUS)
+    if(Common->numGPU_physical > CHOLMOD_MAX_NUM_GPUS)
     {
-      Common->numGPU = CHOLMOD_MAX_NUM_GPUS;
+      Common->numGPU_physical = CHOLMOD_MAX_NUM_GPUS;
     }
 
 
     /* make sure # GPUs does not exceed GPUs avaiable */
     cudaGetDeviceCount(&ngpus);
-    if(Common->numGPU > ngpus)
+    if(Common->numGPU_physical > ngpus)
     {
-      Common->numGPU = ngpus;
+      Common->numGPU_physical = ngpus;
     }
     
 
 
     /* if default selected (no numGPUs set) */
-    if (Common->numGPU == -1) 
+    if (Common->numGPU_physical == -1) 
     {
 
       /* set GPU 0, fetch GPU 0, fetch GPU 0 properties */
@@ -249,11 +249,11 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
       }       
 
       /* set # GPUs */
-      Common->numGPU = count;
+      Common->numGPU_physical = count;
 
     }
     /* if numGPUs set */
-    else if (Common->numGPU > 0) 
+    else if (Common->numGPU_physical > 0) 
     {
 
       /* loop over available gpus */
@@ -275,13 +275,13 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
       }
 
       /* reset # GPUs to # compatible devices */
-      if(count < Common->numGPU)
-        Common->numGPU = count;
+      if(count < Common->numGPU_physical)
+        Common->numGPU_physical = count;
             
     }
 
 
-    if(Common->numGPU >= 1) return 1;		/* at least 1 compatible device found */
+    if(Common->numGPU_physical >= 1) return 1;		/* at least 1 compatible device found */
     else		    return 0;		/* no compatible devices, disable GPU */
 
 #endif
@@ -511,7 +511,7 @@ int CHOLMOD(gpu_allocate)
     /* local variables */
     int i, k;
     double tstart, tend;
-    size_t fdm, tdm, tfdm[Common->numGPU], availableDeviceMemory, availableHostMemory, requestedDeviceMemory, requestedHostMemory, maxGpuMemBytes;
+    size_t fdm, tdm, tfdm[Common->numGPU_physical], availableDeviceMemory, availableHostMemory, requestedDeviceMemory, requestedHostMemory, maxGpuMemBytes;
     cudaError_t cudaErr;
     cublasStatus_t cublasErr;
     cusolverStatus_t cusolverErr;
@@ -537,7 +537,7 @@ int CHOLMOD(gpu_allocate)
      * Fetch total available device memory
      */
     fdm = 0;
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU_physical; k++) {
 
       cudaSetDevice(k); 
       CHOLMOD_HANDLE_CUDA_ERROR (CHOLMOD(gpu_memorysize) (&tdm,&tfdm[k],Common), "gpu_memorysize");
@@ -594,7 +594,7 @@ int CHOLMOD(gpu_allocate)
 
 
     /* deallocate memory for each GPU */
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU_physical; k++) {
       cudaSetDevice(k);
       CHOLMOD(gpu_deallocate) (k, Common);
     }
@@ -604,7 +604,7 @@ int CHOLMOD(gpu_allocate)
 
 
     /* allocated and clear pinned host memory for each GPU */
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU_physical; k++) {
 
       cudaSetDevice(k);
 
@@ -624,7 +624,7 @@ int CHOLMOD(gpu_allocate)
 
 
     /* allocate device memory for each GPU */
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU_physical; k++) {
 
       cudaSetDevice(k);
 
@@ -668,7 +668,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA streams */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k);
+      cudaSetDevice(k % Common->numGPU_parallel);
 
       for (i = 0; i < CHOLMOD_DEVICE_STREAMS; i++ ) {
         cudaErr = cudaStreamCreate ( &(Common->gpuStream[k][i]) );
@@ -689,7 +689,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA handles */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k);
+      cudaSetDevice(k % Common->numGPU_parallel);
       /* create cuBlas handle */
       cublasErr = cublasCreate (&(Common->cublasHandle[k])) ;
       if (cublasErr != CUBLAS_STATUS_SUCCESS) {
@@ -713,7 +713,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA events */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k);
+      cudaSetDevice(k % Common->numGPU_parallel);
 
       for (i = 0 ; i < 3 ; i++) {
         cudaErr = cudaEventCreateWithFlags(&(Common->cublasEventPotrf[k][i]), cudaEventDisableTiming) ;

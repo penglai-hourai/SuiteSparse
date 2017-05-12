@@ -284,16 +284,19 @@
 
 /* global GPU parameters*/
 #ifdef SUITESPARSE_CUDA
-  #define CHOLMOD_MAX_NUM_GPUS 8			/* max # GPUs */
+  #define CHOLMOD_MAX_NUM_PGPUS 16			/* max # GPUs */
+  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 16			/* max # GPUs */
   #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 6		/* # device buffers for root alg. */
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 6		/* # host buffers for root alg. */
   #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */
 #else
-  #define CHOLMOD_MAX_NUM_GPUS 1		    
-  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 1  
-  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 1    
-  #define CHOLMOD_DEVICE_STREAMS 1            
+  #define CHOLMOD_MAX_NUM_PGPUS 1			/* max # GPUs */
+  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */
+  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 1
+  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 1
+  #define CHOLMOD_DEVICE_STREAMS 1
 #endif
+  #define CHOLMOD_MAX_NUM_GPUS (CHOLMOD_MAX_NUM_PGPUS * CHOLMOD_MAX_NUM_GPU_PARALLEL)
 
 /* additional information */
 /*#define CHOLMOD_VERBOSE*/                         /* comment this in for verbose */
@@ -962,10 +965,12 @@ typedef struct cholmod_common_struct
     /*          -1 if gpu-acceleration is undefined in which case the */
     /*             environment CHOLMOD_USE_GPU will be queried and used. */
     /*             useGPU=-1 is only used by CHOLMOD and treated as 0 by SPQR */
-    int useGPU;			
+    int useGPU;
     int numGPU;
+    int numGPU_physical;
+    int numGPU_parallel;
     int useHybrid;    		/* useHybrid: hybrid computing (1 to enable, 0 to disable) */
-    int ompNumThreads;   	
+    int ompNumThreads;
     int partialFactorization;
 
     /* for CHOLMOD: */
@@ -1011,11 +1016,11 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     /* device memory buffer & size */
-    void *dev_mempool[CHOLMOD_MAX_NUM_GPUS];    	/* pointer to single allocation of device memory */
+    void *dev_mempool[CHOLMOD_MAX_NUM_PGPUS];    	/* pointer to single allocation of device memory */
     size_t dev_mempool_size;
 
     /* host (pinned) memory buffer & size */
-    void *host_pinned_mempool[CHOLMOD_MAX_NUM_GPUS];  	/* pointer to single allocation of pinned mem */
+    void *host_pinned_mempool[CHOLMOD_MAX_NUM_PGPUS];  	/* pointer to single allocation of pinned mem */
     size_t host_pinned_mempool_size;
 
     /* additional buffers */

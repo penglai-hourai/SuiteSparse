@@ -355,6 +355,8 @@ int CHOLMOD(defaults)
 #ifdef DLONG
     Common->useGPU 		= EMPTY ;
     Common->maxGpuMemBytes	= EMPTY ;
+    Common->numGPU_parallel	= EMPTY ;
+    Common->numGPU_physical	= EMPTY ;
     Common->numGPU 		= EMPTY ;
     Common->useHybrid 		= EMPTY ;
     Common->ompNumThreads 	= EMPTY ;    
@@ -363,6 +365,8 @@ int CHOLMOD(defaults)
     /* GPU acceleration is not supported for int version of CHOLMOD */
     Common->useGPU 		= 0 ;
     Common->maxGpuMemBytes      = 0 ;
+    Common->numGPU_parallel	= 1 ;
+    Common->numGPU_physical	= 0 ;
     Common->numGPU 		= 0 ;
     Common->useHybrid 		= 0 ;
     Common->ompNumThreads 	= EMPTY ;
@@ -585,9 +589,9 @@ int CHOLMOD(free_work)
 
 #ifdef SUITESPARSE_CUDA
     int k;
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU_physical; k++) {
       cudaSetDevice(k);
-      CHOLMOD(gpu_deallocate) (0, Common) ;
+      CHOLMOD(gpu_deallocate) (k, Common) ;
     }
     cudaSetDevice(0);	
 #endif

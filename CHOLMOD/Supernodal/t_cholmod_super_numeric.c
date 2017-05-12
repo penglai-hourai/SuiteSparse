@@ -23,6 +23,7 @@
 /* include */
 
 #include "cholmod_template.h"
+#define TDEBUG
 
 
 
@@ -43,7 +44,7 @@
  *   1. Splits tree into subtree and:
  *      a. factorize subtree with GPU subtree algorithm
  *      b. factorize top-of-tree subtree with root algorithm
- *   2. Factorizes entire tree with CPU algorithm. 
+ *   2. Factorizes entire tree with CPU algorithm.
  *
  */
 static int TEMPLATE (cholmod_super_numeric)
@@ -62,7 +63,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
   /* global variables */
-  Int i, j, k, size ; 
+  Int i, j, k, size ;
   Int *LpxSub, *Iwork;
   struct cholmod_subtree_order_t *Bwork;
   double *tstart, *tend, *bstart, *bend, *Xwork;
@@ -72,6 +73,9 @@ static int TEMPLATE (cholmod_super_numeric)
   struct cholmod_tree_pointers *tree_p, tree_pointer_struct;
   struct cholmod_profile_pointers *prof_p, prof_pointer_struct;
   struct cholmod_loadbalance_pointers *lb_p, lb_pointer_struct;
+#ifdef TDEBUG
+      double root_time;
+#endif
 
 
 
@@ -86,7 +90,7 @@ static int TEMPLATE (cholmod_super_numeric)
   lb_p   	= &lb_pointer_struct ;
 
   /* clear global variables */
-  gb_p->runType   = 0;  	
+  gb_p->runType   = 0;
   gb_p->numGPU    = 0;
   gb_p->numDevice = 0;
   gb_p->numSubtree = 0;
@@ -111,35 +115,35 @@ static int TEMPLATE (cholmod_super_numeric)
   PRINTFV("ompNumThreads: %d\n",Common->ompNumThreads);
   PRINTFV("partialFactorization: %d\n",Common->partialFactorization);
   PRINTFV("maxGpuMemBytes: %ld\n",Common->maxGpuMemBytes);
-  
+
   /* hybrid is enabled */
-  if(Common->useHybrid == 1) {  
+  if(Common->useHybrid == 1) {
     gb_p->runType = 0;          /* set to hybrid */
   }
   else {
-    gb_p->runType = 2;          /* set to GPU only */    
+    gb_p->runType = 2;          /* set to GPU only */
   }
 
   /* not enough supernodes in the elimination tree */
   if(L->nsuper <= SUPERNODE_MIN) {
-    gb_p->runType = -1;          /* set to CPU serial */    
+    gb_p->runType = -1;          /* set to CPU serial */
   }
 
   /* GPU is not enabled */
   if(Common->numGPU == 0 || Common->useGPU == 0) {
-    gb_p->runType = 1;          /* set to CPU only */    
+    gb_p->runType = 1;          /* set to CPU only */
   }
 
   /* matrix is complex */
   #ifdef COMPLEX
-    if(gb_p->runType != 1 && gb_p->runType != -1) {    
-      gb_p->runType = 3;        /* set to root only */      
+    if(gb_p->runType != 1 && gb_p->runType != -1) {
+      gb_p->runType = 3;        /* set to root only */
     }
   #endif
 
   /* determine whether to use CPU serial */
   if((Common->ompNumThreads == 1 && Common->useGPU == 0) || Common->partialFactorization == 1) {
-    gb_p->runType = -1;		/* set to CPU serial */    
+    gb_p->runType = -1;		/* set to CPU serial */
   }
 
   /* GPU is not enabled */
@@ -151,7 +155,7 @@ static int TEMPLATE (cholmod_super_numeric)
   #endif
 
 
-  
+
 
 
   /* print type of run */
@@ -179,7 +183,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     gb_p->Iwork                           = CHOLMOD(malloc) (gb_p->IworkSize, sizeof (Int), Common) ;
     gb_p->Xwork                           = CHOLMOD(malloc) (gb_p->XworkSize, sizeof (double), Common) ;
-    gb_p->Bwork                           = CHOLMOD(malloc) (gb_p->BworkSize, sizeof (struct cholmod_subtree_order_t), Common) ;    
+    gb_p->Bwork                           = CHOLMOD(malloc) (gb_p->BworkSize, sizeof (struct cholmod_subtree_order_t), Common) ;
 
     Iwork                                 = gb_p->Iwork;
     Xwork				  = gb_p->Xwork;
@@ -187,7 +191,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* check if enough memory */
     if (Common->status < CHOLMOD_OK)
-    {      
+    {
       gb_p->Iwork = CHOLMOD(free) (gb_p->IworkSize, sizeof (Int), gb_p->Iwork, Common) ;
       gb_p->Xwork = CHOLMOD(free) (gb_p->XworkSize, sizeof (double), gb_p->Xwork, Common) ;
       gb_p->Bwork = CHOLMOD(free) (gb_p->BworkSize, sizeof (struct cholmod_subtree_order_t), gb_p->Bwork, Common) ;
@@ -233,7 +237,7 @@ static int TEMPLATE (cholmod_super_numeric)
     lb_p->workPerDevice                   = Xwork + 2*(size_t)(L->nsuper + 1);
 
     lb_p->subtreeReorder                  = Bwork;
-    
+
   }
 
 
@@ -242,10 +246,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
   /* allocate integer workspace */
   Iwork        	      = Common->Iwork;
-  cpu_p->SuperMap     = Iwork;                                     
+  cpu_p->SuperMap     = Iwork;
   cpu_p->RelativeMap  = Iwork + L->n;
-  cpu_p->Next         = Iwork + 2*((size_t)L->n);                     
-  cpu_p->Lpos         = Iwork + 2*((size_t)L->n) + L->nsuper;            
+  cpu_p->Next         = Iwork + 2*((size_t)L->n);
+  cpu_p->Lpos         = Iwork + 2*((size_t)L->n) + L->nsuper;
   cpu_p->Next_save    = Iwork + 2*((size_t)L->n) + 2*((size_t)L->nsuper);
   cpu_p->Lpos_save    = Iwork + 2*((size_t)L->n) + 3*((size_t)L->nsuper);
   cpu_p->Previous     = Iwork + 2*((size_t)L->n) + 4*((size_t)L->nsuper);
@@ -254,10 +258,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-  /* set host pointers */    
+  /* set host pointers */
   cpu_p->C 	= Cwork->x ;
-  cpu_p->Map  	= Common->Flag ;   
-  cpu_p->Head 	= Common->Head ;   
+  cpu_p->Map  	= Common->Flag ;
+  cpu_p->Head 	= Common->Head ;
   cpu_p->Ls 	= L->s ;
   cpu_p->Lpi 	= L->pi ;
   cpu_p->Lpx 	= LpxSub;
@@ -308,9 +312,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
   /* check if functionality available - (not supported for GPU subtree) */
   if(cpu_p->Apacked==0 || cpu_p->stype==0 || cpu_p->beta[0]!=0) {
-    if(gb_p->runType != 1 && gb_p->runType != -1) {    
-      gb_p->runType = 3;               			 /* set to root only */      
-    }   
+    if(gb_p->runType != 1 && gb_p->runType != -1) {
+      gb_p->runType = 3;               			 /* set to root only */
+    }
   }
 
 
@@ -353,7 +357,7 @@ static int TEMPLATE (cholmod_super_numeric)
    * Steps:
    *   1. factorize elimination tree serially
    */
-  if(gb_p->runType == -1)  
+  if(gb_p->runType == -1)
   {
     PRINTF("\n\n\nSERIAL FACTORIZATION selected..\n");
     int deviceid = 0, check = 0;
@@ -383,7 +387,7 @@ static int TEMPLATE (cholmod_super_numeric)
    *   5. factorize subtrees in parallel
    *   6. factorize root
    */
-  if(gb_p->runType != -1)  
+  if(gb_p->runType != -1)
   {
 
     PRINTF("\n\n\nPARALLEL FACTORIZATION selected..\n");
@@ -391,7 +395,7 @@ static int TEMPLATE (cholmod_super_numeric)
     TIMER_START(tstart,0);
 
 
-    /* 
+    /*
      * Build elimination tree
      *
      * Description:
@@ -402,7 +406,7 @@ static int TEMPLATE (cholmod_super_numeric)
     TIMER_START(tstart,1);
     TEMPLATE2 (CHOLMOD (build_tree))( Common,L,gb_p,cpu_p,tree_p );
 
-    /* store copy of # children per supernode */   
+    /* store copy of # children per supernode */
     memcpy(tree_p->supernode_children_num2, tree_p->supernode_children_num, L->nsuper*sizeof(Int));
     TIMER_END(tstart,tend,1);
 
@@ -415,18 +419,18 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    /* 
+    /*
      * Binary search for optimal subtree size
-     *  
+     *
      * Description:
-     * perform binary search to find optimal subtree size. Performs up to BINARY_SEARCH 
+     * perform binary search to find optimal subtree size. Performs up to BINARY_SEARCH
      * steps.
-     * 
-     */ 
-    PRINTF("\n\n\nprocess subtree (binary search) ..\n"); 
-    TIMER_START(tstart,2);  
+     *
+     */
+    PRINTF("\n\n\nprocess subtree (binary search) ..\n");
+    TIMER_START(tstart,2);
     TEMPLATE2 (CHOLMOD(binarysearch_tree))( Common, A, L, gb_p, cpu_p, tree_p, LpxSub);
-    TIMER_END(tstart,tend,2);  
+    TIMER_END(tstart,tend,2);
 
 
 
@@ -437,18 +441,18 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    /* 
+    /*
      * Load-balance Devices
      *
      * Description:
      * Reorder subtree (subtrees) by size, which is quantified by its workload (flop/flops).
-     * Then load-balance subtree to different device (GPU & CPU), for maximum utilization.   
+     * Then load-balance subtree to different device (GPU & CPU), for maximum utilization.
      */
     PRINTF("\n\n\nload-balance devices..\n");
 
-    TIMER_START(tstart,3);  
+    TIMER_START(tstart,3);
     TEMPLATE2 (CHOLMOD(loadbalance_gpu))( Common,gb_p,tree_p,lb_p);
-    TIMER_END(tstart,tend,3);  
+    TIMER_END(tstart,tend,3);
 
 
 
@@ -465,12 +469,12 @@ static int TEMPLATE (cholmod_super_numeric)
      * Description:
      * 1. initialize GPU (set pointers, copy memory, etc.)
      * 2. initialize CPU (clear Lx factor, allocate memory for parallel CPU algorithm)
-     */    
+     */
     PRINTF("\n\n\ninit GPU & CPU..\n");
-    TIMER_START(tstart,4);  
+    TIMER_START(tstart,4);
     TEMPLATE2 (CHOLMOD(initialize_gpu))(Common,L,A,gb_p,gpu_p,cpu_p);	/* initialize GPU */
     TEMPLATE2 (CHOLMOD(initialize_cpu))(Common,L,gb_p,cpu_p,tree_p);	/* initialize CPU */
-    TIMER_END(tstart,tend,4);  
+    TIMER_END(tstart,tend,4);
 
 
 
@@ -494,9 +498,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
     PRINTF("\n\ntype of run: ");
     if(gb_p->runType == 0)	PRINTF("GPU + CPU (hybrid)\n");
-    if(gb_p->runType == 1)      PRINTF("CPU only\n");    
+    if(gb_p->runType == 1)      PRINTF("CPU only\n");
     if(gb_p->runType == 2)      PRINTF("GPU only\n");
-    if(gb_p->runType == 3)      PRINTF("root only\n");    
+    if(gb_p->runType == 3)      PRINTF("root only\n");
 
 
 
@@ -508,31 +512,31 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    /* 
+    /*
      * Supernodal numerical factorization (with GPU & CPU)
-     *  
+     *
      * Description:
      * factorization using three algorithms:
      * 1. GPU (subtree that fits GPU)
      * 2. CPU (subtree concurrent with GPU)
-     * 3. root (CPU/GPU) (last subtree that does not fit GPU)       
+     * 3. root (CPU/GPU) (last subtree that does not fit GPU)
      *
      * If root_only or CPU_only = 1, the factorization is done
-     * entirely on the root or CPU.  
+     * entirely on the root or CPU.
      */
     /* start timer for factorization */
     PRINTF("\n\n\nsupernodal numerical factorization..\n");
-    TIMER_START(tstart,5);  
+    TIMER_START(tstart,5);
 
     omp_set_nested(1);     		/* allow for nested omp */
 
-    /* set # omp threads: 
+    /* set # omp threads:
      *   1. CPU only:     1
-     *   2. GPU only:     Common->numGPU 
-     *   3. hybrid:       Common->numGPU + 1  
+     *   2. GPU only:     Common->numGPU
+     *   3. hybrid:       Common->numGPU + 1
      */
-    if(gb_p->runType == 1)      gb_p->numDevice = 1;                            /* CPU only */ 
-    else if(gb_p->runType == 2) gb_p->numDevice = Common->numGPU;               /* GPU only */ 
+    if(gb_p->runType == 1)      gb_p->numDevice = 1;                            /* CPU only */
+    else if(gb_p->runType == 2) gb_p->numDevice = Common->numGPU;               /* GPU only */
     else              		gb_p->numDevice = Common->numGPU + 1;		/* GPU + CPU (hybrid) */
 
 
@@ -541,9 +545,12 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* loop over all devices (GPU,CPU) */
     #pragma omp parallel num_threads(gb_p->numDevice)
-    {        
+    {
       /* local variables */
       int deviceid, subtreeid, numSubtreePerDevice, check = 0;
+#ifdef TDEBUG
+      double subtree_time;
+#endif
 
       /* set variables */
       deviceid = omp_get_thread_num();				/* set device id*/
@@ -563,28 +570,34 @@ static int TEMPLATE (cholmod_super_numeric)
        * optimized for small matrices.
        *
        */
-      if(deviceid < Common->numGPU)      
+      if(deviceid < Common->numGPU)
       {
 
         /* set device */
 #ifdef SUITESPARSE_CUDA
-        cudaSetDevice(deviceid);
+        cudaSetDevice(deviceid % Common->numGPU_parallel);
 #endif
 
         /* loop over subtree in current GPU device */
-        for(subtreeid = 0; subtreeid < numSubtreePerDevice; subtreeid++)        
+        for(subtreeid = 0; subtreeid < numSubtreePerDevice; subtreeid++)
         {
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
           Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
-  
+
           PRINTF("\n\nGPU start -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
 
           TIMER_START(bstart,deviceid);
-          TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, numSuper, subtree, LpxSub);          
-    	  TIMER_END(bstart,bend,deviceid);        
+#ifdef TDEBUG
+          subtree_time = SuiteSparse_time();
+#endif
+          TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, numSuper, subtree, LpxSub);
+#ifdef TDEBUG
+          printf ("subtree deviceid = %d, time = %lf\n", deviceid, SuiteSparse_time() - subtree_time);
+#endif
+    	  TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nGPU end -\t");
           PRINTFV("device:%d ",deviceid);
@@ -606,20 +619,20 @@ static int TEMPLATE (cholmod_super_numeric)
        * Performs factorization on subtree of the elimination tree.
        * Uses CPU only algorithm. Goal of utilizing CPU while GPU
        * is busy. If CPU_only = 1, performs factorization on entire
-       * tree. 
+       * tree.
        *
        * Call one of two functions:
        *   1. gpu_factorize_cpu_serial (serial factorization)
-       *   2. gpu_factorize_cpu_parallel (parallel factorization) 
-       * 
+       *   2. gpu_factorize_cpu_parallel (parallel factorization)
+       *
        */
-      if(deviceid == Common->numGPU)      
+      if(deviceid == Common->numGPU)
       {
 
         /* loop over subtree in CPU device */
         for(subtreeid = 0; subtreeid < numSubtreePerDevice; subtreeid++)
         {
-        
+
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
           Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
@@ -628,9 +641,9 @@ static int TEMPLATE (cholmod_super_numeric)
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
 
-    	  TIMER_START(bstart,deviceid);        
+    	  TIMER_START(bstart,deviceid);
           check = TEMPLATE2 (CHOLMOD(gpu_factorize_cpu_parallel))( Common, L, gb_p, cpu_p, tree_p, prof_p, deviceid, subtree);
-  	  TIMER_END(bstart,bend,deviceid);        
+  	  TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nCPU end -\t");
           PRINTFV("device:%d ",deviceid);
@@ -678,7 +691,7 @@ static int TEMPLATE (cholmod_super_numeric)
     {
 
       /* wait until all subtree are factorized */
- 
+
       /* loop over subtree in root */
       for(subtreeid = 0; subtreeid < numSubtreePerDevice; subtreeid++)
       {
@@ -686,14 +699,20 @@ static int TEMPLATE (cholmod_super_numeric)
         /* get current subtree & # supernodes */
         Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
         Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
- 
+
         PRINTF("\n\nroot start -\t");
         PRINTFV("device:%d ",deviceid);
         PRINTFV("subtree:%d ",subtree);
 
-        TIMER_START(bstart,deviceid);      
+        TIMER_START(bstart,deviceid);
+#ifdef TDEBUG
+        root_time = SuiteSparse_time();
+#endif
         check = TEMPLATE2 (CHOLMOD(gpu_factorize_root_parallel))( Common, L, gpu_p, cpu_p, tree_p, subtree );
-        TIMER_END(bstart,bend,deviceid);      
+#ifdef TDEBUG
+        printf ("numDevice = %d, root deviceid = %d, time = %lf\n", gb_p->numDevice, deviceid, SuiteSparse_time() - root_time);
+#endif
+        TIMER_END(bstart,bend,deviceid);
 
         PRINTF("\n\nroot end -\t");
         PRINTFV("device:%d ",deviceid);
@@ -746,25 +765,25 @@ static int TEMPLATE (cholmod_super_numeric)
   PRINTF("\n\n\nfree GPU & CPU..\n");
 
 #ifdef SUITESPARSE_CUDA
-  /* finalize gpu */    
+  /* finalize gpu */
   CHOLMOD (gpu_end) (Common) ;
 #endif
 
   /* free arrays used for subtree algorithm */
-  if(gb_p->runType != -1)  
+  if(gb_p->runType != -1)
   {
     gb_p->Iwork = CHOLMOD(free) (gb_p->IworkSize, sizeof (Int), gb_p->Iwork, Common) ;
     gb_p->Xwork = CHOLMOD(free) (gb_p->XworkSize, sizeof (double), gb_p->Xwork, Common) ;
     gb_p->Bwork = CHOLMOD(free) (gb_p->BworkSize, sizeof (struct cholmod_subtree_order_t), gb_p->Bwork, Common) ;
 
 /*    if(gb_p->runType != 3 && gb_p->runType != 2) */
-    {   
+    {
       gb_p->Cwork = CHOLMOD(free) (gb_p->CworkSize, sizeof (double), gb_p->Iwork, Common) ;
       gb_p->Mapwork = CHOLMOD(free) (gb_p->MapworkSize, sizeof (Int), gb_p->Iwork, Common) ;
     }
   }
 
-  PRINTF("\n\n\nend t_cholmod_super_numeric..\n\n\n");   
+  PRINTF("\n\n\nend t_cholmod_super_numeric..\n\n\n");
 
   return (Common->status >= CHOLMOD_OK) ;
 
@@ -772,6 +791,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+#undef TDEBUG
 #undef PATTERN
 #undef REAL
 #undef COMPLEX

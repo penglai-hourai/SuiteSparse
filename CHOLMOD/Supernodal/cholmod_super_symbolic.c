@@ -181,7 +181,7 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    const char* env_use_gpu, *env_max_bytes, *env_num_gpu, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
+    const char *env_use_gpu, *env_max_bytes, *env_num_gpu, *env_gpu_parallel, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
     size_t max_bytes;
 
     /* ---------------------------------------------------------------------- */
@@ -242,6 +242,8 @@ int CHOLMOD(super_symbolic2)
 #ifndef SUITESPARSE_CUDA
     /* GPU module is not installed */
     Common->useGPU = 0;
+    Common->numGPU_parallel	= 1 ;
+    Common->numGPU_physical	= 0 ;
     Common->numGPU = 0;
     Common->useHybrid = 0;
 #endif
@@ -249,6 +251,8 @@ int CHOLMOD(super_symbolic2)
 #ifndef DLONG
     /* GPU module supported only for long int */
     Common->useGPU = 0;
+    Common->numGPU_parallel	= 1 ;
+    Common->numGPU_physical	= 0 ;
     Common->numGPU = 0;
     Common->useHybrid = 0;
 #endif
@@ -266,11 +270,13 @@ int CHOLMOD(super_symbolic2)
 
 #ifdef SUITESPARSE_CUDA
 #ifdef DLONG
+            printf ("PATH = %s\n", getenv("PATH"));
         /* set useGPU parameter */
         if ( Common->useGPU == EMPTY )
         {
             /* Query OS environment variables for request.*/
             env_use_gpu  = getenv("CHOLMOD_USE_GPU");
+            printf ("env_use_gpu = %lx\n", env_use_gpu);
 
             /* CHOLMOD_USE_GPU environment variable is set */
             if ( env_use_gpu )
@@ -311,23 +317,51 @@ int CHOLMOD(super_symbolic2)
         }
 
        
-        /* set numGPU parameter */ 
-        if ( Common->numGPU == EMPTY )
+        /* set numGPU_parallel parameter */ 
+        if ( Common->numGPU_parallel == EMPTY )
         {
             /* Query OS environment variables for request.*/
-            env_num_gpu  = getenv("CHOLMOD_NUM_GPUS");
+            env_gpu_parallel  = getenv("CHOLMOD_GPU_PARALLEL");
+            printf ("env_gpu_parallel = %lx\n", env_gpu_parallel);
 
             /* CHOLMOD_NUM_GPUS environment variable is set */
-            if ( env_num_gpu )
+            if ( env_gpu_parallel )
             {	    
-                Common->numGPU = atoi ( env_num_gpu );              	/* set # GPUs */	
+                Common->numGPU_parallel = atoi ( env_gpu_parallel );              	/* set # GPUs */	
+                if (Common->numGPU_parallel > CHOLMOD_MAX_NUM_GPU_PARALLEL)
+                    Common->numGPU_parallel = CHOLMOD_MAX_NUM_GPU_PARALLEL;
+        printf ("================ checkpoint 0 ================ numGPU_parallel = %d\n", Common->numGPU_parallel);
             }
             /* CHOLMOD_USE_GPU environment variable not set */
 	    else
             {
-                Common->numGPU = -1;				    	/* default, #GPUs is not defined */
+                Common->numGPU_parallel = 1;				    	/* default, #GPUs is not defined */
+        printf ("================ checkpoint 1 ================ numGPU_parallel = %d\n", Common->numGPU_parallel);
             }	        	
         }
+
+       
+        /* set numGPU_physical parameter */ 
+        if ( Common->numGPU_physical == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_num_gpu  = getenv("CHOLMOD_NUM_GPUS");
+            printf ("env_num_gpu = %lx\n", env_num_gpu);
+
+            /* CHOLMOD_NUM_GPUS environment variable is set */
+            if ( env_num_gpu )
+            {	    
+                Common->numGPU_physical = atoi ( env_num_gpu );              	/* set # GPUs */	
+        printf ("================ checkpoint 0 ================ numGPU_physical = %d\n", Common->numGPU_physical);
+            }
+            /* CHOLMOD_USE_GPU environment variable not set */
+	    else
+            {
+                Common->numGPU_physical = -1;				    	/* default, #GPUs is not defined */
+        printf ("================ checkpoint 1 ================ numGPU_physical = %d\n", Common->numGPU_physical);
+            }	        	
+        }
+        printf ("================ checkpoint ================ numGPU_physical = %d\n", Common->numGPU_physical);
 
 
         /* set useHybrid parameter */
@@ -411,19 +445,22 @@ int CHOLMOD(super_symbolic2)
 #ifdef SUITESPARSE_CUDA
 #ifdef DLONG
         /* GPU is not present */
-        if ( Common->useGPU == 0 || Common->numGPU == 0 || Common->partialFactorization == 1 )
+        if ( Common->useGPU == 0 || Common->numGPU_physical == 0 || Common->partialFactorization == 1 )
         {
             Common->useGPU = 0;
+            Common->numGPU_physical = 0;
+            Common->numGPU_parallel = 1;
             Common->numGPU = 0;
             Common->useHybrid = 0;
         }
 
 
         /* Ensure that a GPU is present */
-        if ( Common->useGPU == 1 && Common->numGPU != 0 )
+        if ( Common->useGPU == 1 && Common->numGPU_physical != 0 )
         {
             Common->useGPU = CHOLMOD(gpu_probe) (Common); 
-	    if ( Common->useGPU == 1 && Common->numGPU > 0 )
+            Common->numGPU = Common->numGPU_physical * Common->numGPU_parallel;
+	    if ( Common->useGPU == 1 && Common->numGPU_physical > 0 )
             {
             	CHOLMOD(gpu_allocate) ( Common );
 	    }
@@ -431,13 +468,13 @@ int CHOLMOD(super_symbolic2)
 
        
         /* GPU is present (set default behavior) */
-        if ( Common->useGPU == 1 && Common->numGPU > 0 && Common->partialFactorization == 0 )
+        if ( Common->useGPU == 1 && Common->numGPU_physical > 0 && Common->partialFactorization == 0 )
         {
  
             /* if hybrid is not defined */
             if(Common->useHybrid == -1) 
             {
-                if(Common->numGPU == 1) 				/* if 1 GPU, enable CPU (hybrid) */
+                if(Common->numGPU_physical == 1) 				/* if 1 GPU, enable CPU (hybrid) */
                   Common->useHybrid = 1;                
                 else 
                   Common->useHybrid = 0;				/* if multiple GPUs, disable CPU (GPU only) */
@@ -446,10 +483,12 @@ int CHOLMOD(super_symbolic2)
 
 
 	/* GPU is not present */
-   	if ( Common->useGPU == 0 || Common->numGPU == 0 || Common->partialFactorization == 1 )
+   	if ( Common->useGPU == 0 || Common->numGPU_physical == 0 || Common->partialFactorization == 1 )
 	{
             Common->useGPU = 0;
-	    Common->numGPU = 0;
+            Common->numGPU_physical = 0;
+            Common->numGPU_parallel = 1;
+            Common->numGPU = 0;
             Common->useHybrid = 0;
 	}
 #endif

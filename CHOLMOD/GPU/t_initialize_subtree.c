@@ -37,14 +37,14 @@
  *    query_gpu
  *
  *  Description:
- *    Queries GPU properties (clock speed, # SMs, etc.) 
+ *    Queries GPU properties (clock speed, # SMs, etc.)
  */
 void TEMPLATE2(CHOLMOD(query_gpu)) (int *clockRate, int *sm, int *ipc, int gpuid)
-{  
+{
 #ifdef SUITESPARSE_CUDA
     struct cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, gpuid);
-    *clockRate = prop.clockRate; 
+    *clockRate = prop.clockRate;
     *sm = prop.multiProcessorCount;
     *ipc = 64*2;  /* 64DP ALUs x 2DP (1DP FMA per cycle) */
 
@@ -67,14 +67,14 @@ void TEMPLATE2(CHOLMOD(query_gpu)) (int *clockRate, int *sm, int *ipc, int gpuid
 void TEMPLATE2(CHOLMOD(query_cpu)) (int *clockRate, int *sm, int *ipc, int numThreads)
 {
     *clockRate = 2300000;	/* clock speed in kilohertz*/
-    *sm = numThreads/2;     /* # cores (16 cores) */ 
+    *sm = numThreads/2;     /* # cores (16 cores) */
     *ipc = 16;  		/* 16DP instructions per cycle */
 
     if(*sm == 0) *sm = 1;
 
     PRINTF("CPU Info:\n");
     PRINTFV("\tclock rate:	%d\n",*clockRate);
-    PRINTFV("\t# cores:		%d\n",*sm);    
+    PRINTFV("\t# cores:		%d\n",*sm);
     PRINTFV("\tipc:		%d\n",*ipc);
 }
 
@@ -105,7 +105,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 {
   /* local variables */
   Int n, nls, numSuper, subtree, subtreeSize, subtreeSizeDiff, subtreeSizePrev, max_factor_size;
-  Int *supernode_children_num, *supernode_children_num2, *supernode_children_count2, 
+  Int *supernode_children_num, *supernode_children_num2, *supernode_children_count2,
       *supernode_levels_subtree_ptrs, *supernode_subtree_ptrs, *level_num_desc_ptrs,
       *level_descendants_ptrs, *Lpi;
   size_t gpu_memtot, cpu_memtot, size_A;
@@ -127,14 +127,14 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   /* set host pointers */
   Lpi	= cpu_p->Lpi;
 
-  /* set tree pointers */  
+  /* set tree pointers */
   supernode_children_num	= tree_p->supernode_children_num;
   supernode_children_num2	= tree_p->supernode_children_num2;
   supernode_children_count2	= tree_p->supernode_children_count2;
   supernode_levels_subtree_ptrs	= tree_p->supernode_levels_subtree_ptrs;
   supernode_subtree_ptrs		= tree_p->supernode_subtree_ptrs;
   level_num_desc_ptrs		= tree_p->level_num_desc_ptrs;
-  level_descendants_ptrs	= tree_p->level_descendants_ptrs;  
+  level_descendants_ptrs	= tree_p->level_descendants_ptrs;
 
 
 
@@ -148,16 +148,16 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   nls            = Lpi[L->nsuper] - Lpi[0];
   size_A = (nls + A->ncol + A->nzmax + 2)*sizeof(Int) + A->nzmax*sizeof(double);
 
-  if(size_A >= Common->dev_mempool_size && gb_p->runType != 1) {  
-    gb_p->runType = 3;          				/* use only root */    
-  }    
+  if(size_A >= Common->dev_mempool_size && gb_p->runType != 1) {
+    gb_p->runType = 3;          				/* use only root */
+  }
 
 
 
-	
+
 
   /* set maximum BRANCH_SIZE (cutoff) */
-  if(gb_p->runType == 1)  subtreeSize = L->xsize + 1;  
+  if(gb_p->runType == 1)  subtreeSize = L->xsize + 1;
   else 			  subtreeSize = L->xsize - 1;           /* initial subtree size (at least one supernode on root alg.) */
   subtreeSizePrev = 0;
   subtreeSizeDiff = 0;
@@ -170,7 +170,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     subtreeSize = (Int)(Common->dev_mempool_size/8);
   }
 
-  
+
 
 
 
@@ -185,11 +185,11 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
     /* case binary search could not find small enough subtree to fit in GPU, use root only.. */
     if ( subtreeSize == 1 ) {
-    
+
       PRINTF("subtreeSize = 1, use root only..\n");
 
       /* no subtree fits GPU, so use root only */
-      gb_p->runType = 3;      
+      gb_p->runType = 3;
 
       /* set maximum BRANCH_SIZE (cutoff) */
       subtreeSize = L->xsize - 1;           /* initial subtree size (at least one supernode on root alg.) */
@@ -197,7 +197,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       subtreeSizeDiff = 0;
       search = 0;
       subtree = 0;
-    
+
       /* case if factor (subtree size) is larger than GPU memory available */
       if(subtreeSize > (Int)(Common->dev_mempool_size/8)) {
         subtreeSize = (Int)(Common->dev_mempool_size/8);
@@ -230,22 +230,22 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      *
      * Lastly, store supernodes in last subtree of tree that does not fit GPU
      */
-  
+
     /* copy # children per supernode */
     memcpy(supernode_children_num, supernode_children_num2, L->nsuper*sizeof(Int));
-  
+
     /* reset counters */
-    memset(supernode_children_count2, 0, L->nsuper*sizeof(Int)); 
-  
+    memset(supernode_children_count2, 0, L->nsuper*sizeof(Int));
+
     TEMPLATE2 (CHOLMOD (build_subtree))( L,
 					gb_p,
 					tree_p,
 					subtreeSize);
 
-  
-  
-  
-  
+
+
+
+
     /*
      * pre-processing subtrees
      *
@@ -254,20 +254,20 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      * 2. Find amount of GPU memory needed for batching
      * 3. Find batching cutoff (up to what level to batch over supernodes)
      */
-  
+
     /* loop over subtrees */
     for(subtree = 0; subtree < gb_p->numSubtree; subtree++) {
-  
-  
+
+
       numSuper = supernode_subtree_ptrs[subtree+1] - supernode_subtree_ptrs[subtree];  /* get # of supernodes in subtree */
-  
+
       /* copy # childrens per supernode */
       memcpy(supernode_children_num, supernode_children_num2, L->nsuper*sizeof(Int));
-  
-      level_num_desc_ptrs[subtree]          = counts[0];  
-      level_descendants_ptrs[subtree]       = counts[1];  
-      supernode_levels_subtree_ptrs[subtree] = counts[2];  
-  
+
+      level_num_desc_ptrs[subtree]          = counts[0];
+      level_descendants_ptrs[subtree]       = counts[1];
+      supernode_levels_subtree_ptrs[subtree] = counts[2];
+
       /* get # children in root supernode of root tree */
       TEMPLATE2 (CHOLMOD (get_children_root))( Common,
 					       gb_p,
@@ -275,7 +275,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					       numSuper,
 					       subtree);
 
-  
+
       /* get size of factor (Lx) in current subtree */
       TEMPLATE2 (CHOLMOD (get_factor_size))( gb_p,
 					     cpu_p,
@@ -285,7 +285,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					     &max_factor_size,
                                              LpxSub);
 
-  
+
       /* get current subtree size/info */
       TEMPLATE2 (CHOLMOD (process_subtree))( Common,
 					    A,
@@ -298,12 +298,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    subtree,
 					    max_factor_size,
                                             counts);
-  
-  
+
+
     } /* end loop over subtrees */
-  
-  
-  
+
+
+
     /*
      * find amount GPU memory needed for subtreeing
      *
@@ -314,17 +314,17 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     nls             	= Lpi[L->nsuper] - Lpi[0];
     gb_p->LxSize    	= (max_factor_size)*sizeof(double);          	/* size of factor */
     gb_p->CSize     	= (gb_p->maxCsize)*sizeof(double);          	/* size of C buffer */
-    gb_p->LsSize    	= (nls+1)*sizeof(Int);                       
+    gb_p->LsSize    	= (nls+1)*sizeof(Int);
     gb_p->MapSize       = (n+1)*sizeof(Int)*(gb_p->maxbatch);          /* size of Map */
-    gb_p->ApSize        = (A->ncol+1)*sizeof(Int);                   
-    gb_p->AiSize        = A->nzmax*sizeof(Int);                      
-    gb_p->AxSize        = A->nzmax*sizeof(double);                   
+    gb_p->ApSize        = (A->ncol+1)*sizeof(Int);
+    gb_p->AiSize        = A->nzmax*sizeof(Int);
+    gb_p->AxSize        = A->nzmax*sizeof(double);
     gb_p->dimDescSize   = (gb_p->maxndesc)*sizeof(int);               	/* size of dimension arrays for desc. */
     gb_p->ptrDescSize   = (gb_p->maxndesc)*sizeof(double *);          	/* size of pointer arrays for desc. */
     gb_p->dimSuperSize  = sizeof(int)*(gb_p->maxbatch);       		/* size of dimension arrays for super. */
     gb_p->ptrSuperSize  = sizeof(double *)*(gb_p->maxbatch);     	/* size of pointer arrays for super. */
-  
-  
+
+
     /* size of Ap, Ai, Ax buffers (0 if GPU subtrees not used) */
     if(gb_p->runType != 1 && gb_p->runType != 3) size_A = gb_p->ApSize + gb_p->AiSize + gb_p->AxSize;    	/* if not root and not CPU only */
     else	  				 size_A = 0;
@@ -333,10 +333,10 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     /* total amount of GPU memory needed */
     gpu_memtot = gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) +
                  2*(gb_p->maxbatch)*sizeof(int) + sizeof(int);
-  
+
     /* total amount of CPU memory needed (pinned memory) */
     cpu_memtot = gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
-  
+
     /* print memory info */
     PRINTFV("binary step: %d\n",search);
     PRINTFV("\trunType:	 	  %ld \n", gb_p->runType);
@@ -354,9 +354,9 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     PRINTFV("\tgpu_mem_available: %ld \n",Common->dev_mempool_size);
     PRINTFV("\tgpu_mem_used:      %ld \n",gpu_memtot);
     PRINTF("\n\n");
-  
-  
-  
+
+
+
     /*
      * Update size of subtree.
      *
@@ -364,18 +364,18 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      * between the previous and current size. Increase if the subtreeSize is smaller than the available
      * GPU (or CPU) memory, and decrease otherwise. Also store the current subtree size as subtreeSizePrev.
      */
-  
+
     /* Subtree size change to update. Half the difference between the previous and current subtree size. */
     subtreeSizeDiff = (Int)((float)(labs(subtreeSize - subtreeSizePrev))/2.0 + 0.5);
-  
+
     /* Do not let it exceed half the subtree size. */
     if ( subtreeSizeDiff > (subtreeSize)/2) {
       subtreeSizeDiff = (subtreeSize)/2 ;
     }
-  
+
     /* store previous subtree size */
     subtreeSizePrev = subtreeSize;
-  
+
     /* update size of subtree */
     /* case if exceed GPU or CPU memory, reduce subtree size */
     if (gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
@@ -385,8 +385,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     else {
       subtreeSize += subtreeSizeDiff;
     }
-  
-  
+
+
     /* break conditions for exiting binary search loop:
      *    1. BINARY_SEARCH steps reached
      *    2. GPU mem does not exceed limit
@@ -396,11 +396,11 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      *    6. if CPU_only
      */
     if(((gpu_memtot < Common->dev_mempool_size && cpu_memtot < Common->dev_mempool_size) &&
-       (search >= binarySearch || !(subtreeSizeDiff) || subtreeSize >= L->xsize)) || (gb_p->runType == 1) || (gb_p->runType == 3))       
+       (search >= binarySearch || !(subtreeSizeDiff) || subtreeSize >= L->xsize)) || (gb_p->runType == 1) || (gb_p->runType == 3))
          {
            break;
          }
-  
+
 
     /* increment binary step */
     search++;
@@ -427,12 +427,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
  *   Load balances subtrees on multiple devices. Four cases:
  *   1. CPU only: sends all subtrees to CPU device (with id CHOLMOD_DEVICE_GPU)
  *   2. root only: sends all subtrees to root (with id CHOLMOD_DEVICE_GPU+1)
- *   3. GPU only: sends subtrees to GPU device (id from 0 to CHOLMOD_DEVICE_GPU-1) & root (id CHOLMOD_DEVICE_GPU+1) 
+ *   3. GPU only: sends subtrees to GPU device (id from 0 to CHOLMOD_DEVICE_GPU-1) & root (id CHOLMOD_DEVICE_GPU+1)
  *   4. hybrid:   sends subtrees to GPU device (id from 0 to CHOLMOD_DEVICE_GPU-1), CPU device (id CHOLMOD_DEVICE_GPU) & root (id CHOLMOD_DEVICE_GPU+1)
  *
  *   The load-balancing algorithm computes the total work on each device (runtime of all subtrees computed as flop/flops). Then it assigns each subtree
  *   to the device with least amount of work in a cyclic fashion.
- */  
+ */
 void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   (
     cholmod_common *Common,
@@ -454,7 +454,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   int i, j, runType, numDevice, numSubtree;
   Int s;
   Int *supernode_subtree, *supernode_subtree_ptrs, *numSubtreePerDevice, *listSubtreePerDevice;
-  struct props gpu, cpu; 
+  struct props gpu, cpu;
   struct cholmod_subtree_order_t *subtreeReorder;
 
 
@@ -465,8 +465,8 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
    * Set variables & pointers
    */
   /* set variables */
-  runType	= gb_p->runType;  
-  numSubtree 	= gb_p->numSubtree;  
+  runType	= gb_p->runType;
+  numSubtree 	= gb_p->numSubtree;
 
   /* set load-balance pointers */
   subtreeSize		= lb_p->subtreeSize;
@@ -486,7 +486,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
   /* get number of devices to use:
    *   1. GPU only: Common->numGPU
-   *   2. hybrid:   Common->numGPU+1  
+   *   2. hybrid:   Common->numGPU+1
    */
   if(runType == 1)		numDevice = 1;				/* CPU only */
   else if(runType == 2)		numDevice = Common->numGPU;		/* GPU only */
@@ -502,29 +502,29 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   GPUflops = (double)(gpu.clockRate*gpu.sm*gpu.ipc)/(double)(1.0e+6);		/* GPU peak theoretical performance (in gflops) */
   CPUflops = (double)(cpu.clockRate*cpu.sm*cpu.ipc)/(double)(1.0e+6);           /* CPU peak theoretical performance (in gflops) */
   PRINTFV("GPU peak flops rate: %f\n",GPUflops);
-  PRINTFV("CPU peak flops rate: %f\n",CPUflops); 
+  PRINTFV("CPU peak flops rate: %f\n",CPUflops);
 
 
 
 
 
-  /* Store subtree info (size and id): 
-   * computes the cumulative number of floating-point operations (flop) in each subtree. 
+  /* Store subtree info (size and id):
+   * computes the cumulative number of floating-point operations (flop) in each subtree.
    */
-  for(i = 0; i < numSubtree; i++) 
+  for(i = 0; i < numSubtree; i++)
   {
 
     subtreeReorder[i].id = i;                            /* subtree id */
-    int numSuper = supernode_subtree_ptrs[i+1] - supernode_subtree_ptrs[i]; 
+    int numSuper = supernode_subtree_ptrs[i+1] - supernode_subtree_ptrs[i];
 
     /* loop over supernodes in subtree */
     for(j = 0; j < numSuper; j++) {
       s = supernode_subtree[supernode_subtree_ptrs[i] + j];
-      subtreeReorder[i].size += supernode_flop[s];	/* subtree size (# flop in all its supernodes) */   
+      subtreeReorder[i].size += supernode_flop[s];	/* subtree size (# flop in all its supernodes) */
     }
 
     /* convert to gflop */
-    subtreeReorder[i].size *= 1.0e-9;	
+    subtreeReorder[i].size *= 1.0e-9;
     subtreeSize[i] = subtreeReorder[i].size;
   }
 
@@ -542,11 +542,11 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   /* Set subtrees for each device
    * Finds the device with least work and then adds current subtree to it.
    * The amount of work in the device (workPerDevice) is computed as the total runtime (flop/flop rate)
-   * of all the subtrees in the device. The flop rate is the theoretical peak flops of the device (GPU or CPU).  
+   * of all the subtrees in the device. The flop rate is the theoretical peak flops of the device (GPU or CPU).
    */
   PRINTF("\nSubtree Info:\n");
   /* loop over subtrees */
-  for(i = 0; i < numSubtree; i++) 
+  for(i = 0; i < numSubtree; i++)
   {
 
     int minDevice = 0;
@@ -557,19 +557,19 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
     /* case CPU device (CPU only) */
-    if(runType == 1)    
+    if(runType == 1)
     {
       minDevice = Common->numGPU;                          	/* set CPU device */
     }
     /* case root (last subtree) */
-    else if(subtreeReorder[i].id == numSubtree-1) 
+    else if(subtreeReorder[i].id == numSubtree-1)
     {
       minDevice = Common->numGPU + 1;				/* set root */
-    } 
+    }
     /* case GPU or CPU device (GPU only or hybrid) */
-    else 
+    else
     {
-      /* find device with least work */      
+      /* find device with least work */
       for(j = 1; j < numDevice; j++) {
         if(min > workPerDevice[j]) {
           min = workPerDevice[j];
@@ -584,7 +584,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
     GPUtime = flop/GPUflops;					/* GPU runtime */
     CPUtime = flop/CPUflops;					/* CPU runtime */
     if(minDevice == Common->numGPU) 	size = CPUtime;
-    else			      	size = GPUtime; 
+    else			      	size = GPUtime;
 
 
     /* print subtree info */
@@ -607,11 +607,11 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* issue less GPUs if not sufficient subtrees */
-  if(numSubtree-1 < Common->numGPU) 
+  if(numSubtree-1 < Common->numGPU)
   {
     gb_p->numGPU = numSubtree-1;
   }
-  else 
+  else
   {
     gb_p->numGPU = Common->numGPU;
   }
@@ -632,7 +632,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
  *   initialize_gpu
  *
  * Description:
- *   initializes for GPU algorithm. 
+ *   initializes for GPU algorithm.
  *
  */
 void TEMPLATE2 (CHOLMOD (initialize_gpu))
@@ -651,15 +651,15 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
 
 
   /* set variables */
-  runType	= gb_p->runType;  
+  runType	= gb_p->runType;
   numGPU	= gb_p->numGPU;
 
 
 
 
-  /* initialize GPU (set pointers, copy memory, etc.) 
+  /* initialize GPU (set pointers, copy memory, etc.)
    * only if there are GPU subtrees  */
-  if(runType != 1 && runType != 3) {  
+  if(runType != 1 && runType != 3) {
     #pragma omp parallel num_threads(numGPU)
     {
       /* get GPU id (omp thread id) */
@@ -717,7 +717,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 
 
   /* set variables */
-  runType	= gb_p->runType;  
+  runType	= gb_p->runType;
   numSubtree     = gb_p->numSubtree;
   numThreads	= Common->ompNumThreads;
   CSize         = (gb_p->CSize);
@@ -793,22 +793,22 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 /*
  *  Function:
  *    gpu_copy_supernode
- *  
+ *
  *  Description:
- *    builds initial elimination tree 
+ *    builds initial elimination tree
  *
  */
 void TEMPLATE2 (CHOLMOD (build_tree))
   (
    cholmod_common *Common,
    cholmod_factor *L,
-   cholmod_global_pointers *gb_p, 
+   cholmod_global_pointers *gb_p,
    cholmod_cpu_pointers *cpu_p,
    cholmod_tree_pointers *tree_p
    )
 {
   /* local variables */
-  Int s, k1, k2, nscol, nsrow, psi, psend, ndcol, ndrow, ndrow1, ndrow2, pdx1, pdi1, 
+  Int s, k1, k2, nscol, nsrow, psi, psend, ndcol, ndrow, ndrow1, ndrow2, pdx1, pdi1,
       d, dlarge, kd1, kd2, pdi, pdend, pdi2, dancestor, sparent, id, totdesc, idescendant;
   Int *Super, *SuperMap, *Lpi, *Ls, *Head, *Next, *Lpos, *supernode_root, *supernode_children,
       *supernode_children_count, *supernode_children_num, *supernode_children_ptrs,
@@ -826,7 +826,7 @@ void TEMPLATE2 (CHOLMOD (build_tree))
   Lpi		= cpu_p->Lpi;
   Ls		= cpu_p->Ls;
   Head		= cpu_p->Head;
-  Next		= cpu_p->Next; 
+  Next		= cpu_p->Next;
   Lpos		= cpu_p->Lpos;
 
   /* set tree pointers */
@@ -850,11 +850,11 @@ void TEMPLATE2 (CHOLMOD (build_tree))
    * supernoeds and collects three things:
    *   1. size
    *   2. parent
-   *   3. # children  
+   *   3. # children
    *
    */
   /* loop over supernodes */
-  for(s = 0; s < L->nsuper; s++) {  
+  for(s = 0; s < L->nsuper; s++) {
 
     /* clear variables */
     id=0;
@@ -952,7 +952,7 @@ void TEMPLATE2 (CHOLMOD (build_tree))
     supernode_size[s] += totdesc;   				/* store total size of current supernode */
     supernode_flop[s] = syrkflops+gemmflops+potrfflops+trsmflops;	/* store total flops in current supernode */
     if(nsrow > nscol) {		/* case if supernode has parent */
-      sparent = SuperMap[Ls [psi + nscol]] ;        
+      sparent = SuperMap[Ls [psi + nscol]] ;
       supernode_size[sparent] += supernode_size[s]; 	/* add supernode's size to its parent */
       supernode_parent[s] = sparent;                		/* store supernode's parent */
       supernode_children_num[sparent]++;            		/* increment # of children of supernode's parent */
@@ -970,13 +970,13 @@ void TEMPLATE2 (CHOLMOD (build_tree))
   /*
    * Store children of tree:
    * Builds elimination tree. Visits
-   * all supernoes and stores their
-   * children. 
+   * all supernodes and stores their
+   * children.
    */
   /* loop over supernodes */
   for(s = 0; s < L->nsuper; s++) {
 
-    sparent = supernode_parent[s]; 
+    sparent = supernode_parent[s];
 
     if(sparent > 0) {		/* case if supernode has parent */
 
@@ -1033,12 +1033,12 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
   Int *supernode_root, *supernode_children, *supernode_children_ptrs, *supernode_children_num, *supernode_children_count2,
       *supernode_parent, *supernode_subtree, *supernode_subtree_ptrs, *supernode_size;
   int subtree, first, numRoot, runType;
- 
+
   /* set variables */
-  j 			= 0; 
+  j 			= 0;
   gb_p->numSubtree 	= 0;
   numRoot 		= gb_p->numRoot;
-  runType		= gb_p->runType;  
+  runType		= gb_p->runType;
 
   /* set tree pointers */
   supernode_root		= tree_p->supernode_root;
@@ -1048,17 +1048,17 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
   supernode_children_count2	= tree_p->supernode_children_count2;
   supernode_parent		= tree_p->supernode_parent;
   supernode_subtree		= tree_p->supernode_subtree;
-  supernode_subtree_ptrs		= tree_p->supernode_subtree_ptrs; 
+  supernode_subtree_ptrs		= tree_p->supernode_subtree_ptrs;
   supernode_size                = tree_p->supernode_size;
 
 
-  /* 
+  /*
    * Build subtrees of tree:
    *
-   * traverse tree and store supernodes in 
+   * traverse tree and store supernodes in
    * corresponding subtrees. Use depth-first
    * traversal.
-   * Steps:  
+   * Steps:
    *   1. start from root supernode (there can be
    *      multiple roots)
    *
@@ -1070,16 +1070,16 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
    *        b. supernode has no children, or all
    *           children have already been visited
    *
-   *   4. ascend tree if: 
+   *   4. ascend tree if:
    *        a. supernode has no children
    *        b. all children visited
    *
    * Use variable 'first' to determine when a
-   * new subtree starts. Set 'first' to head 
-   * (root) of subtree (subtree) and stop when 
+   * new subtree starts. Set 'first' to head
+   * (root) of subtree (subtree) and stop when
    * 's' =='first', which means we've returned
-   * to the head supernode of the subtree. 
-   * Increment the # subtrees whenever this happens. 
+   * to the head supernode of the subtree.
+   * Increment the # subtrees whenever this happens.
    * */
 
   /* loop over all roots (trees) */
@@ -1099,13 +1099,13 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
       }
 
 
-      /* case: store supernodes in subtree only if: 
+      /* case: store supernodes in subtree only if:
        *       1. size of supernode is smaller than size of subtree
        *          note that supernode_size contains size of all its descendants (children)
        *       2. there are at least SUPERNODE_MIN supernods in the elimination tree (root_only = 0)
        *       3. Ai,Ap,Ax are small enough to fit device (root_only = 0)
        */
-      if(supernode_size[s] <= subtreeSize && (runType != 3) && (runType != 1)) {      
+      if(supernode_size[s] <= subtreeSize && (runType != 3) && (runType != 1)) {
 
         /* case: if first supernode in subtree (root of subtree) */
         if(!first) {
@@ -1149,26 +1149,26 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
 
 
 
-  /* 
+  /*
    * Build last (root) subtree of tree:
    *
    * store supernodes that do not fit GPU ( > subtree size)
    * into last subtree (root subtree). These supernodes are
-   * typically located at the top of the tree. 
+   * typically located at the top of the tree.
    */
 
   supernode_subtree_ptrs[(gb_p->numSubtree)++] = j;  	/* set poiner to last subtree */
 
   for(s=0; s < L->nsuper; s++) {                 		/* loop over supernodes */
     /* case if size of candidate subtree > cutoff subtree size */
-    if(supernode_size[s] > subtreeSize || (runType == 3) || (runType == 1)) {    
+    if(supernode_size[s] > subtreeSize || (runType == 3) || (runType == 1)) {
       supernode_subtree[j++] = s;              	/* store supernode in subtree */
     }
   } /* end loop over supernodes */
 
   /* set pointer for end of last subtree */
   supernode_subtree_ptrs[gb_p->numSubtree] = j;
- 
+
 }
 
 
@@ -1201,7 +1201,7 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
   /* local variables */
   Int i, j, k, s;
   Int *supernode_children, *supernode_children_ptrs, *supernode_subtree, *supernode_subtree_ptrs, *supernode_children_num;
-  int num, child, numSubtree, numThreads; 
+  int num, child, numSubtree, numThreads;
 
   /* set variables */
   numSubtree 	= gb_p->numSubtree;
@@ -1213,12 +1213,12 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
   supernode_subtree		= tree_p->supernode_subtree;
   supernode_subtree_ptrs		= tree_p->supernode_subtree_ptrs;
   supernode_children_num	= tree_p->supernode_children_num;
-  
 
 
-  /* 
-   * Get children on root supernodes:  
-   * get # of children on root supernodes for root (last) subtree. 
+
+  /*
+   * Get children on root supernodes:
+   * get # of children on root supernodes for root (last) subtree.
    *
    */
 
@@ -1267,12 +1267,12 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
 /*
  *  Function:
  *    process_subtree
- *    
+ *
  *  Description:
  *    processes a subtree of the elimination tree. Stores supernodes
- *    in levels, and finds the maximum batch size for each level, 
+ *    in levels, and finds the maximum batch size for each level,
  *    given a fixed amount of device memory.
- * 
+ *
  */
 void TEMPLATE2 (CHOLMOD (process_subtree))
   (
@@ -1285,11 +1285,11 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
    Int n,
    Int numSuper,
    Int subtree,
-   Int max_factor_size,  
+   Int max_factor_size,
    int *counts)
 {
   /* local variables */
-  int batchdescflag, desc, count0, count1, count2, nsupernodes, stream, batch, Csize, ndesc, 
+  int batchdescflag, desc, count0, count1, count2, nsupernodes, stream, batch, Csize, ndesc,
       maxsubtreeCsize, maxsubtreendesc, maxsubtreebatch, maxnumdescendantsperlevel, nbatch,
       maxsubtreeCsize_prev, maxsubtreendesc_prev, maxsubtreebatch_prev, maxnumdescendantsperlevel_prev, nbatch_prev, runType;
   Int s, i, processed_nodes, node,  num_levels, sparent;
@@ -1309,10 +1309,10 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
   count0 	= counts[0];
   count1 	= counts[1];
   count2 	= counts[2];
-  runType	= gb_p->runType;  
+  runType	= gb_p->runType;
 
   /* set host pointers */
-  Lpi 	= cpu_p->Lpi; 
+  Lpi 	= cpu_p->Lpi;
 
   /* set tree pointers */
   supernode_levels		= tree_p->supernode_levels;
@@ -1333,16 +1333,16 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
   /*
-   * Process subtree:  
+   * Process subtree:
    * First store all supernodes within
    * levels. Then visit all supernodes
    * in a level and get the amount of
-   * memory needed for batching them. 
-   */ 
- 
+   * memory needed for batching them.
+   */
+
   /* loop over levels in subtree (until all supernodes are processed) */
   while(processed_nodes != numSuper) {
-    
+
     /* reset variables */
     nsupernodes = 0;
     batchdescflag = 0;
@@ -1356,9 +1356,9 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
 
- 
 
-    /* Store supernods in current level: 
+
+    /* Store supernods in current level:
      * This just involves selecting supernodes that have no
      * children (belong to the current level).
      */
@@ -1368,14 +1368,14 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     nsupernodes = 0;
 
     /* loop over supernodes */
-    for(i=0; i < numSuper; i++) {  
+    for(i=0; i < numSuper; i++) {
 
-      s = supernode_subtree[supernode_subtree_ptrs[subtree] + i]; 
+      s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
 
       /* store supernodes that belong to current level */
       if(supernode_children_num[s] == 0) { /* case supernode has no children (belongs to current level) */
 
-        supernode_levels[count2++] = s;    	/* store supernode in level */                   
+        supernode_levels[count2++] = s;    	/* store supernode in level */
         processed_nodes++;                 		/* increment processed supernode coutner */
         nsupernodes++;                     		/* increment # supernodes in level */
 
@@ -1386,8 +1386,8 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
 
-    /* 
-     * Update supernodes: 
+    /*
+     * Update supernodes:
      * Remove supernodes in current level
      * from their parent's children list.
      *
@@ -1426,34 +1426,34 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
      * Compute the amount of memory needed for batching
      * supernodes. That is, store three variables:
      *
-     *   1. maxbatch: 
+     *   1. maxbatch:
      *     a. maximum batch size (of supernodes) in any given level
-     *     b. size of buffers to store lists of supernode dimensions  
+     *     b. size of buffers to store lists of supernode dimensions
      *
      *   2. maxndesc:
      *     a. maximum number of descendants in any batch
      *     b. size of buffers to store lists of descendant dimensions
      *
-     *   3. maxCsize: 
+     *   3. maxCsize:
      *     a. maximum cumulative size of descendants in a batch
      *     b. size of buffer to store schur complements
-     *     
-     * The algorithm below finds the optimal (largest) batch size (# supernodes)
-     * to be used for each level. 
      *
-     * But only do this if the subtree is not the root subtree (the last top-of-tree 
+     * The algorithm below finds the optimal (largest) batch size (# supernodes)
+     * to be used for each level.
+     *
+     * But only do this if the subtree is not the root subtree (the last top-of-tree
      * subtree).
      *
      */
 
 
-    /* 
-     * case if: 
+    /*
+     * case if:
      *   1. one of GPU subtrees (not root subtree)
      *   2. not root only
-     *   3. not CPU only 
+     *   3. not CPU only
      */
-    if((subtree != gb_p->numSubtree-1) && (runType != 3) && (runType != 1)) {    
+    if((subtree != gb_p->numSubtree-1) && (runType != 3) && (runType != 1)) {
 
 
 
@@ -1465,7 +1465,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       gpu_memtot = 0;
       gpu_memtot_prev = gpu_memtot;
       nbatch = 1;
-     
+
       /* while loop to find batch size for current level */
       while(1) {
 
@@ -1478,18 +1478,18 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
         maxsubtreebatch_prev = maxsubtreebatch;
         maxnumdescendantsperlevel_prev = maxnumdescendantsperlevel;
 
- 
+
         /* loop over supernodes in level */
         for(i = 0; i < nsupernodes; i++) {
 
           /* get supernode */
-          node = supernode_levels[supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i];    
+          node = supernode_levels[supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i];
 
 
           /* reset variables (new batch) */
           if( !(i % nbatch ) ) {
             Csize = 0;
-            ndesc = 0;       
+            ndesc = 0;
           }
 
           Csize += supernode_size_desc[node];			/* add to total size of C buffer needed for storing schur complement in current batch of supernodes */
@@ -1498,20 +1498,20 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           if(Csize > maxsubtreeCsize) maxsubtreeCsize = Csize;		/* store maximum C buffer size in any given level */
           if(ndesc > maxsubtreendesc) maxsubtreendesc = ndesc;		/* store maximum # descendants in any given level */
 	  if(nbatch > maxsubtreebatch) maxsubtreebatch = nbatch;		/* store maximum batch size in any given level */
-          if(ndesc > maxnumdescendantsperlevel) maxnumdescendantsperlevel = ndesc;	
+          if(ndesc > maxnumdescendantsperlevel) maxnumdescendantsperlevel = ndesc;
 
 
         } /* end loop over supernodes in level */
- 
+
         /* find amount GPU memory needed for subtreeing */
         nls            = Lpi[L->nsuper] - Lpi[0];
         LxSize         = max_factor_size*sizeof(double);        /* size of factor */
         CSize          = maxsubtreeCsize*sizeof(double);         /* size of C buffer */
-        LsSize         = (nls+1)*sizeof(Int);                   
+        LsSize         = (nls+1)*sizeof(Int);
         MapSize        = (n+1)*sizeof(Int)*(maxsubtreebatch);    /* size of Map */
-        ApSize         = (A->ncol+1)*sizeof(Int);               
-        AiSize         = A->nzmax*sizeof(Int);                  
-        AxSize         = A->nzmax*sizeof(double);               
+        ApSize         = (A->ncol+1)*sizeof(Int);
+        AiSize         = A->nzmax*sizeof(Int);
+        AxSize         = A->nzmax*sizeof(double);
         dimDescSize    = maxsubtreendesc*sizeof(int);            /* size of list of dimensions for descendants */
         ptrDescSize    = maxsubtreendesc*sizeof(double *);       /* size of list of pointers for descendants */
         dimSuperSize   = sizeof(int)*(maxsubtreebatch);          /* size of list of dimensions for supernodes */
@@ -1519,7 +1519,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize + 
+        gpu_memtot = LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize +
                      14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize +
                      2*nbatch*sizeof(int) + sizeof(int);
 
@@ -1529,7 +1529,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
   	/* store previous values */
           if(gpu_memtot_prev) {
-            gpu_memtot = gpu_memtot_prev; 
+            gpu_memtot = gpu_memtot_prev;
             nbatch = nbatch_prev;
             maxsubtreeCsize = maxsubtreeCsize_prev;
             maxsubtreendesc = maxsubtreendesc_prev;
@@ -1545,8 +1545,8 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           break;
         }
 
-    
-        /* increment batch size */   
+
+        /* increment batch size */
         nbatch_prev = nbatch;
         nbatch += 1;
 
@@ -1559,13 +1559,13 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       if(maxsubtreebatch > gb_p->maxbatch) gb_p->maxbatch = maxsubtreebatch;		/* maximum batch size in any given subtree */
 
 
-    } 
-    /* 
+    }
+    /*
      * case if:
-     * 1. CPU only  
+     * 1. CPU only
      *
      */
-    else if (runType == 1 || runType == 3) {    
+    else if (runType == 1 || runType == 3) {
 
       maxnumdescendantsperlevel = 0;
       nbatch = MAXBATCHSIZE;
@@ -1573,7 +1573,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       /* loop over supernodes in level */
       for(i = 0; i < nsupernodes; i++) {
 
-        /* get supernode */                
+        /* get supernode */
         node = supernode_levels[supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i];
 
         /* reset variables (new batch) */
@@ -1613,12 +1613,12 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
   /* store number of levels per subtree */
   supernode_num_levels[subtree] = num_levels;
-      
-  /* store counts */  
+
+  /* store counts */
   counts[0] = count0;
   counts[1] = count1;
   counts[2] = count2;
-  
+
 }
 
 
@@ -1635,7 +1635,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
  *    get_factor_size
  *
  *  Description:
- *    computes the size of the subfactor of the subtree 
+ *    computes the size of the subfactor of the subtree
  *
  */
 void TEMPLATE2 (CHOLMOD (get_factor_size))
@@ -1671,8 +1671,8 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
 
 
   /*
-   * Store factor size in current subtree:  
-   * For each subtree, calculate and store size of subfactor 
+   * Store factor size in current subtree:
+   * For each subtree, calculate and store size of subfactor
    * (Lxsub). Only do this for subtrees that go to GPU subtrees
    * algorithm (not last/root subtree). Also store largest
    * subfactor size, of all subtrees.
@@ -1687,7 +1687,7 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
     for(i=0; i < numSuper; i++) {
 
       /* get size of size of factor for each subtree */
-      s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];   
+      s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
       nscol = Super [s+1] - Super [s] ;
       nsrow = Lpi[s+1] - Lpi[s] ;
       LpxSub [s] = p ;                                           /* store pointers to supernodes in sub-factor */

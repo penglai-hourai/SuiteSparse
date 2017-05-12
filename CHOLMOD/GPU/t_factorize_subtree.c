@@ -475,7 +475,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
        TIMER_START(tstart,2);      
 
-#pragma omp critical
+//#pragma omp critical
 {
 
       /* 
