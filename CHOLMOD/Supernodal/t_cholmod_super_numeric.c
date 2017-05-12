@@ -575,7 +575,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
         /* set device */
 #ifdef SUITESPARSE_CUDA
-        cudaSetDevice(deviceid % Common->numGPU_parallel);
+        cudaSetDevice(deviceid / Common->numGPU_parallel);
 #endif
 
         /* loop over subtree in current GPU device */

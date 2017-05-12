@@ -668,7 +668,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA streams */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k % Common->numGPU_parallel);
+      cudaSetDevice(k / Common->numGPU_parallel);
 
       for (i = 0; i < CHOLMOD_DEVICE_STREAMS; i++ ) {
         cudaErr = cudaStreamCreate ( &(Common->gpuStream[k][i]) );
@@ -689,7 +689,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA handles */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k % Common->numGPU_parallel);
+      cudaSetDevice(k / Common->numGPU_parallel);
       /* create cuBlas handle */
       cublasErr = cublasCreate (&(Common->cublasHandle[k])) ;
       if (cublasErr != CUBLAS_STATUS_SUCCESS) {
@@ -713,7 +713,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA events */
     for(k = 0; k < Common->numGPU; k++) {
 
-      cudaSetDevice(k % Common->numGPU_parallel);
+      cudaSetDevice(k / Common->numGPU_parallel);
 
       for (i = 0 ; i < 3 ; i++) {
         cudaErr = cudaEventCreateWithFlags(&(Common->cublasEventPotrf[k][i]), cudaEventDisableTiming) ;
