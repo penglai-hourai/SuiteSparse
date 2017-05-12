@@ -317,36 +317,43 @@ int CHOLMOD(gpu_deallocate)
 
     /* local variables */
     cudaError_t cudaErr;
+    int mod;
 
 
 
     /* free device memory */
-    if ( Common->dev_mempool[gpuid] )
+    if ( Common->dev_mempool[gpuid * Common->numGPU_parallel] )
     {
-        cudaErr = cudaFree (Common->dev_mempool[gpuid]);
+        cudaErr = cudaFree (Common->dev_mempool[gpuid * Common->numGPU_parallel]);
         if ( cudaErr ) {
             ERROR ( CHOLMOD_GPU_PROBLEM, "GPU error when freeing device memory.");
         }
     }
 
 
-    Common->dev_mempool[gpuid] = NULL;
+    for (mod = 0; mod < Common->numGPU_parallel; mod++)
+    {
+    Common->dev_mempool[gpuid * Common->numGPU_parallel + mod] = NULL;
+    }
     Common->dev_mempool_size = 0;
 
 
 
 
     /* free host (pinned) memory */
-    if ( Common->host_pinned_mempool[gpuid] )
+    if ( Common->host_pinned_mempool[gpuid * Common->numGPU_parallel] )
     {
-        cudaErr = cudaFreeHost ( Common->host_pinned_mempool[gpuid] );
+        cudaErr = cudaFreeHost ( Common->host_pinned_mempool[gpuid * Common->numGPU_parallel] );
         if ( cudaErr ) {
             ERROR ( CHOLMOD_GPU_PROBLEM, "GPU error when freeing host pinned memory.");
         }
     }
 
 
-    Common->host_pinned_mempool[gpuid] = NULL;
+    for (mod = 0; mod < Common->numGPU_parallel; mod++)
+    {
+    Common->host_pinned_mempool[gpuid * Common->numGPU_parallel + mod] = NULL;
+    }
     Common->host_pinned_mempool_size = 0;
 
 
@@ -515,6 +522,7 @@ int CHOLMOD(gpu_allocate)
     cudaError_t cudaErr;
     cublasStatus_t cublasErr;
     cusolverStatus_t cusolverErr;
+    int mod;
 
 
     /* early exit */
@@ -586,8 +594,18 @@ int CHOLMOD(gpu_allocate)
 
 
     /* Set maximum size of buffers */
-    Common->devBuffSize = requestedDeviceMemory/(size_t)(CHOLMOD_DEVICE_SUPERNODE_BUFFERS);
+    Common->devBuffSize = requestedDeviceMemory/(size_t)(CHOLMOD_DEVICE_SUPERNODE_BUFFERS) / Common->numGPU_parallel;
     Common->devBuffSize -= Common->devBuffSize%0x20000;
+
+
+
+
+
+    /* 
+     * Compute the amount of device & host memory requested
+     */
+    requestedDeviceMemory = Common->devBuffSize * (size_t)(CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->numGPU_parallel;
+    requestedHostMemory = requestedDeviceMemory;
 
 
 
@@ -609,10 +627,10 @@ int CHOLMOD(gpu_allocate)
       cudaSetDevice(k);
 
       /* allocate pinned memory */
-      cudaErr = cudaHostAlloc ((void**)&(Common->host_pinned_mempool[k]), requestedHostMemory, cudaHostAllocMapped);    
+      cudaErr = cudaHostAlloc ((void**)&(Common->host_pinned_mempool[k * Common->numGPU_parallel]), requestedHostMemory, cudaHostAllocMapped);    
 
       /* clear pinned memory */
-      memset(Common->host_pinned_mempool[k],0,requestedHostMemory);
+      memset(Common->host_pinned_mempool[k * Common->numGPU_parallel],0,requestedHostMemory);
 
       if(cudaErr) printf("error:%s\n",cudaGetErrorString(cudaErr) );
       CHOLMOD_HANDLE_CUDA_ERROR (cudaErr,"host memory allocation failure\n");
@@ -629,10 +647,10 @@ int CHOLMOD(gpu_allocate)
       cudaSetDevice(k);
 
       /* allocate device memory */
-      cudaErr = cudaMalloc ( &(Common->dev_mempool[k]), requestedDeviceMemory );
+      cudaErr = cudaMalloc ( &(Common->dev_mempool[k * Common->numGPU_parallel]), requestedDeviceMemory );
 
       /* clear device memory */
-      cudaMemset(Common->dev_mempool[k],0,requestedDeviceMemory);
+      cudaMemset(Common->dev_mempool[k * Common->numGPU_parallel],0,requestedDeviceMemory);
 
       if(cudaErr) printf("error:%s\n",cudaGetErrorString(cudaErr) );
       CHOLMOD_HANDLE_CUDA_ERROR (cudaErr,"device memory allocation failure\n");
@@ -643,8 +661,15 @@ int CHOLMOD(gpu_allocate)
 
 
     /* store device & host memory sizes */
-    Common->host_pinned_mempool_size = requestedHostMemory;
-    Common->dev_mempool_size = requestedDeviceMemory;
+    Common->host_pinned_mempool_size = requestedHostMemory / Common->numGPU_parallel;
+    Common->dev_mempool_size = requestedDeviceMemory / Common->numGPU_parallel;
+    for(k = 0; k < Common->numGPU_physical; k++) {
+        for (mod = 1; mod < Common->numGPU_parallel; mod++)
+        {
+            Common->host_pinned_mempool[k * Common->numGPU_parallel + mod] = Common->host_pinned_mempool[k * Common->numGPU_parallel] + Common->host_pinned_mempool_size * mod; 
+            Common->dev_mempool[k * Common->numGPU_parallel + mod] = Common->dev_mempool[k * Common->numGPU_parallel] + Common->dev_mempool_size * mod; 
+        }
+    }
 
 
 

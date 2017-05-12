@@ -195,7 +195,7 @@ int CHOLMOD(start)
 
 
     /* these are destroyed by cholmod_gpu_deallocate */
-    for (k = 0; k < CHOLMOD_MAX_NUM_PGPUS; k++)
+    for (k = 0; k < CHOLMOD_MAX_NUM_GPUS; k++)
     {
       Common->dev_mempool[k] = NULL;
       Common->dev_mempool_size = 0;
