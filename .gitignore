@@ -48,6 +48,7 @@ CCOLAMD/Demo/ccolamd_example
 CCOLAMD/Demo/ccolamd_l_example
 CHOLMOD/Demo/cholmod_demo
 CHOLMOD/Demo/cholmod_l_demo
+CHOLMOD/Demo/cholmod_l_batched_demo
 CHOLMOD/Demo/cholmod_simple
 CHOLMOD/Demo/timelog.m
 COLAMD/Demo/colamd_example

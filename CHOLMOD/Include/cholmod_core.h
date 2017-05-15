@@ -282,6 +282,8 @@
 #endif
 
 
+#define NMATRICES 256
+
 /* global GPU parameters*/
 #ifdef SUITESPARSE_CUDA
   #define CHOLMOD_MAX_NUM_PGPUS 16			/* max # GPUs */
