@@ -115,7 +115,7 @@ SUITESPARSE_VERSION = 4.5.5
             # use the Intel icc compiler for C codes, and -fopenmp for OpenMP
             CC = icc -D_GNU_SOURCE
             CXX = $(CC)
-            CFOPENMP = -fopenmp -I$(MKLROOT)/include
+            CFOPENMP = -qopenmp -I$(MKLROOT)/include
         endif
         ifneq ($(shell which ifort 2>/dev/null),)
             # use the Intel ifort compiler for Fortran codes
@@ -147,7 +147,7 @@ SUITESPARSE_VERSION = 4.5.5
     # performance.  This script can also detect if the Intel MKL BLAS is
     # installed.
 
-    LAPACK ?= -llapack
+    #LAPACK ?= -llapack
 
     ifndef BLAS
         ifdef MKLROOT
@@ -159,7 +159,7 @@ SUITESPARSE_VERSION = 4.5.5
             #   $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
             #   -Wl,--end-group -lpthread -lm
             # using dynamic linking:
-            BLAS = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm# -lmagma
+            BLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm# -lmagma
             LAPACK =
         else
             # use the OpenBLAS at http://www.openblas.net
@@ -217,7 +217,7 @@ SUITESPARSE_VERSION = 4.5.5
         # GPU_CONFIG must include -DSUITESPARSE_CUDA to compile SuiteSparse for the
         # GPU.  You can add additional GPU-related flags to it as well.
         # with 4 cores (default):
-        GPU_CONFIG    = -DSUITESPARSE_CUDA
+        GPU_CONFIG    = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=32
         # For example, to compile CHOLMOD for 10 CPU cores when using the GPU:
         # GPU_CONFIG  = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=10
         CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
@@ -226,12 +226,11 @@ SUITESPARSE_VERSION = 4.5.5
         CUDA_INC_PATH = $(CUDA_PATH)/include/
         CUDA_INC      = -I$(CUDA_INC_PATH)
         NVCC          = $(CUDA_PATH)/bin/nvcc
-        NVCCFLAGS     = -Xcompiler -fPIC -O3 \
-						-D_FORCE_INLINES \
-                            -gencode=arch=compute_20,code=sm_20 \
+        NVCCFLAGS     = -ccbin icc -Xcompiler -fPIC -O3 \
                             -gencode=arch=compute_30,code=sm_30 \
                             -gencode=arch=compute_35,code=sm_35 \
                             -gencode=arch=compute_50,code=sm_50 \
+                            -gencode=arch=compute_50,code=compute_50 \
                             -gencode=arch=compute_60,code=sm_60
     endif
 

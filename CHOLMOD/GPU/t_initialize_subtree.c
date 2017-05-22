@@ -792,7 +792,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 
 /*
  *  Function:
- *    gpu_copy_supernode
+ *    build_tree
  *
  *  Description:
  *    builds initial elimination tree
