@@ -33,7 +33,13 @@ int main (void)
     }
     b = cholmod_ones (A->nrow, 1, A->xtype, &c) ;   /* b = ones(n,1) */
     L = cholmod_analyze (A, &c) ;		    /* analyze */
+
+    cudaProfilerStart();
+
     cholmod_factorize (A, L, &c) ;		    /* factorize */
+
+    cudaProfilerStop();
+
     x = cholmod_solve (CHOLMOD_A, L, b, &c) ;	    /* solve Ax=b */
     r = cholmod_copy_dense (b, &c) ;		    /* r = b */
 #ifndef NMATRIXOPS

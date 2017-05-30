@@ -251,6 +251,8 @@ int main (int argc, char **argv)
 
     printf ("Analyze: flop %g lnz %g\n", cm->fl, cm->lnz) ;
 
+    cudaProfilerStart();
+
     if (A->stype == 0)
     {
 	printf ("Factorizing A*A'+beta*I\n") ;
@@ -267,6 +269,8 @@ int main (int argc, char **argv)
 	tf = CPUTIME - t ;
 	tf = MAX (tf, 0) ;
     }
+
+    cudaProfilerStop();
 
     cholmod_l_print_factor (L, "L", cm) ;
 
