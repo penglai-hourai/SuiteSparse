@@ -253,6 +253,7 @@ static int TEMPLATE (cholmod_super_numeric)
   cpu_p->Next_save    = Iwork + 2*((size_t)L->n) + 2*((size_t)L->nsuper);
   cpu_p->Lpos_save    = Iwork + 2*((size_t)L->n) + 3*((size_t)L->nsuper);
   cpu_p->Previous     = Iwork + 2*((size_t)L->n) + 4*((size_t)L->nsuper);
+  cpu_p->supernode_factorized   = Iwork + 2*((size_t)L->n) + 5*((size_t)L->nsuper);
 
 
 

@@ -221,7 +221,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	Int * Lpos_local;
 
 
-#pragma omp critical
+//#pragma omp critical
 	{
 	  /* reorder descendants in supernode by descreasing size */
 	  TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, Lpi, Lpos, Super, Head, &tail, Next, Previous,

@@ -79,6 +79,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
   struct cholmod_desc_t 	desc[gb_p->maxndesc];
   struct cholmod_super_t 	super[gb_p->maxbatch];
 
+  Int *supernode_factorized = cpu_p->supernode_factorized;
+
 
 
 
@@ -933,6 +935,16 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
   cudaStreamSynchronize (Common->gpuStream[gpuid][0]);
+
+  for(level = 0; level < supernode_num_levels[subtree]; level++) {
+      start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];          /* starting supernode of level */
+      end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
+      for (node_ptr = start; node_ptr < end; node_ptr++)
+      {
+          s = supernode_levels[node_ptr];
+          supernode_factorized[s] = TRUE;
+      }
+  }
 
 
  /* print overall benchmarks */

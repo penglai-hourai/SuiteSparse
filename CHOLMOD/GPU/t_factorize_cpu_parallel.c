@@ -277,7 +277,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
        *  into lists, in the order specified.
        *
        */
-#pragma omp critical
+//#pragma omp critical
 {
 
       TIMER_START(tstart,2);

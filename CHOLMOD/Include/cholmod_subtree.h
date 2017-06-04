@@ -256,6 +256,8 @@ typedef struct cholmod_cpu_pointers
     double *Fz;
     double *C;
 
+    Int *supernode_factorized;
+
 } cholmod_cpu_pointers ;
 
 
