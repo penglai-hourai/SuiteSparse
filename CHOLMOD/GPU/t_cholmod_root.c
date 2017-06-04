@@ -360,6 +360,9 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_subtree))
   /* store GPU-eligible descendants in h_Lx[0] */
   struct cholmod_descendant_score_t* scores = (struct cholmod_descendant_score_t*) gpu_p->h_Lx_root[gpuid][0];
 
+  Int *supernode_factorized = cpu_p->supernode_factorized;
+  Int nextHead;
+
 
 
   /* initialize variables */
@@ -370,7 +373,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_subtree))
 
 
   /* loop until reach last descendant in supernode */
-  while ( d != EMPTY ) {
+  while ( d != EMPTY && supernode_factorized[d] != FALSE ) {
 
       /* get dimensions for the current descendant */
       kd1 = Super [d] ;       /* d contains cols kd1 to kd2-1 of L */
@@ -398,6 +401,8 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_subtree))
       d = nextd;
 
   } 
+
+  nextHead = d;
 
 
 
@@ -487,6 +492,8 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_subtree))
     } /* end loop over descendants */
 
   }
+
+  Next[scores[n_descendant-1].d] = nextHead;
 
 
   /* store descendant dimension */

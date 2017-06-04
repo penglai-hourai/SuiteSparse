@@ -503,7 +503,6 @@ cholmod_super_numeric.o: ../Supernodal/cholmod_super_numeric.c \
         ../GPU/t_cholmod_root.c \
         ../GPU/t_initialize_subtree.c \
         ../GPU/t_factorize_subtree.c \
-        ../GPU/t_factorize_root.c \
         ../GPU/t_factorize_root_parallel.c \
         ../GPU/t_factorize_cpu_parallel.c \
         ../GPU/t_factorize_cpu_serial.c \

@@ -75,6 +75,9 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
   struct cholmod_trsm_t trsm[gb_p->maxbatch];
   double tstart1;
 
+  Int s, node_ptr, start, end;
+  Int *supernode_factorized = cpu_p->supernode_factorized;
+
 
 
 
@@ -1089,6 +1092,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
     CLEAR1(trsm_time,1);
 
   } /* end loop over levels */
+
+  for(level = 0; level < supernode_num_levels[subtree]; level++) {
+      start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];          /* starting supernode of level */
+      end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
+      for (node_ptr = start; node_ptr < end; node_ptr++)
+      {
+          s = supernode_levels[node_ptr];
+          supernode_factorized[s] = TRUE;
+      }
+  }
 
 
 

@@ -89,7 +89,6 @@
 #define REAL
 #include "../GPU/t_initialize_subtree.c"
 #include "../GPU/t_factorize_subtree.c"
-#include "../GPU/t_factorize_root.c"
 #include "../GPU/t_factorize_root_parallel.c"
 #include "../GPU/t_factorize_cpu_parallel.c"
 #include "../GPU/t_factorize_cpu_serial.c"
@@ -98,7 +97,6 @@
 #define COMPLEX
 #include "../GPU/t_initialize_subtree.c"
 #include "../GPU/t_factorize_subtree.c"
-#include "../GPU/t_factorize_root.c"
 #include "../GPU/t_factorize_root_parallel.c"
 #include "../GPU/t_factorize_cpu_parallel.c"
 #include "../GPU/t_factorize_cpu_serial.c"

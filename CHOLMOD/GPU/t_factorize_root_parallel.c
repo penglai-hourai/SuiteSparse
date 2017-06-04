@@ -30,6 +30,52 @@
 #include "nvToolsExt.h"
 
 
+/* undef macros */
+#undef L_ENTRY
+#undef L_CLEAR
+#undef L_ASSIGN
+#undef L_MULTADD
+#undef L_ASSEMBLE
+#undef L_ASSEMBLESUB
+
+
+/* macros */
+#ifdef REAL
+
+/* A, F, and L are all real */
+#define L_ENTRY 1
+#define L_CLEAR(Lx,p)                   Lx [p] = 0
+#define L_ASSIGN(Lx,q, Ax,Az,p)         Lx [q] = Ax [p]
+#define L_MULTADD(Lx,q, Ax,Az,p, f)     Lx [q] += Ax [p] * f [0]
+#define L_ASSEMBLE(Lx,q,b)              Lx [q] += b [0]
+#define L_ASSEMBLESUB(Lx,q,C,p)         Lx [q] -= C [p]
+
+#else
+
+/* A and F are complex or zomplex, L and C are complex */
+#define L_ENTRY 2
+#define L_CLEAR(Lx,p)                   Lx [2*(p)] = 0 ; Lx [2*(p)+1] = 0
+#define L_ASSEMBLE(Lx,q,b)              Lx [2*(q)] += b [0] ;
+#define L_ASSEMBLESUB(Lx,q,C,p)         Lx [2*(q)  ] -= C [2*(p)  ] ; \
+                                        Lx [2*(q)+1] -= C [2*(p)+1] ;
+
+#ifdef COMPLEX
+/* A, F, L, and C are all complex */
+#define L_ASSIGN(Lx,q, Ax,Az,p)         Lx [2*(q)  ] = Ax [2*(p)  ] ; \
+                                        Lx [2*(q)+1] = Ax [2*(p)+1]
+#define L_MULTADD(Lx,q, Ax,Az,p, f)     Lx [2*(q)  ] += Ax [2*(p)  ] * f [0] - Ax [2*(p)+1] * f [1] ;           \
+                                        Lx [2*(q)+1] += Ax [2*(p)+1] * f [0] + Ax [2*(p)  ] * f [1]
+
+#else
+/* A and F are zomplex, L and C is complex */
+#define L_ASSIGN(Lx,q, Ax,Az,p)         Lx [2*(q)  ] = Ax [p] ;                 \
+                                        Lx [2*(q)+1] = Az [p] ;
+#define L_MULTADD(Lx,q, Ax,Az,p, f)     Lx [2*(q)  ] += Ax [p] * f [0] - Az [p] * f [1] ;   \
+                                        Lx [2*(q)+1] += Az [p] * f [0] + Ax [p] * f [1]
+#endif
+#endif
+
+
 
 
 /*
