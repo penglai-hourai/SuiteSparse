@@ -1018,11 +1018,11 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     /* device memory buffer & size */
-    void *dev_mempool[CHOLMOD_MAX_NUM_GPUS];    	/* pointer to single allocation of device memory */
+    void *dev_mempool[CHOLMOD_MAX_NUM_PGPUS];    	/* pointer to single allocation of device memory */
     size_t dev_mempool_size;
 
     /* host (pinned) memory buffer & size */
-    void *host_pinned_mempool[CHOLMOD_MAX_NUM_GPUS];  	/* pointer to single allocation of pinned mem */
+    void *host_pinned_mempool[CHOLMOD_MAX_NUM_PGPUS];  	/* pointer to single allocation of pinned mem */
     size_t host_pinned_mempool_size;
 
     /* additional buffers */

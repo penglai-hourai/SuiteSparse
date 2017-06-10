@@ -148,7 +148,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   nls            = Lpi[L->nsuper] - Lpi[0];
   size_A = (nls + A->ncol + A->nzmax + 2)*sizeof(Int) + A->nzmax*sizeof(double);
 
-  if(size_A >= Common->dev_mempool_size && gb_p->runType != 1) {
+  if(size_A >= Common->dev_mempool_size / Common->numGPU_parallel && gb_p->runType != 1) {
     gb_p->runType = 3;          				/* use only root */
   }
 
@@ -166,8 +166,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   binarySearch = (int)(BINARY_SEARCH);
 
   /* case if factor (subtree size) is larger than GPU memory available */
-  if(subtreeSize > (Int)(Common->dev_mempool_size/8)) {
-    subtreeSize = (Int)(Common->dev_mempool_size/8);
+  if(subtreeSize > (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8)) {
+    subtreeSize = (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8);
   }
 
 
@@ -180,7 +180,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
    *     2. factor fits GPU memory
    *     3. factor fits CPU (pinned) memory
    */
-  while(search <= binarySearch || gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
+  while(search <= binarySearch || gpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel || cpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel) {
 
 
     /* case binary search could not find small enough subtree to fit in GPU, use root only.. */
@@ -199,8 +199,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       subtree = 0;
 
       /* case if factor (subtree size) is larger than GPU memory available */
-      if(subtreeSize > (Int)(Common->dev_mempool_size/8)) {
-        subtreeSize = (Int)(Common->dev_mempool_size/8);
+      if(subtreeSize > (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8)) {
+        subtreeSize = (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8);
       }
 
     }
@@ -378,7 +378,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
     /* update size of subtree */
     /* case if exceed GPU or CPU memory, reduce subtree size */
-    if (gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
+    if (gpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel || cpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel) {
       subtreeSize -= subtreeSizeDiff;
     }
     /* case if not exceed GPU nor CPU memory, increase subtree size */
@@ -395,7 +395,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      *    5. if root_only, subtree defaults to only root algorithm
      *    6. if CPU_only
      */
-    if(((gpu_memtot < Common->dev_mempool_size && cpu_memtot < Common->dev_mempool_size) &&
+    if(((gpu_memtot < Common->dev_mempool_size / Common->numGPU_parallel && cpu_memtot < Common->dev_mempool_size / Common->numGPU_parallel) &&
        (search >= binarySearch || !(subtreeSizeDiff) || subtreeSize >= L->xsize)) || (gb_p->runType == 1) || (gb_p->runType == 3))
          {
            break;
@@ -1525,7 +1525,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
         /* case if exceed GPU memory */
-        if(gpu_memtot >= Common->dev_mempool_size) {
+        if(gpu_memtot >= Common->dev_mempool_size / Common->numGPU_parallel) {
 
   	/* store previous values */
           if(gpu_memtot_prev) {

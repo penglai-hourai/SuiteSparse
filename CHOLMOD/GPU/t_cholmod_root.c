@@ -103,16 +103,16 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   /* set gpu memory pointers */
 
   /* type double */
-  gpu_p->d_Lx_root[gpuid][0] = Common->dev_mempool[gpuid];
-  gpu_p->d_Lx_root[gpuid][1] = Common->dev_mempool[gpuid] + Common->devBuffSize;
-  gpu_p->d_C_root[gpuid] = Common->dev_mempool[gpuid] + 2*Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][0] = Common->dev_mempool[gpuid] + 3*Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][1] = Common->dev_mempool[gpuid] + 4*Common->devBuffSize;
+  gpu_p->d_Lx_root[gpuid][0] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+  gpu_p->d_Lx_root[gpuid][1] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + Common->devBuffSize;
+  gpu_p->d_C_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 2*Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][0] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 3*Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][1] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 4*Common->devBuffSize;
 
   /* type Int */
-  gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid] + 5*Common->devBuffSize;
-  gpu_p->d_Map_root[gpuid] = Common->dev_mempool[gpuid] + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
-  gpu_p->d_RelativeMap_root[gpuid] = Common->dev_mempool[gpuid] + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
+  gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize;
+  gpu_p->d_Map_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
+  gpu_p->d_RelativeMap_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
 
 
 
@@ -125,10 +125,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* set pinned memory pointers */
-  gpu_p->h_Lx_root[gpuid][0] = (double*)(Common->host_pinned_mempool[gpuid]);
+  gpu_p->h_Lx_root[gpuid][0] = (double*)(Common->host_pinned_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize);
 
   for (k = 1; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
-    gpu_p->h_Lx_root[gpuid][k] = (double*)((char *)(Common->host_pinned_mempool[gpuid]) + k*Common->devBuffSize);
+    gpu_p->h_Lx_root[gpuid][k] = (double*)((char *)(Common->host_pinned_mempool[gpuid / Common->numGPU_parallel]) + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k*Common->devBuffSize);
   }
 
 

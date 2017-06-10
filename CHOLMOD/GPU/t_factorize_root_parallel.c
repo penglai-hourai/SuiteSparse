@@ -121,6 +121,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   n	 		= L->n;
   numThreads		= Common->ompNumThreads;
   numThreads1		= (Common->ompNumThreads + Common->numGPU - 1)/Common->numGPU;
+  printf ("ompNumThreads = %d, numGPU = %ld, numThreads1 = %ld\n", Common->ompNumThreads, Common->numGPU, numThreads1);
   gpu_p->gpuid 		= 0;
   devBuffSize		= (size_t)(Common->devBuffSize/sizeof(double));
   repeat_supernode 	= FALSE;

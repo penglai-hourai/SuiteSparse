@@ -74,7 +74,7 @@ static int TEMPLATE (cholmod_super_numeric)
   struct cholmod_profile_pointers *prof_p, prof_pointer_struct;
   struct cholmod_loadbalance_pointers *lb_p, lb_pointer_struct;
 #ifdef TDEBUG
-      double root_time;
+      double subtree_time, root_time;
 #endif
 
 
@@ -544,14 +544,14 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+#ifdef TDEBUG
+        subtree_time = SuiteSparse_time();
+#endif
     /* loop over all devices (GPU,CPU) */
     #pragma omp parallel num_threads(gb_p->numDevice)
     {
       /* local variables */
       int deviceid, subtreeid, numSubtreePerDevice, check = 0;
-#ifdef TDEBUG
-      double subtree_time;
-#endif
 
       /* set variables */
       deviceid = omp_get_thread_num();				/* set device id*/
@@ -591,13 +591,7 @@ static int TEMPLATE (cholmod_super_numeric)
           PRINTFV("subtree:%d ",subtree);
 
           TIMER_START(bstart,deviceid);
-#ifdef TDEBUG
-          subtree_time = SuiteSparse_time();
-#endif
           TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, numSuper, subtree, LpxSub);
-#ifdef TDEBUG
-          //printf ("subtree deviceid = %d, time = %lf\n", deviceid, SuiteSparse_time() - subtree_time);
-#endif
     	  TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nGPU end -\t");
@@ -657,6 +651,9 @@ static int TEMPLATE (cholmod_super_numeric)
         } /* end loop over subtree */
       } /* end if CPU subtree */
     } /* end loop over devices (OMP threads) */
+#ifdef TDEBUG
+        printf ("subtree time = %lf\n", SuiteSparse_time() - subtree_time);
+#endif
 
 
 
@@ -711,7 +708,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
         check = TEMPLATE2 (CHOLMOD(gpu_factorize_root_parallel))( Common, L, gpu_p, cpu_p, tree_p, subtree );
 #ifdef TDEBUG
-        //printf ("numDevice = %d, root deviceid = %d, time = %lf\n", gb_p->numDevice, deviceid, SuiteSparse_time() - root_time);
+        printf ("root time = %lf\n", SuiteSparse_time() - root_time);
 #endif
         TIMER_END(bstart,bend,deviceid);
 
