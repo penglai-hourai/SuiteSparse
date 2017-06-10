@@ -79,7 +79,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
   struct cholmod_desc_t 	desc[gb_p->maxndesc];
   struct cholmod_super_t 	super[gb_p->maxbatch];
 
-  Int *supernode_factorized = cpu_p->supernode_factorized;
 
 
 
@@ -741,12 +740,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        * 
        */
       /* memcpy dimensions and pointers of a batch of supernodes from host to device */
-      cudaMemcpyAsync(d_dimSuper, h_dimSuper,13*maxbatch*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid][0]);
-      cudaMemcpyAsync(d_ptrSuper, h_ptrSuper,3*maxbatch*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid][0]);
+      cudaMemcpyAsync(d_dimSuper, h_dimSuper,13*maxbatch*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+      cudaMemcpyAsync(d_ptrSuper, h_ptrSuper,3*maxbatch*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
       /* memcpy dimensions and pointers of a batch of descendants from host to device */
-      cudaMemcpyAsync(d_dimDesc, h_dimDesc,14*strideSize*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid][0]);
-      cudaMemcpyAsync(d_ptrDesc, h_ptrDesc,6*strideSize*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid][0]);
+      cudaMemcpyAsync(d_dimDesc, h_dimDesc,14*strideSize*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+      cudaMemcpyAsync(d_ptrDesc, h_ptrDesc,6*strideSize*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
 
       /* 
@@ -869,7 +868,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
     /* synchronize all streams - need this? or just redundancy? */
     for(i=0; i<CHOLMOD_DEVICE_STREAMS; i++) {
-      cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+      cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     }
 
 
@@ -909,7 +908,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
   /* clear factor on GPU */
-  cudaMemsetAsync ( d_Lx, 0, factor_size[subtree]*sizeof(double),Common->gpuStream[gpuid][0]);
+  cudaMemsetAsync ( d_Lx, 0, factor_size[subtree]*sizeof(double),Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
 
   /*
@@ -934,17 +933,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                                            L->px);
 
 
-  cudaStreamSynchronize (Common->gpuStream[gpuid][0]);
-
-  for(level = 0; level < supernode_num_levels[subtree]; level++) {
-      start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];          /* starting supernode of level */
-      end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
-      for (node_ptr = start; node_ptr < end; node_ptr++)
-      {
-          s = supernode_levels[node_ptr];
-          supernode_factorized[s] = TRUE;
-      }
-  }
+  cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
 
  /* print overall benchmarks */

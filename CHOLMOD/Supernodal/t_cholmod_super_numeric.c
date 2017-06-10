@@ -103,7 +103,7 @@ static int TEMPLATE (cholmod_super_numeric)
   gb_p->maxnsrow  = 0;
   gb_p->maxnscol  = 0;
 
-  for(i=0; i < CHOLMOD_MAX_NUM_GPUS; i++) gb_p->check[i] = 0;
+  for(i=0; i < CHOLMOD_MAX_NUM_PGPUS; i++) gb_p->check[i] = 0;
 
 
 
@@ -173,7 +173,7 @@ static int TEMPLATE (cholmod_super_numeric)
   if(gb_p->runType != -1) {  		/* only if subtree algorithm chosen */
 
     /* determine size for load-balance arrays*/
-    if(L->nsuper < CHOLMOD_MAX_NUM_GPUS) size = CHOLMOD_MAX_NUM_GPUS+2;
+    if(L->nsuper < CHOLMOD_MAX_NUM_PGPUS) size = CHOLMOD_MAX_NUM_PGPUS+2;
     else				 size = L->nsuper;
 
     /* allocate workspace */
@@ -253,7 +253,6 @@ static int TEMPLATE (cholmod_super_numeric)
   cpu_p->Next_save    = Iwork + 2*((size_t)L->n) + 2*((size_t)L->nsuper);
   cpu_p->Lpos_save    = Iwork + 2*((size_t)L->n) + 3*((size_t)L->nsuper);
   cpu_p->Previous     = Iwork + 2*((size_t)L->n) + 4*((size_t)L->nsuper);
-  cpu_p->supernode_factorized   = Iwork + 2*((size_t)L->n) + 5*((size_t)L->nsuper);
 
 
 
@@ -659,7 +658,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
     /* early exit if subtree not positive-definite */
-    for(i=0; i < CHOLMOD_MAX_NUM_GPUS; i++) {
+    for(i=0; i < CHOLMOD_MAX_NUM_PGPUS; i++) {
       if(gb_p->check[i]) return (Common->status >= CHOLMOD_OK);
     }
 

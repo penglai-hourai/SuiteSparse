@@ -108,7 +108,7 @@ typedef struct cholmod_global_pointers
     int numSubtree;			/* total # subtrees */
     int numRoot;			/* # root supernodes */
     int work_size;			/* size of workspace for cuSolver */
-    int check[CHOLMOD_MAX_NUM_GPUS+2];	/* stores whether subtree is positive-defininte or not (1: positive-definite, 0: not positive definite) */
+    int check[CHOLMOD_MAX_NUM_PGPUS+2];	/* stores whether subtree is positive-defininte or not (1: positive-definite, 0: not positive definite) */
     
     /* max buffer sizes */
     Int maxCsize;			/* max Cbuff size (needed to store batch of schur complements) */
@@ -256,8 +256,6 @@ typedef struct cholmod_cpu_pointers
     double *Fz;
     double *C;
 
-    Int *supernode_factorized;
-
 } cholmod_cpu_pointers ;
 
 
@@ -275,50 +273,50 @@ typedef struct cholmod_gpu_pointers
     int	   gpuid;
 
     /* device & pinned buffers */
-    void   *gpuPtr[CHOLMOD_MAX_NUM_GPUS];
-    void   *hostPtr[CHOLMOD_MAX_NUM_GPUS];
-    double *h_Lx[CHOLMOD_MAX_NUM_GPUS];				/* factor in pinned memory */
-    double *h_pLx[CHOLMOD_MAX_NUM_GPUS];			/* pointer to factor in pinned */
-    double *d_Lx[CHOLMOD_MAX_NUM_GPUS];				/* factor in device */
-    double *d_C[CHOLMOD_MAX_NUM_GPUS];				/* schur complement in device */
-    Int    *d_Ls[CHOLMOD_MAX_NUM_GPUS];				/* Ls in device */
-    Int    *d_Map[CHOLMOD_MAX_NUM_GPUS];			/* Map in device */    
-    Int    *d_Ap[CHOLMOD_MAX_NUM_GPUS];				/* Ap in device */
-    Int    *d_Ai[CHOLMOD_MAX_NUM_GPUS];				/* Ai in device */
-    double *d_Ax[CHOLMOD_MAX_NUM_GPUS];				/* Ax in device */
-    int    *d_info[CHOLMOD_MAX_NUM_GPUS];			/* info in device (potrf) */
-    int    *d_devSync[CHOLMOD_MAX_NUM_GPUS]; 			/* devSync in device (potrf) */
+    void   *gpuPtr[CHOLMOD_MAX_NUM_PGPUS];
+    void   *hostPtr[CHOLMOD_MAX_NUM_PGPUS];
+    double *h_Lx[CHOLMOD_MAX_NUM_PGPUS];				/* factor in pinned memory */
+    double *h_pLx[CHOLMOD_MAX_NUM_PGPUS];			/* pointer to factor in pinned */
+    double *d_Lx[CHOLMOD_MAX_NUM_PGPUS];				/* factor in device */
+    double *d_C[CHOLMOD_MAX_NUM_PGPUS];				/* schur complement in device */
+    Int    *d_Ls[CHOLMOD_MAX_NUM_PGPUS];				/* Ls in device */
+    Int    *d_Map[CHOLMOD_MAX_NUM_PGPUS];			/* Map in device */    
+    Int    *d_Ap[CHOLMOD_MAX_NUM_PGPUS];				/* Ap in device */
+    Int    *d_Ai[CHOLMOD_MAX_NUM_PGPUS];				/* Ai in device */
+    double *d_Ax[CHOLMOD_MAX_NUM_PGPUS];				/* Ax in device */
+    int    *d_info[CHOLMOD_MAX_NUM_PGPUS];			/* info in device (potrf) */
+    int    *d_devSync[CHOLMOD_MAX_NUM_PGPUS]; 			/* devSync in device (potrf) */
 
 
     /* lists for batching supernodes */
-    int    *h_dimSuper[CHOLMOD_MAX_NUM_GPUS];			/* ptr to supernode dim. in pinned */
-    int    *d_dimSuper[CHOLMOD_MAX_NUM_GPUS];			/* ptr to supernode dim. in device */
-    double **h_ptrSuper[CHOLMOD_MAX_NUM_GPUS];			/* ptr to supernode ptrs in pinned */
-    double **d_ptrSuper[CHOLMOD_MAX_NUM_GPUS];			/* ptr to supernode ptrs in device */
+    int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */
+    int    *d_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in device */
+    double **h_ptrSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode ptrs in pinned */
+    double **d_ptrSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode ptrs in device */
 
 
     /* lists for batching descendants */
-    int    *h_dimDesc[CHOLMOD_MAX_NUM_GPUS];   			/* ptr to descendant dim. in pinned */
-    int    *d_dimDesc[CHOLMOD_MAX_NUM_GPUS];			/* ptr to descendant dim. in device */
-    double **h_ptrDesc[CHOLMOD_MAX_NUM_GPUS];    		/* ptr to descendant ptrs in pinned */
-    double **d_ptrDesc[CHOLMOD_MAX_NUM_GPUS];			/* ptr to descendant ptrs in device */
+    int    *h_dimDesc[CHOLMOD_MAX_NUM_PGPUS];   			/* ptr to descendant dim. in pinned */
+    int    *d_dimDesc[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to descendant dim. in device */
+    double **h_ptrDesc[CHOLMOD_MAX_NUM_PGPUS];    		/* ptr to descendant ptrs in pinned */
+    double **d_ptrDesc[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to descendant ptrs in device */
 
 
     /* structures for gemm,syrk,potrf,trsm parameters in device */
-    struct cholmod_syrk_ptrs_t 	d_syrk[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_gemm_ptrs_t 	d_gemm[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_potrf_ptrs_t d_potrf[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_trsm_ptrs_t 	d_trsm[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_desc_ptrs_t 	d_desc[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_super_ptrs_t d_super[CHOLMOD_MAX_NUM_GPUS];
+    struct cholmod_syrk_ptrs_t 	d_syrk[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_gemm_ptrs_t 	d_gemm[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_potrf_ptrs_t d_potrf[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_trsm_ptrs_t 	d_trsm[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_desc_ptrs_t 	d_desc[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_super_ptrs_t d_super[CHOLMOD_MAX_NUM_PGPUS];
 
     /* structures for gemm,syrk,potrf,trsm parameters in host */
-    struct cholmod_syrk_ptrs_t 	h_syrk[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_gemm_ptrs_t 	h_gemm[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_potrf_ptrs_t h_potrf[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_super_ptrs_t h_super[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_trsm_ptrs_t 	h_trsm[CHOLMOD_MAX_NUM_GPUS];
-    struct cholmod_desc_ptrs_t 	h_desc[CHOLMOD_MAX_NUM_GPUS];
+    struct cholmod_syrk_ptrs_t 	h_syrk[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_gemm_ptrs_t 	h_gemm[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_potrf_ptrs_t h_potrf[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_super_ptrs_t h_super[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_trsm_ptrs_t 	h_trsm[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_desc_ptrs_t 	h_desc[CHOLMOD_MAX_NUM_PGPUS];
 
     
     /* root buffers */
@@ -350,24 +348,24 @@ typedef struct cholmod_profile_pointers
     double g_end[20];
 
     /* subtree timers */
-    double b_start[CHOLMOD_MAX_NUM_GPUS+2];
-    double b_end[CHOLMOD_MAX_NUM_GPUS+2];
+    double b_start[CHOLMOD_MAX_NUM_PGPUS+2];
+    double b_end[CHOLMOD_MAX_NUM_PGPUS+2];
 
     /* factorize timers */
-    double f_start[CHOLMOD_MAX_NUM_GPUS+2][20];
-    double f_end[CHOLMOD_MAX_NUM_GPUS+2][20];
+    double f_start[CHOLMOD_MAX_NUM_PGPUS+2][20];
+    double f_end[CHOLMOD_MAX_NUM_PGPUS+2][20];
 
     /* Blas timers */
-    double syrk_time[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double gemm_time[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double potrf_time[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double trsm_time[CHOLMOD_MAX_NUM_GPUS+2][2];
+    double syrk_time[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double gemm_time[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double potrf_time[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double trsm_time[CHOLMOD_MAX_NUM_PGPUS+2][2];
 
     /* Blas flop */
-    double syrk_flop[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double gemm_flop[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double potrf_flop[CHOLMOD_MAX_NUM_GPUS+2][2];
-    double trsm_flop[CHOLMOD_MAX_NUM_GPUS+2][2]; 
+    double syrk_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double gemm_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double potrf_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
+    double trsm_flop[CHOLMOD_MAX_NUM_PGPUS+2][2]; 
 
 } cholmod_profile_pointers ;
 

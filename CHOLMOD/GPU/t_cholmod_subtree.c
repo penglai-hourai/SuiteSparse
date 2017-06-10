@@ -369,7 +369,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
                       	    maxsnsrow,
 			    n,
                       	    nbatch,
-                      	    &(Common->gpuStream[gpuid][0]));
+                      	    &(Common->gpuStream[gpuid * Common->numGPU_parallel][0]));
 
   if (cudaGetLastError()!=cudaSuccess) {
     printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
@@ -393,7 +393,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
                         maxkdif,
                         n,
 		        nbatch,
-                        &(Common->gpuStream[gpuid][0]));
+                        &(Common->gpuStream[gpuid * Common->numGPU_parallel][0]));
 
   if (cudaGetLastError()!=cudaSuccess) {
     printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
@@ -404,7 +404,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
 
   /* synchronize stream */
-  cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][0]) ;
+  cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]) ;
   if(cudaStat) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU gpu_initialize_supernode_batch\n") ;
   }
@@ -509,13 +509,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   for(i = 0; i < syrk_count; i++) {
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dsyrk on cuBlas */
-    cublasDsyrk ( Common->cublasHandle[gpuid],
+    cublasDsyrk ( Common->cublasHandle[gpuid * Common->numGPU_parallel],
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_N,
                   h_syrk->n[i],
@@ -533,7 +533,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   if( (nbatch - syrk_count) > 0 ) {
 
     /* dsyrk on batched kernels */   
-    dsyrk_custom_simple_1block_batch( Common->gpuStream[gpuid][0],
+    dsyrk_custom_simple_1block_batch( Common->gpuStream[gpuid * Common->numGPU_parallel][0],
                                       CUBLAS_FILL_MODE_LOWER,
                                       CUBLAS_OP_N,
                                       &d_syrk->n[syrk_count],
@@ -550,7 +550,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     if (cudaStat) { 
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU dsyrk_custom_simple_1block_batch") ; 
@@ -577,13 +577,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   for(i = 0; i < gemm_count; i++) {
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dgemm on cuBlas */
-    cublasDgemm ( Common->cublasHandle[gpuid],
+    cublasDgemm ( Common->cublasHandle[gpuid * Common->numGPU_parallel],
                   CUBLAS_OP_N, CUBLAS_OP_T,
                   h_gemm->m[i],
                   h_gemm->n[i],
@@ -603,7 +603,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   if( (nbatch - gemm_count) > 0 ) {   
 
     /* dgemm on batched kernels */
-    dgemm_custom_simple_1block_batch( Common->gpuStream[gpuid][0],
+    dgemm_custom_simple_1block_batch( Common->gpuStream[gpuid * Common->numGPU_parallel][0],
                                       CUBLAS_OP_N, CUBLAS_OP_T,
                                       &d_gemm->m[gemm_count],
                                       &d_gemm->n[gemm_count],
@@ -642,7 +642,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     if (cudaStat) { 
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU dgemm_custom_simple_1block_batch") ; 
@@ -684,7 +684,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                              h_super->psx[h_desc->s[i]],
                              h_super->nsrow[h_desc->s[i]],
 		             (int)((n+1)*h_desc->s[i]),
-                             &(Common->gpuStream[gpuid][i%CHOLMOD_DEVICE_STREAMS]));
+                             &(Common->gpuStream[gpuid * Common->numGPU_parallel][i%CHOLMOD_DEVICE_STREAMS]));
   }
 
   /* check if any addUpdate's left for batching */
@@ -704,14 +704,14 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                              &d_desc->s[update_count],
                              max_dim,
                              nbatch-update_count,
-                             &(Common->gpuStream[gpuid][0]));
+                             &(Common->gpuStream[gpuid * Common->numGPU_parallel][0]));
 
   }
 
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     if (cudaStat) {
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU addUpdateOnDevice_batch") ;
@@ -788,7 +788,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
 
 
     /* set cuSolver stream */
-    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[gpuid], Common->gpuStream[gpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnSetStream failure");
     }
@@ -810,7 +810,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
   if( (nbatch - potrf_count) > 0 ) {
   
     /* potrf on custom batched kernels */
-    dpotrf_custom_simple_1block_batch ( Common->gpuStream[gpuid][0],
+    dpotrf_custom_simple_1block_batch ( Common->gpuStream[gpuid * Common->numGPU_parallel][0],
                                         CUBLAS_FILL_MODE_LOWER,
                                         &d_potrf->n[i],
                                         &d_potrf->A[i],
@@ -823,7 +823,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     if (cudaStat) { 
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU dpotrf_custom_simple_1block_batch") ; 
@@ -903,13 +903,13 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
   for(i=0; i<trsm_count; i++) {
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* trsm on cuBlas */
-    cublasDtrsm ( Common->cublasHandle[gpuid],
+    cublasDtrsm ( Common->cublasHandle[gpuid * Common->numGPU_parallel],
                   CUBLAS_SIDE_RIGHT,
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_T,
@@ -928,7 +928,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
   if( (nbatch - trsm_count) > 0 ) {
 
     /* trsm on custom batched kernels */
-    dtrsm_custom_simple_1block_batch ( Common->gpuStream[gpuid][0],
+    dtrsm_custom_simple_1block_batch ( Common->gpuStream[gpuid * Common->numGPU_parallel][0],
                                        CUBLAS_SIDE_RIGHT,
                                        CUBLAS_FILL_MODE_LOWER,
                                        CUBLAS_OP_T,
@@ -946,7 +946,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid][i]) ;
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
     if (cudaStat) {
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError())); 
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU dtrsm_custom_simple_1block_batch") ; 
@@ -1008,7 +1008,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
                  d_super->nscol,
                  nbatch,
                  maxnsrownscol,
-                 &Common->gpuStream[gpuid][0]);
+                 &Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
 }
 

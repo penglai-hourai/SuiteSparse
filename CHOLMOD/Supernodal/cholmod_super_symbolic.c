@@ -184,8 +184,6 @@ int CHOLMOD(super_symbolic2)
     const char *env_use_gpu, *env_max_bytes, *env_num_gpu, *env_gpu_parallel, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
     size_t max_bytes;
 
-    Int *supernode_factorized;
-
     /* ---------------------------------------------------------------------- */
     /* check inputs */
     /* ---------------------------------------------------------------------- */
@@ -1119,8 +1117,6 @@ int CHOLMOD(super_symbolic2)
     L->is_super = TRUE ;
     ASSERT (L->xtype == CHOLMOD_PATTERN && L->is_ll) ;
 
-    supernode_factorized   = Iwork + 2*((size_t)L->n) + 5*((size_t)L->nsuper);
-    memset (supernode_factorized, FALSE, sizeof(Int) * nsuper);
 
     /* ---------------------------------------------------------------------- */
     /* supernodal symbolic factorization is complete */
