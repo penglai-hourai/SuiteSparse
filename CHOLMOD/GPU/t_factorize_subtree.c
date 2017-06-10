@@ -79,6 +79,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
   struct cholmod_desc_t 	desc[gb_p->maxndesc];
   struct cholmod_super_t 	super[gb_p->maxbatch];
 
+  int vgpuid;
 
 
 
@@ -868,7 +869,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
     /* synchronize all streams - need this? or just redundancy? */
     for(i=0; i<CHOLMOD_DEVICE_STREAMS; i++) {
-      cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][i]) ;
+        for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
+      cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
     }
 
 
