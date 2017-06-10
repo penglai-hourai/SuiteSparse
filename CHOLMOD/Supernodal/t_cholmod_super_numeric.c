@@ -177,7 +177,7 @@ static int TEMPLATE (cholmod_super_numeric)
     else				 size = L->nsuper;
 
     /* allocate workspace */
-    gb_p->IworkSize                       = 25*(L->nsuper + 1) + (Common->numGPU+4)*(size + 1);
+    gb_p->IworkSize                       = 25*(L->nsuper + 1) + (Common->numGPU_physical+4)*(size + 1);
     gb_p->XworkSize                       = 2*(L->nsuper + 1) + (size + 1);
     gb_p->BworkSize                       = L->nsuper;
 
@@ -230,7 +230,7 @@ static int TEMPLATE (cholmod_super_numeric)
     tree_p->ndescendants                  = Iwork + 22*(size_t)(L->nsuper + 1);
     lb_p->numSubtreePerDevice             = Iwork + 23*(size_t)(L->nsuper + 1);
     lb_p->listSubtreePerDevice            = Iwork + 23*(size_t)(L->nsuper + 1) + (size_t)(size + 1);
-    LpxSub                                = Iwork + 23*(size_t)(L->nsuper + 1) + (Common->numGPU+4)*(size_t)(size + 1);;
+    LpxSub                                = Iwork + 23*(size_t)(L->nsuper + 1) + (Common->numGPU_physical+4)*(size_t)(size + 1);;
 
     tree_p->supernode_flop                = Xwork;
     lb_p->subtreeSize                     = Xwork + (size_t)(L->nsuper + 1);
@@ -491,7 +491,7 @@ static int TEMPLATE (cholmod_super_numeric)
     PRINTFV("total # supernodes: %d\n",L->nsuper);
     PRINTFV("numSubtree: %d\n",gb_p->numSubtree);
     PRINTFV("numDevice:	%d\n",gb_p->numDevice);
-    for(i = 0; i < Common->numGPU+2; i++) {
+    for(i = 0; i < Common->numGPU_physical+2; i++) {
       PRINTFV("device:%d ",i);
       PRINTFV("numSubtreePerDevice:%d ",lb_p->numSubtreePerDevice[i]);
       PRINTFV("workPerDevice:%d\n",lb_p->workPerDevice[i]);
@@ -533,12 +533,12 @@ static int TEMPLATE (cholmod_super_numeric)
 
     /* set # omp threads:
      *   1. CPU only:     1
-     *   2. GPU only:     Common->numGPU
-     *   3. hybrid:       Common->numGPU + 1
+     *   2. GPU only:     Common->numGPU_physical
+     *   3. hybrid:       Common->numGPU_physical + 1
      */
     if(gb_p->runType == 1)      gb_p->numDevice = 1;                            /* CPU only */
-    else if(gb_p->runType == 2) gb_p->numDevice = Common->numGPU;               /* GPU only */
-    else              		gb_p->numDevice = Common->numGPU + 1;		/* GPU + CPU (hybrid) */
+    else if(gb_p->runType == 2) gb_p->numDevice = Common->numGPU_physical;               /* GPU only */
+    else              		gb_p->numDevice = Common->numGPU_physical + 1;		/* GPU + CPU (hybrid) */
 
 
 
@@ -571,12 +571,12 @@ static int TEMPLATE (cholmod_super_numeric)
        * optimized for small matrices.
        *
        */
-      if(deviceid < Common->numGPU)
+      if(deviceid < Common->numGPU_physical)
       {
 
         /* set device */
 #ifdef SUITESPARSE_CUDA
-        cudaSetDevice(deviceid / Common->numGPU_parallel);
+        cudaSetDevice(deviceid);
 #endif
 
         /* loop over subtree in current GPU device */
@@ -621,7 +621,7 @@ static int TEMPLATE (cholmod_super_numeric)
        *   2. gpu_factorize_cpu_parallel (parallel factorization)
        *
        */
-      if(deviceid == Common->numGPU)
+      if(deviceid == Common->numGPU_physical)
       {
 
         /* loop over subtree in CPU device */
@@ -678,14 +678,14 @@ static int TEMPLATE (cholmod_super_numeric)
      * entire tree.
      *
      */
-    int deviceid = Common->numGPU+1;
+    int deviceid = Common->numGPU_physical+1;
     int subtreeid, check = 0;
     int numSubtreePerDevice = (int)(lb_p->numSubtreePerDevice[deviceid]);
 
     /* reset Cbuff for root algorithm */
     /*cpu_p->C      = Cwork->x ;*/
 
-    if(deviceid == Common->numGPU+1)
+    if(deviceid == Common->numGPU_physical+1)
     {
 
       /* wait until all subtree are factorized */

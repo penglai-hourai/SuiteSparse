@@ -80,7 +80,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 #endif
 
     /* set gpu memory pointers */
-    gpu_p->gpuPtr[gpuid]		 = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+    gpu_p->gpuPtr[gpuid]		 = Common->dev_mempool[gpuid];
 
     /* type (double *) */
     
@@ -160,7 +160,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     AxDim = gb_p->AxSize / sizeof(double);
     
     /* Set pinned memory pointers */
-    gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
+    gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid];
 
     /* Ax */
     h_Ax 				 = gpu_p->hostPtr[gpuid];
@@ -218,7 +218,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemset(d_Lx)");
 
     /* set pinned memory pointers */
-    gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
+    gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid];
 
     /* type (double *) */
 

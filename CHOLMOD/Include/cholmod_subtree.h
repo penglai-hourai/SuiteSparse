@@ -41,7 +41,7 @@
 #define CHOLMOD_POTRF_LIMIT  512  			/* required cols for POTRF & TRSM on GPU */
 #define CHOLMOD_ND_COL_LIMIT 32   			/* required descendnat cols */
 #define CHOLMOD_ND_ROW_LIMIT 256  			/* required descendant rows */
-#define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */ 
+#define CHOLMOD_GPU_SKIP     3  			/* # of host supernodes to perform before checking for free pinned buffers */ 
 
 
 

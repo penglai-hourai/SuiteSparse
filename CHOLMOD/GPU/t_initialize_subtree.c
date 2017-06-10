@@ -148,7 +148,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   nls            = Lpi[L->nsuper] - Lpi[0];
   size_A = (nls + A->ncol + A->nzmax + 2)*sizeof(Int) + A->nzmax*sizeof(double);
 
-  if(size_A >= Common->dev_mempool_size / Common->numGPU_parallel && gb_p->runType != 1) {
+  if(size_A >= Common->dev_mempool_size && gb_p->runType != 1) {
     gb_p->runType = 3;          				/* use only root */
   }
 
@@ -166,8 +166,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   binarySearch = (int)(BINARY_SEARCH);
 
   /* case if factor (subtree size) is larger than GPU memory available */
-  if(subtreeSize > (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8)) {
-    subtreeSize = (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8);
+  if(subtreeSize > (Int)(Common->dev_mempool_size / 8)) {
+    subtreeSize = (Int)(Common->dev_mempool_size / 8);
   }
 
 
@@ -180,7 +180,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
    *     2. factor fits GPU memory
    *     3. factor fits CPU (pinned) memory
    */
-  while(search <= binarySearch || gpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel || cpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel) {
+  while(search <= binarySearch || gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
 
 
     /* case binary search could not find small enough subtree to fit in GPU, use root only.. */
@@ -199,8 +199,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       subtree = 0;
 
       /* case if factor (subtree size) is larger than GPU memory available */
-      if(subtreeSize > (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8)) {
-        subtreeSize = (Int)(Common->dev_mempool_size / Common->numGPU_parallel / 8);
+      if(subtreeSize > (Int)(Common->dev_mempool_size / 8)) {
+        subtreeSize = (Int)(Common->dev_mempool_size / 8);
       }
 
     }
@@ -378,7 +378,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
     /* update size of subtree */
     /* case if exceed GPU or CPU memory, reduce subtree size */
-    if (gpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel || cpu_memtot > Common->dev_mempool_size / Common->numGPU_parallel) {
+    if (gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
       subtreeSize -= subtreeSizeDiff;
     }
     /* case if not exceed GPU nor CPU memory, increase subtree size */
@@ -395,7 +395,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      *    5. if root_only, subtree defaults to only root algorithm
      *    6. if CPU_only
      */
-    if(((gpu_memtot < Common->dev_mempool_size / Common->numGPU_parallel && cpu_memtot < Common->dev_mempool_size / Common->numGPU_parallel) &&
+    if(((gpu_memtot < Common->dev_mempool_size && cpu_memtot < Common->dev_mempool_size) &&
        (search >= binarySearch || !(subtreeSizeDiff) || subtreeSize >= L->xsize)) || (gb_p->runType == 1) || (gb_p->runType == 3))
          {
            break;
@@ -485,12 +485,12 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* get number of devices to use:
-   *   1. GPU only: Common->numGPU
-   *   2. hybrid:   Common->numGPU+1
+   *   1. GPU only: Common->numGPU_physical
+   *   2. hybrid:   Common->numGPU_physical+1
    */
   if(runType == 1)		numDevice = 1;				/* CPU only */
-  else if(runType == 2)		numDevice = Common->numGPU;		/* GPU only */
-  else				numDevice = Common->numGPU + 1;		/* GPU + CPU (hybrid) */
+  else if(runType == 2)		numDevice = Common->numGPU_physical;		/* GPU only */
+  else				numDevice = Common->numGPU_physical + 1;		/* GPU + CPU (hybrid) */
 
 
 
@@ -559,12 +559,12 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
     /* case CPU device (CPU only) */
     if(runType == 1)
     {
-      minDevice = Common->numGPU;                          	/* set CPU device */
+      minDevice = Common->numGPU_physical;                          	/* set CPU device */
     }
     /* case root (last subtree) */
     else if(subtreeReorder[i].id == numSubtree-1)
     {
-      minDevice = Common->numGPU + 1;				/* set root */
+      minDevice = Common->numGPU_physical + 1;				/* set root */
     }
     /* case GPU or CPU device (GPU only or hybrid) */
     else
@@ -583,7 +583,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
     flop = subtreeReorder[i].size;				/* floating-point operations in subtree */
     GPUtime = flop/GPUflops;					/* GPU runtime */
     CPUtime = flop/CPUflops;					/* CPU runtime */
-    if(minDevice == Common->numGPU) 	size = CPUtime;
+    if(minDevice == Common->numGPU_physical) 	size = CPUtime;
     else			      	size = GPUtime;
 
 
@@ -607,13 +607,13 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* issue less GPUs if not sufficient subtrees */
-  if(numSubtree-1 < Common->numGPU)
+  if(numSubtree-1 < Common->numGPU_physical)
   {
     gb_p->numGPU = numSubtree-1;
   }
   else
   {
-    gb_p->numGPU = Common->numGPU;
+    gb_p->numGPU = Common->numGPU_physical;
   }
 
 }
@@ -666,7 +666,7 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
       int gpuid = omp_get_thread_num();
 
       /* set GPU device */
-      cudaSetDevice(gpuid / Common->numGPU_parallel);
+      cudaSetDevice(gpuid);
 
       /* initialize GPU (set pointers, copy memory, etc.) */
       TEMPLATE2 (CHOLMOD (gpu_init))( Common,
@@ -731,11 +731,11 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 
 
   /* set size of Cbuff */
-  if(CSize < Common->numGPU*Common->devBuffSize)
-    CSize = (Common->numGPU+1)*Common->devBuffSize;
+  if(CSize < Common->numGPU_physical * Common->devBuffSize * Common->numGPU_parallel)
+    CSize = (Common->numGPU_physical+1) * Common->devBuffSize * Common->numGPU_parallel;
 
-  if(MapSize < (size_t)(Common->numGPU*L->n*sizeof(Int)))
-    MapSize = (size_t)(Common->numGPU*L->n*sizeof(Int));
+  if(MapSize < (size_t)(Common->numGPU_physical * L->n*sizeof(Int)))
+    MapSize = (size_t)(Common->numGPU_physical * L->n*sizeof(Int));
 
 
 
@@ -1525,7 +1525,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
         /* case if exceed GPU memory */
-        if(gpu_memtot >= Common->dev_mempool_size / Common->numGPU_parallel) {
+        if(gpu_memtot >= Common->dev_mempool_size) {
 
   	/* store previous values */
           if(gpu_memtot_prev) {
