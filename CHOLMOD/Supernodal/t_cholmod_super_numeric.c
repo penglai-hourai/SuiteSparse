@@ -342,7 +342,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-      gb_p->runType = 3;        /* set to root only */
 
 
 
