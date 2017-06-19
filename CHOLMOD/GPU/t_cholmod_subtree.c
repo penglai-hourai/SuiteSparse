@@ -701,6 +701,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* check if any addUpdate's left for batching */
   if( (nbatch - update_count) > 0 ) {
+      vgpuid = gpuid * Common->numGPU_parallel;
 
     /* mapping (to factor Lx) for descendants in a batch of supernodes */
     addUpdateOnDevice_batch( gpu_p->d_Lx[gpuid],
