@@ -287,10 +287,10 @@
 /* global GPU parameters*/
 #ifdef SUITESPARSE_CUDA
   #define CHOLMOD_MAX_NUM_PGPUS 16			/* max # GPUs */
-  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 16			/* max # GPUs */
-  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 6		/* # device buffers for root alg. */
-  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 6		/* # host buffers for root alg. */
-  #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */
+  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 64			/* max # GPUs */
+  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 5		/* # device buffers for root alg. */
+  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 5		/* # host buffers for root alg. */
+  #define CHOLMOD_DEVICE_STREAMS 2			/* # streams for cuBlas,cuSolver overlap */
 #else
   #define CHOLMOD_MAX_NUM_PGPUS 1			/* max # GPUs */
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */

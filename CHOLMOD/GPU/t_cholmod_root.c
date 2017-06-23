@@ -69,6 +69,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   cublasStatus_t cublasError;
   cudaError_t cudaErr;
 
+  void *base_root;
 
 #ifdef USE_NVTX
   nvtxRangeId_t range1 = nvtxRangeStartA("gpu_init_root");
@@ -84,7 +85,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* make buffer size is large enough */
-  if ( (nls+2*n+4)*sizeof(Int) > Common->devBuffSize ) {
+  if ( (nls+1)*sizeof(Int) > Common->devBuffSize ) {
     ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
            "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
            "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -103,23 +104,29 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   /* set gpu memory pointers */
 
   /* type double */
-  gpu_p->d_Lx_root[gpuid][0] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
-  gpu_p->d_Lx_root[gpuid][1] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + Common->devBuffSize;
-  gpu_p->d_C_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 2*Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][0] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 3*Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][1] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 4*Common->devBuffSize;
+  base_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+  gpu_p->d_Lx_root[gpuid][0] = base_root;
+  gpu_p->d_Lx_root[gpuid][1] = base_root + Common->devBuffSize;
+  gpu_p->d_C_root[gpuid]     = base_root + 2*Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][0]  = base_root + 3*Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][1]  = base_root + 4*Common->devBuffSize;
 
   /* type Int */
-  gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize;
-  gpu_p->d_Map_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
-  gpu_p->d_RelativeMap_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
+  gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+  //gpu_p->d_Map_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
+  //gpu_p->d_RelativeMap_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
+  gpu_p->d_Map_root[gpuid] = gpu_p->d_A_root[gpuid][1];
+  gpu_p->d_RelativeMap_root[gpuid] = gpu_p->d_Map_root[gpuid] + (n+1)*sizeof(Int);
 
 
 
 
   /* copy Ls and Lpi to device */
+  if (gpuid % Common->numGPU_parallel == 0)
+  {
   cudaErr = cudaMemcpy ( gpu_p->d_Ls_root[gpuid], L->s, nls*sizeof(Int), cudaMemcpyHostToDevice );
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls_root)");
+  }
 
 
 
@@ -428,7 +435,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
   iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-  iDevBuff = (Common->ibuffer[gpuid])%2;
+  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 
   /* initialize poitners */
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
@@ -678,7 +685,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* set host/device buffer coutners */
     *iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    *iDevBuff = (Common->ibuffer[gpuid])%2;
+    *iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 
 
     /* only if descendant is large enough for GPU */
@@ -723,7 +730,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     /* update buffer counters */
     Common->ibuffer[gpuid]++;
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    iDevBuff2 = (Common->ibuffer[gpuid])%2;
+    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 
 
     /* wait for all kernels to complete */
