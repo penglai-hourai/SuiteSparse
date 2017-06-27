@@ -181,14 +181,16 @@ int CHOLMOD(start)
       Common->cublasEventPotrf[k][0] = NULL ;
       Common->cublasEventPotrf[k][1] = NULL ;
       Common->cublasEventPotrf[k][2] = NULL ;
-      Common->updateCKernelsComplete[k] = NULL;
     }
 
 
     int gpuid;
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
+      Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
+      }
+      for(k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
         Common->updateCBuffersFree[gpuid][k] = NULL ;
       }
     }
