@@ -450,7 +450,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    * better H2D bandwidth.
    */
   /* copy host data to pinned buffer */
-#pragma omp parallel for num_threads(numThreads) if (ndcol > 32)
+#pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
   for ( icol=0; icol<ndcol; icol++ ) {
     for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
       gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow] =
@@ -702,7 +702,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
       /* copy update assembled on CPU to a pinned buffer */
 #pragma omp parallel for num_threads(numThreads)   \
-  private(iidx) if (nscol>32)
+  private(i, j, iidx) if (nscol>32)
 
       for ( j=0; j<nscol; j++ ) {
         for ( i=j; i<nsrow*L_ENTRY; i++ ) {
@@ -732,10 +732,27 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
     iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 
+#if 1
+    cudaErr = cudaGetLastError();
+    if (cudaErr) { 
+        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 0\n"); 
+      return ; 
+    }
+#endif
 
     /* wait for all kernels to complete */
     cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] );
+    //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff2], Common->updateCKernelsComplete[gpuid], 0 ) ;
 
+#if 1
+    cudaErr = cudaGetLastError();
+    if (cudaErr) { 
+        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 1\n"); 
+      return ; 
+    }
+#endif
 
     /* copy assembled Schur-complement updates computed on GPU */
     cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2], 
@@ -750,10 +767,26 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       return ; 
     }
 
+#if 1
+    cudaErr = cudaGetLastError();
+    if (cudaErr) { 
+        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 2\n"); 
+      return ; 
+    }
+#endif
 
     /* need both H2D and D2H copies to be complete */
     cudaDeviceSynchronize();
 
+#if 1
+    cudaErr = cudaGetLastError();
+    if (cudaErr) { 
+        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 3\n"); 
+      return ; 
+    }
+#endif
 
 
     /* only if descendant large enough for GPU */
@@ -762,6 +795,14 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       /* 
        * sum updates from cpu and device on device 
        */
+#if 1
+    cudaErr = cudaGetLastError();
+    if (cudaErr) { 
+        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 4\n"); 
+      return ; 
+    }
+#endif
 #ifdef REAL
       sumAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol );
 #else
@@ -777,7 +818,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
       /* place final assembled supernode in pinned buffer */
-      #pragma omp parallel for num_threads(numThreads) private(iidx) if (nscol>32)
+      #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
       for ( j=0; j<nscol; j++ ) {
         for ( i=j*L_ENTRY; i<nscol*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
@@ -792,7 +833,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     {
 
       /* assemble with CPU updates */
-      #pragma omp parallel for num_threads(numThreads) private(iidx) if (nscol>32)
+      #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
       for ( j=0; j<nscol; j++ ) {
         for ( i=j*L_ENTRY; i<nsrow*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
@@ -1352,7 +1393,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
       /* copy Lx from pinned to host memory */
-      #pragma omp parallel for num_threads(numThreads) private(iidx) if ( nscol2 > 32 )
+      #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if ( nscol2 > 32 )
       for ( j=0; j<nscol2; j++ ) {
         for ( i=gpu_row_start2*L_ENTRY; i<gpu_row_end*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
@@ -1368,7 +1409,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
   /* Convenient to copy the L1 block here */
-  #pragma omp parallel for num_threads(numThreads) private ( iidx ) if ( nscol2 > 32 )
+  #pragma omp parallel for num_threads(numThreads) private ( i, j, iidx ) if ( nscol2 > 32 )
   for ( j=0; j<nscol2; j++ ) {
     for ( i=j*L_ENTRY; i<nscol2*L_ENTRY; i++ ) {
       iidx = j*nsrow*L_ENTRY + i;
@@ -1395,7 +1436,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
          
  
       /* copy Lx from pinned to host memory */
-      #pragma omp parallel for num_threads(numThreads) private(iidx) if ( nscol2 > 32 )
+      #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if ( nscol2 > 32 )
       for ( j=0; j<nscol2; j++ ) {
         for ( i=gpu_row_start2*L_ENTRY; i<gpu_row_end*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
@@ -1458,7 +1499,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
     cudaDeviceSynchronize();
 
     /* copy Lx from pinned to host memory */
-    #pragma omp parallel for num_threads(numThreads) private(iidx,i,j) if (nscol>32)
+    #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
     for ( j=0; j<nscol; j++ ) {
       for ( i=j*L_ENTRY; i<nscol*L_ENTRY; i++ ) {
         iidx = j*nsrow*L_ENTRY+i;

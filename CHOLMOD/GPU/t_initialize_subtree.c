@@ -283,7 +283,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					     numSuper,
 					     subtree,
 					     &max_factor_size,
-                                             LpxSub);
+                         LpxSub);
 
 
       /* get current subtree size/info */
@@ -297,7 +297,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    numSuper,
 					    subtree,
 					    max_factor_size,
-                                            counts);
+                        counts);
 
 
     } /* end loop over subtrees */
@@ -742,7 +742,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 
   /* clear Lx factor (supernodes used for root alg.) */
   Int *lpx = L->px;
-  #pragma omp parallel for num_threads(numThreads) private(i)
+  #pragma omp parallel for num_threads(numThreads) private(i, s)
   for(i=supernode_subtree_ptrs[numSubtree-1]; i<supernode_subtree_ptrs[numSubtree]; i++) {
     s = supernode_subtree[i];
     double *ps = (double *)&cpu_p->Lx[lpx[s]];
@@ -1108,7 +1108,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
       if(supernode_size[s] <= subtreeSize && (runType != 3) && (runType != 1)) {
 
         /* case: if first supernode in subtree (root of subtree) */
-        if(!first) {
+        if(first == 0) {
           first = supernode_parent[s];                	/* store first supernode */
           supernode_subtree_ptrs[(gb_p->numSubtree)++] = j;  	/* set pointer to current subtree */
         }
@@ -1158,6 +1158,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
    */
 
   supernode_subtree_ptrs[(gb_p->numSubtree)++] = j;  	/* set poiner to last subtree */
+  printf ("start = %ld\n", supernode_subtree_ptrs[gb_p->numSubtree-1]);
 
   for(s=0; s < L->nsuper; s++) {                 		/* loop over supernodes */
     /* case if size of candidate subtree > cutoff subtree size */
@@ -1168,6 +1169,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
 
   /* set pointer for end of last subtree */
   supernode_subtree_ptrs[gb_p->numSubtree] = j;
+  printf ("end = %ld\n", supernode_subtree_ptrs[gb_p->numSubtree]);
 
 }
 
@@ -1223,10 +1225,10 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
    */
 
   /* case if root (last) subtree */
-  if(subtree == numSubtree-1 ) {
+  if(subtree == numSubtree-1) {
 
     /* loop over supernodes */
-#pragma omp parallel for num_threads(numThreads)
+#pragma omp parallel for num_threads(numThreads) private (i, j, k, s, child, num)
     for(i = 0; i < numSuper; i++) {
 
       /* get supernode id */
@@ -1251,8 +1253,8 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
       supernode_children_num[s] = num;  /* store # children supernode has in last subtree */
 
     } /* end supernode loop */
-  }
 
+  }
 }
 
 
@@ -1365,7 +1367,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
     /* pointer to levels in subtree */
     supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels] = count2;
-    nsupernodes = 0;
 
     /* loop over supernodes */
     for(i=0; i < numSuper; i++) {

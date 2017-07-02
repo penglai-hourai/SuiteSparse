@@ -84,7 +84,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
-
   /*
    * Set variables & pointers
    */
@@ -760,15 +759,15 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        */
       TIMER_START(tstart,3);      
       TEMPLATE2 (CHOLMOD(gpu_initialize_supernode_batch))( Common,
-							   gb_p,
- 							   gpu_p,
-                                                           n,
-                                                           maxnsrow,
-                                                           maxkdif,
-                                                           maxnz,
-                                                           strideSize,
-							   super_count,
-                                                           gpuid);
+              gb_p,
+              gpu_p,
+              n,
+              maxnsrow,
+              maxkdif,
+              maxnz,
+              strideSize,
+              super_count,
+              gpuid);
      TIMER_END(tstart,tend,3);     
 
 
@@ -791,22 +790,22 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
  						gpu_p,
 						cpu_p,
 						tree_p,
-						prof_p,
-                                                n,
-						subtree,
-						level,
-						desc_count,
-                                                syrk_count,
-                                                gemm_count,
-		   			        update_count,
-                                                gpuid,
-						1,
-						numSuper,
-						start,
-						end,
-						maxDim1,
-                                                LpxSub,
-                                                L->px);
+                        prof_p,
+                        n,
+                        subtree,
+                        level,
+                        desc_count,
+                        syrk_count,
+                        gemm_count,
+                        update_count,
+                        gpuid,
+                        1,
+                        numSuper,
+                        start,
+                        end,
+                        maxDim1,
+                        LpxSub,
+                        L->px);
 
       }
 
@@ -819,11 +818,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        */
       TEMPLATE2 (CHOLMOD(gpu_lower_potrf_batch))( Common,
 						  gb_p,
-						  gpu_p,
-						  prof_p,
-						  super_count,
-                                                  potrf_count,
-                                                  gpuid);  
+                          gpu_p,
+                          prof_p,
+                          super_count,
+                          potrf_count,
+                          gpuid);  
 
 
       /*
@@ -835,10 +834,10 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       TEMPLATE2 (CHOLMOD(gpu_triangular_solve_batch))( Common,
 						       gb_p,
 						       gpu_p,
-						       prof_p,
-						       super_count,
-                                                       trsm_count,
-                                                       gpuid);
+                               prof_p,
+                               super_count,
+                               trsm_count,
+                               gpuid);
 
 
 
@@ -851,7 +850,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
       TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))( Common,
 						gb_p,
-                                                gpu_p,
+                        gpu_p,
 						super_count,
 						(int)(maxnsrownscol),
 						gpuid);

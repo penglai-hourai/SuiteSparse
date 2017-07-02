@@ -121,7 +121,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   n	 		= L->n;
   numThreads		= Common->ompNumThreads;
   numThreads1		= (Common->ompNumThreads + Common->numGPU - 1)/Common->numGPU;
-  printf ("ompNumThreads = %d, numGPU = %ld, numThreads1 = %ld\n", Common->ompNumThreads, Common->numGPU, numThreads1);
   gpu_p->gpuid 		= 0;
   devBuffSize		= (size_t)(Common->devBuffSize/sizeof(double));
   repeat_supernode 	= FALSE;
@@ -184,6 +183,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
     end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
+    printf ("start = %ld, end = %ld, diff = %ld\n", start, end, end - start);
 
 	  Int *Next_local = (Int*) malloc ( (end+1)*sizeof(Int) );
 	  Int *Previous_local = (Int*) malloc ( (end+1)*sizeof(Int) );
@@ -193,7 +193,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     int event_len = end - start;
     int *event_nodes = (int *) malloc (event_len*sizeof(int));
     volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
-    int *node_complete = (int *) malloc (end*sizeof(int));
+    volatile int *node_complete = (int *) malloc (end*sizeof(int));
 
     for ( node=0; node<end; node++ ) {
       node_complete[node] = 1;

@@ -477,11 +477,12 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   struct cholmod_super_ptrs_t *h_super, *d_super;
   cublasStatus_t cublasStatus ;
   cudaError_t cudaStat;
+
+  int vgpuid;
   
   alpha  = -1.0 ;
   beta   = 0.0 ;
 
-  int vgpuid;
 
 
 
@@ -633,8 +634,8 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))( Common,
                                            gpu_p,
-					   cpu_p,
-					   tree_p,
+                                           cpu_p,
+                                           tree_p,
                                            subtree,
                                            level,
                                            gpuid,
@@ -1097,7 +1098,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   if(flag==1) {
 
     /* split various supernodes amongst omp threads */
-    #pragma omp parallel for num_threads(numThreads) schedule(static,1)
+    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2)
     for(i = 0; i < numSuper; i++) {
       s = tree_p->supernode_subtree[tree_p->supernode_subtree_ptrs[subtree] + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
