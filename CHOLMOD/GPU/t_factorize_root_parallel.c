@@ -122,7 +122,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   numThreads		= Common->ompNumThreads;
   numThreads1		= (Common->ompNumThreads + Common->numGPU - 1)/Common->numGPU;
   gpu_p->gpuid 		= 0;
-  devBuffSize		= (size_t)(Common->devBuffSize/sizeof(double));
+  devBuffSize		= ((size_t)(Common->devBuffSize))/sizeof(double);
   repeat_supernode 	= FALSE;
   Apacked               = cpu_p->Apacked;
   Fpacked               = cpu_p->Fpacked;
@@ -183,7 +183,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
     end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
-    printf ("start = %ld, end = %ld, diff = %ld\n", start, end, end - start);
 
 	  Int *Next_local = (Int*) malloc ( (end+1)*sizeof(Int) );
 	  Int *Previous_local = (Int*) malloc ( (end+1)*sizeof(Int) );

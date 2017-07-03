@@ -1158,7 +1158,6 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
    */
 
   supernode_subtree_ptrs[(gb_p->numSubtree)++] = j;  	/* set poiner to last subtree */
-  printf ("start = %ld\n", supernode_subtree_ptrs[gb_p->numSubtree-1]);
 
   for(s=0; s < L->nsuper; s++) {                 		/* loop over supernodes */
     /* case if size of candidate subtree > cutoff subtree size */
@@ -1169,7 +1168,6 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
 
   /* set pointer for end of last subtree */
   supernode_subtree_ptrs[gb_p->numSubtree] = j;
-  printf ("end = %ld\n", supernode_subtree_ptrs[gb_p->numSubtree]);
 
 }
 

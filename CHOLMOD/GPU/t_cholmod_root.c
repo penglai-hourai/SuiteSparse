@@ -115,8 +115,8 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   //gpu_p->d_Map_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
   //gpu_p->d_RelativeMap_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
-  gpu_p->d_Map_root[gpuid] = gpu_p->d_A_root[gpuid][1];
-  gpu_p->d_RelativeMap_root[gpuid] = gpu_p->d_Map_root[gpuid] + (n+1)*sizeof(Int);
+  gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1];
+  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + sizeof(Int) * (n + 1);
 
 
 
@@ -132,10 +132,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* set pinned memory pointers */
-  gpu_p->h_Lx_root[gpuid][0] = (double*)(Common->host_pinned_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize);
+  gpu_p->h_Lx_root[gpuid][0]
+      = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
+      + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
 
   for (k = 1; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
-    gpu_p->h_Lx_root[gpuid][k] = (double*)((char *)(Common->host_pinned_mempool[gpuid / Common->numGPU_parallel]) + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k*Common->devBuffSize);
+    gpu_p->h_Lx_root[gpuid][k]
+        = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
+        + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k * Common->devBuffSize;
   }
 
 
@@ -701,8 +705,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
       /* copy update assembled on CPU to a pinned buffer */
-#pragma omp parallel for num_threads(numThreads)   \
-  private(i, j, iidx) if (nscol>32)
+#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
 
       for ( j=0; j<nscol; j++ ) {
         for ( i=j; i<nsrow*L_ENTRY; i++ ) {
@@ -711,6 +714,9 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         }
       }
 
+
+    /* wait for all kernels to complete */
+    cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] );
 
       /* H2D transfer of update assembled on CPU */
       cudaMemcpyAsync ( gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][*iHostBuff],
@@ -732,27 +738,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
     iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 
-#if 1
-    cudaErr = cudaGetLastError();
-    if (cudaErr) { 
-        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 0\n"); 
-      return ; 
-    }
-#endif
 
-    /* wait for all kernels to complete */
-    cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] );
-    //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff2], Common->updateCKernelsComplete[gpuid], 0 ) ;
-
-#if 1
-    cudaErr = cudaGetLastError();
-    if (cudaErr) { 
-        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 1\n"); 
-      return ; 
-    }
-#endif
 
     /* copy assembled Schur-complement updates computed on GPU */
     cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2], 
@@ -767,26 +753,10 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       return ; 
     }
 
-#if 1
-    cudaErr = cudaGetLastError();
-    if (cudaErr) { 
-        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 2\n"); 
-      return ; 
-    }
-#endif
 
     /* need both H2D and D2H copies to be complete */
     cudaDeviceSynchronize();
 
-#if 1
-    cudaErr = cudaGetLastError();
-    if (cudaErr) { 
-        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 3\n"); 
-      return ; 
-    }
-#endif
 
 
     /* only if descendant large enough for GPU */
@@ -795,14 +765,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       /* 
        * sum updates from cpu and device on device 
        */
-#if 1
-    cudaErr = cudaGetLastError();
-    if (cudaErr) { 
-        printf ("error = %ld msg = %s\n", cudaErr, cudaGetErrorString(cudaErr));
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nerror checkpoint 4\n"); 
-      return ; 
-    }
-#endif
 #ifdef REAL
       sumAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol );
 #else

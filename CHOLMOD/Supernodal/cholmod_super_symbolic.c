@@ -490,7 +490,6 @@ int CHOLMOD(super_symbolic2)
         L->useGPU = Common->useGPU;
 
     }
-    printf ("numGPU_physical = %d, numGPU_parallel = %d, numGPU = %d\n", Common->numGPU_physical, Common->numGPU_parallel, Common->numGPU);
 
 
 
