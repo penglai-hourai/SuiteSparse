@@ -222,7 +222,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
 
       /* compute the descendant's rough flops 'score' */
       score = ndrow2 * ndcol;
-      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
+      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) || (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
         score += Common->devBuffSize;
       }
 
@@ -284,7 +284,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nreverse++;
 
       /* place descendant at the front of the list */
-      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
+      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) || (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
         Next[previousd] = Next[d];
         Next[d] = Head[locals];
         Head[locals] = d;
@@ -428,7 +428,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* early exit if descendant too small for cuBlas */
-  if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) || (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) ) 
+  if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) ) 
   {
     return (0) ;
   }

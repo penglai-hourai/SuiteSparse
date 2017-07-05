@@ -200,10 +200,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     }
 
     /* loop over supernodes */
-    for (level = 0; level < supernode_num_levels[subtree]; level++)
+    //for (level = 0; level < supernode_num_levels[subtree]; level++)
     {
-        start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];
-        end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];
+        //start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];
+        //end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];
+        start = start_global;
+        end = end_global;
 #pragma omp parallel for schedule(dynamic,1) ordered private ( gpuid ) num_threads(Common->numGPU)
     for(node = start; node < end; node++)
       {
@@ -530,8 +532,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *
 	     */
 	    if ( GPUavailable == 1) {
-	      if ( ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT &&
-		   ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT ) {
+	      if ( ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT || ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT ) {
 		if ( ! mapCreatedOnGpu ) {
 		  /* initialize supernode (create Map) */
 		  TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
