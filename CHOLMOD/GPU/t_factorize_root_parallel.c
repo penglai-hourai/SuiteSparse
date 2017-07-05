@@ -189,15 +189,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  Int *Lpos_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
 
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
-    int event_len = end_global - start_global;
     int *node_complete = (int *) malloc (end_global*sizeof(int));
 
     for ( node=0; node<end_global; node++ ) {
       node_complete[node] = 1;
     }
 
-    for ( node=0; node < event_len; node++ ) {
-      node_complete[supernode_levels[start_global+node]] = 0;
+    for ( node = start_global; node < end_global; node++ ) {
+      node_complete[supernode_levels[node]] = 0;
     }
 
     /* loop over supernodes */
