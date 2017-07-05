@@ -191,7 +191,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
     int event_len = end_global - start_global;
     int *event_nodes = (int *) malloc (event_len*sizeof(int));
-    int *event_complete = (int *) malloc (event_len*sizeof(int));
     int *node_complete = (int *) malloc (end_global*sizeof(int));
 
     for ( node=0; node<end_global; node++ ) {
@@ -200,7 +199,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     for ( node=0; node < event_len; node++ ) {
       event_nodes[node] = supernode_levels[start_global+node];
-      event_complete[node] = 0;
       node_complete[event_nodes[node]] = 0;
     }
 
@@ -259,14 +257,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	 * This is required since a supernode doesn't know it dependent list is complete until all previous
 	 * supernodes (really levels) are complete.
 	*/
-	{
-	  int inode;
-	  for ( inode=start; inode < node; inode++ ) {
-	    while ( event_complete[inode-start_global] != 1 ) {
-	      continue;
-	    }
-	  }
-	}
 
 
 //#pragma omp critical
@@ -319,16 +309,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	/* Mark the descendant parsing complete */
-    /*
-	{
-	  int inode;
-	  for ( inode=start_global; inode<end_global; inode++ ) {
-	    if ( s == event_nodes[inode-start_global] ) {
-	      event_complete[inode-start_global] = -1;
-	    }
-	  }
-	}
-    */
 
 
 	/* copy matrix into supernode s (lower triangular part only) */
@@ -1040,15 +1020,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  }
 
 	/* Mark the supernode complete */
-	{
-	  int inode;
-	  for ( inode=start; inode<end; inode++ ) {
-	    if ( s == event_nodes[inode-start_global] ) {
-	      event_complete[inode-start_global] = 1;
-	    }
-	  }
-	  node_complete[s] = 1;
-	}
+    node_complete[s] = 1;
 
       } /* end loop over supenodes */
     }
@@ -1058,7 +1030,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	free ( Lpos_local );
 
     free ( event_nodes );
-    free ( event_complete );
     free ( node_complete );
 
   } /* end loop over levels */
