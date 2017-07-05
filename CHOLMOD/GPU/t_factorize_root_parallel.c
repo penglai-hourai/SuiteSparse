@@ -103,7 +103,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   /* local variables */
   size_t devBuffSize;
   int gpuid, numThreads, numThreads1;
-  Int start, end, node, level, repeat_supernode, Apacked, Fpacked, stype, n;
+  Int start_global, end_global, start, end, node, level, repeat_supernode, Apacked, Fpacked, stype, n;
   Int *Ls, *Lpi, *Lpx, *Lpos, *Fp, *Fi, *Fnz, *Ap, *Ai, *Anz, *Super, *h_Map, *SuperMap, *Head, *Next, *Next_save, *Previous, *Lpos_save,
     *supernode_levels, *supernode_levels_ptrs, *supernode_levels_subtree_ptrs, *supernode_num_levels;
   double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
@@ -181,30 +181,34 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
    */
   {  
 
-    start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
-    end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
+    start_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
+    end_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
 
-	  Int *Next_local = (Int*) malloc ( (end+1)*sizeof(Int) );
-	  Int *Previous_local = (Int*) malloc ( (end+1)*sizeof(Int) );
-	  Int *Lpos_local = (Int*) malloc ( (end+1)*sizeof(Int) );
+	  Int *Next_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
+	  Int *Previous_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
+	  Int *Lpos_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
 
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
-    int event_len = end - start;
+    int event_len = end_global - start_global;
     int *event_nodes = (int *) malloc (event_len*sizeof(int));
     int *event_complete = (int *) malloc (event_len*sizeof(int));
-    int *node_complete = (int *) malloc (end*sizeof(int));
+    int *node_complete = (int *) malloc (end_global*sizeof(int));
 
-    for ( node=0; node<end; node++ ) {
+    for ( node=0; node<end_global; node++ ) {
       node_complete[node] = 1;
     }
 
     for ( node=0; node < event_len; node++ ) {
-      event_nodes[node] = supernode_levels[start+node];
+      event_nodes[node] = supernode_levels[start_global+node];
       event_complete[node] = 0;
       node_complete[event_nodes[node]] = 0;
     }
 
     /* loop over supernodes */
+    for (level = 0; level < supernode_num_levels[subtree]; level++)
+    {
+        start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];
+        end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];
 #pragma omp parallel for schedule(dynamic,1) ordered private ( gpuid ) num_threads(Common->numGPU)
     for(node = start; node < end; node++)
       {
@@ -257,8 +261,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	*/
 	{
 	  int inode;
-	  for ( inode=0; inode < node-start; inode++ ) {
-	    while ( event_complete[inode] != 2 ) {
+	  for ( inode=start; inode < node; inode++ ) {
+	    while ( event_complete[inode-start_global] != 1 ) {
 	      continue;
 	    }
 	  }
@@ -315,14 +319,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	/* Mark the descendant parsing complete */
+    /*
 	{
 	  int inode;
-	  for ( inode=0; inode<event_len; inode++ ) {
-	    if ( s == event_nodes[inode] ) {
-	      event_complete[inode] = 1;
+	  for ( inode=start_global; inode<end_global; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = -1;
 	    }
 	  }
 	}
+    */
 
 
 	/* copy matrix into supernode s (lower triangular part only) */
@@ -1036,15 +1042,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	/* Mark the supernode complete */
 	{
 	  int inode;
-	  for ( inode=0; inode<event_len; inode++ ) {
-	    if ( s == event_nodes[inode] ) {
-	      event_complete[inode] = 2;
+	  for ( inode=start; inode<end; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = 1;
 	    }
 	  }
 	  node_complete[s] = 1;
 	}
 
       } /* end loop over supenodes */
+    }
 
 	free ( Next_local );
 	free ( Previous_local );
