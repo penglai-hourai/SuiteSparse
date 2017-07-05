@@ -191,8 +191,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
     int event_len = end - start;
     int *event_nodes = (int *) malloc (event_len*sizeof(int));
-    volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
-    volatile int *node_complete = (int *) malloc (end*sizeof(int));
+    int *event_complete = (int *) malloc (event_len*sizeof(int));
+    int *node_complete = (int *) malloc (end*sizeof(int));
 
     for ( node=0; node<end; node++ ) {
       node_complete[node] = 1;
