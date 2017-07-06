@@ -221,6 +221,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	struct cholmod_syrk_t syrk[Common->ompNumThreads];
 	struct cholmod_gemm_t gemm[Common->ompNumThreads];
 
+    int maxnbatch, nbatch;
 
 	/* set device id, pointers */
 	gpuid  		= omp_get_thread_num();			/* get gpuid */
@@ -557,7 +558,15 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  3. perform addUpdate
 	     *
 	     */
-	    if ( GPUavailable!=1 || !TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, C1, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid) )
+        if ( GPUavailable == 1 )
+        {
+            TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, C1, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
+            supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
+            Common->ibuffer[gpuid]++;
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+            idescendant++;
+        }
+        else
 	      {
 
 
@@ -788,16 +797,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		nvtxRangeEnd(id2);
 
 
-	      }
-	    else
-	      {
-		supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
-		Common->ibuffer[gpuid]++;
-		Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
-
-		idescendant++;
-
-		
 	      }
 
 	  } /* end loop over descendants */

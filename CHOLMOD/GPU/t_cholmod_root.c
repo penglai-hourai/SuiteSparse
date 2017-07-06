@@ -428,10 +428,252 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* early exit if descendant too small for cuBlas */
+  /*
   if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) ) 
   {
     return (0) ;
   }
+  */
+
+
+
+  /* initialize variables */
+  ndrow3 = ndrow2 - ndrow1 ;
+  alpha  = 1.0 ;
+  beta   = 0.0 ;
+
+  iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+
+  /* initialize poitners */
+  devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
+  devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
+
+
+
+
+  /*
+   * Copy Lx to the device:
+   * First copy to pinned buffer, then to the device for
+   * better H2D bandwidth.
+   */
+  /* copy host data to pinned buffer */
+#pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
+  for ( icol=0; icol<ndcol; icol++ ) {
+    for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
+      gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow] =
+        Lx[pdx1*L_ENTRY+icol*ndrow*L_ENTRY + irow];
+    }
+  }
+
+
+
+  /* copy pinned buffer to device */
+  cudaErr = cudaMemcpyAsync ( devPtrLx,
+                              gpu_p->h_Lx_root[gpuid][iHostBuff],
+                              ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
+                              cudaMemcpyHostToDevice,
+                              Common->gpuStream[gpuid][iDevBuff] );
+
+  if ( cudaErr ) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
+    return (0);
+  }
+
+
+
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
+                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+
+
+
+  /* create relative map for the descendant */
+  createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
+                              (Int *)(gpu_p->d_Ls_root[gpuid]),
+                              (Int *)(gpu_p->d_RelativeMap_root[gpuid]),
+                               pdi1, 
+                               ndrow2,
+                               &(Common->gpuStream[gpuid][iDevBuff]) );
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) { 
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
+  }
+
+
+
+  /* set cuBlas stream  */
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
+  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
+    return(0);
+  }
+
+
+
+
+  /* 
+   * Perform DSYRK on GPU for current descendant
+   */
+
+  alpha  = 1.0 ;
+  beta   = 0.0 ;
+
+#ifdef REAL
+  cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
+                              CUBLAS_FILL_MODE_LOWER,
+                              CUBLAS_OP_N,
+                              (int) ndrow1,
+                              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
+                              &alpha,         				/* ALPHA:  1 */
+                              devPtrLx,
+                              ndrow2,         				/* A, LDA: L1, ndrow2 */
+                              &beta,          				/* BETA:   0 */
+                              devPtrC,
+                              ndrow2) ;       				/* C, LDC: C1 */
+#else
+  cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
+        		      CUBLAS_FILL_MODE_LOWER,
+  		              CUBLAS_OP_N,
+		              (int) ndrow1,
+	                      (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
+		              &alpha,         				/* ALPHA:  1 */
+		              (const cuDoubleComplex *) devPtrLx,
+		              ndrow2,         				/* A, LDA: L1, ndrow2 */
+		              &beta,          				/* BETA:   0 */
+		              (cuDoubleComplex *) devPtrC,
+		              ndrow2) ;       				/* C, LDC: C1 */
+#endif
+
+
+  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+    ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDsyrk error") ;
+    return(0);
+  }
+
+
+
+
+  /*
+   * Perform DSYRK on GPU for current descendant
+   */
+  if (ndrow3 > 0)
+  {
+
+#ifndef REAL
+    cuDoubleComplex calpha  = {1.0,0.0} ;
+    cuDoubleComplex cbeta   = {0.0,0.0} ;
+#endif
+
+#ifdef REAL
+    alpha  = 1.0 ;
+    beta   = 0.0 ;
+
+    cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
+                                CUBLAS_OP_N, CUBLAS_OP_T,
+                                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+                                &alpha,                         	/* ALPHA:  1 */
+                                devPtrLx + L_ENTRY*(ndrow1),    	/* A, LDA: L2*/
+                                ndrow2,                         	/* ndrow */
+                                devPtrLx,                       	/* B, LDB: L1 */
+                                ndrow2,                         	/* ndrow */
+                                &beta,                          	/* BETA:   0 */
+                                devPtrC + L_ENTRY*ndrow1,       	/* C, LDC: C2 */
+                                ndrow2) ;
+#else
+    cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
+    	 		        CUBLAS_OP_N, CUBLAS_OP_C,
+		                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+		                &calpha,                        	/* ALPHA:  1 */
+		                (const cuDoubleComplex*) devPtrLx + ndrow1,
+		                ndrow2,                         	/* ndrow */
+		                (const cuDoubleComplex *) devPtrLx,
+		                ndrow2,                         	/* ndrow */
+		                &cbeta,                         	/* BETA:   0 */
+		                (cuDoubleComplex *)devPtrC + ndrow1,
+		                ndrow2) ;
+#endif
+
+
+
+    if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
+      return(0);
+    }
+
+  }
+
+
+
+
+  /*
+   * Assemble the update C on the devicet
+   */
+#ifdef REAL
+  addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
+		      devPtrC,
+                      gpu_p->d_RelativeMap_root[gpuid], 
+		      ndrow1, 
+		      ndrow2, 
+		      nsrow,
+                      &(Common->gpuStream[gpuid][iDevBuff]) );
+#else
+  addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
+			     devPtrC,
+        		     gpu_p->d_RelativeMap_root[gpuid], 
+			     ndrow1, 
+			     ndrow2, 
+			     nsrow,
+        		     &(Common->gpuStream[gpuid][iDevBuff]) );
+#endif
+
+
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) { 
+    ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n"); 
+    return (0) ; 
+  }
+
+
+
+  /* record event indicating that kernels for descendant are complete */
+  cudaEventRecord ( Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
+  cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff]);
+
+
+
+  return (1) ;
+}
+
+int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
+  (
+   int nbatch,
+   cholmod_common *Common,
+   cholmod_gpu_pointers *gpu_p,
+   double *Lx,
+   double *C,
+   Int ndrow1,         
+   Int ndrow2,
+   Int ndrow,          
+   Int ndcol,          
+   Int nsrow,
+   Int pdx1,           
+   Int pdi1,
+   int gpuid
+   )
+{
+  /* local variables */
+  int icol, irow, iHostBuff, iDevBuff, numThreads;
+  Int ndrow3;
+  double alpha, beta; 
+  double *devPtrLx, *devPtrC;
+  cublasStatus_t cublasStatus;
+  cudaError_t cudaErr;
+
+
+  numThreads = Common->ompNumThreads;
 
 
 
