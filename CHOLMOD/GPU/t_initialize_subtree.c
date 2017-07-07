@@ -646,13 +646,13 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
   )
 {
 #ifdef SUITESPARSE_CUDA
-   int i, runType, numGPU;
+   int i, runType, numGPU_physical;
    Int s;
 
 
   /* set variables */
-  runType	= gb_p->runType;
-  numGPU	= gb_p->numGPU;
+  runType           = gb_p->runType;
+  numGPU_physical   = gb_p->numGPU;
 
 
 
@@ -660,7 +660,7 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
   /* initialize GPU (set pointers, copy memory, etc.)
    * only if there are GPU subtrees  */
   if(runType != 1 && runType != 3) {
-    #pragma omp parallel num_threads(numGPU)
+    #pragma omp parallel num_threads(numGPU_physical)
     {
       /* get GPU id (omp thread id) */
       int gpuid = omp_get_thread_num();
