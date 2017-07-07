@@ -10,7 +10,7 @@
  * http://www.suitesparse.com
  * -------------------------------------------------------------------------- */
 
-/* 
+/*
  * File:
  *   t_factorize_root
  *
@@ -29,6 +29,7 @@
 #endif
 #include "nvToolsExt.h"
 
+#define MAXNBATCHCOUNT 1
 
 /* undef macros */
 #undef L_ENTRY
@@ -110,9 +111,28 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
   cudaError_t cuErr;
 
+  const size_t batchsize = sizeof (double) * L_ENTRY * CHOLMOD_ND_ROW_LIMIT * CHOLMOD_ND_ROW_LIMIT;
+  const Int minmaxnbatch = Common->devBuffSize / batchsize;
 
+  Int *           d_list [CHOLMOD_MAX_NUM_GPUS];
+  Int *ndrow1_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int *ndrow2_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int * ndrow_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int * ndcol_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int * nsrow_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int *  pdx1_array_list [CHOLMOD_MAX_NUM_GPUS];
+  Int *  pdi1_array_list [CHOLMOD_MAX_NUM_GPUS];
 
-
+  for(gpuid = 0; gpuid < Common->numGPU; gpuid++) {
+                 d_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+      ndrow1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+      ndrow2_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+       ndrow_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+       ndcol_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+       nsrow_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+        pdx1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+        pdi1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
+  }
 
   /*
    * Set variables & pointers
@@ -170,16 +190,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
   gpuid = gpu_p->gpuid;
 
- 
-  /* 
-   *  loop over levels in subtree 
+
+  /*
+   *  loop over levels in subtree
    *  Previously this looped over levels, synchronizing between levels.
    *  Now this loops over all supernodes, ordered by levels, but with no synchronization
-   *  between levels.  Instead, supernodes from different levels can proceed in parallel,
+   *  between levels. Instead, supernodes from different levels can proceed in parallel,
    *  with appropriate flags and spin-waits to ensure descendant supernodes are complete.
    *  This provided a major performance increase when using multiple GPUs.
    */
-  {  
+  {
 
     start_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
     end_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
@@ -190,12 +210,17 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
     int *node_complete = (int *) malloc (end_global*sizeof(int));
+    int event_len = end_global - start_global;
+    int *event_nodes = (int *) malloc (event_len*sizeof(int));
+    volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
 
     for ( node=0; node<end_global; node++ ) {
       node_complete[node] = 1;
     }
 
     for ( node = start_global; node < end_global; node++ ) {
+      event_nodes[node-start_global] = supernode_levels[node];
+      event_complete[node-start_global] = 0;
       node_complete[supernode_levels[node]] = 0;
     }
 
@@ -221,12 +246,13 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	struct cholmod_syrk_t syrk[Common->ompNumThreads];
 	struct cholmod_gemm_t gemm[Common->ompNumThreads];
 
-    int maxnbatch, nbatch;
-
 	/* set device id, pointers */
 	gpuid  		= omp_get_thread_num();			/* get gpuid */
 	Int *Map  	= &h_Map[gpuid*n];			/* set map */
-	double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */     
+	double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
+
+    Int nbatch, d_idx, d_itr;
+
 	cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
 
@@ -244,35 +270,42 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 
-  
+
 	/* construct the scattered Map for supernode s */
 #pragma omp parallel for num_threads(numThreads) if ( nsrow > 128 )
 	for (k = 0 ; k < nsrow ; k++) {
 	  Map [Ls [psi + k]] = k ;
 	}
-  
 
-	/* 
+
+	/*
 	 * Synchronization - stop threads here until _previous_ supernodes have had their descendants processed.
 	 * This is required since a supernode doesn't know it dependent list is complete until all previous
 	 * supernodes (really levels) are complete.
 	*/
+	{
+	  int inode;
+	  for ( inode=start_global; inode < node; inode++ ) {
+	    while ( event_complete[inode-start_global] != 1 ) {
+	      continue;
+	    }
+	  }
+	}
 
 
 //#pragma omp critical
 	{
 	  /* reorder descendants in supernode by descreasing size */
-	  TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, Lpi, Lpos, Super, Head, &tail, Next, Previous,
-							     &ndescendants, &mapCreatedOnGpu, s, gpuid );
-	
+	  TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
+
 	  for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
 	    Next_local[d] = Next[d];
 	    Previous_local[d] = Previous[d];
 	    Lpos_local[d] = Lpos[d];
 	  }
-	  
+
 	  for ( d = Head[s]; d != EMPTY; d = Next_local[d] ) {
-	    
+
 	    p = Lpos [d] ;          	 	/* offset of 1st row of d affecting s */
 	    pdi = Lpi [d] ;         		/* pointer to first row of d in Ls */
 	    pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
@@ -289,10 +322,10 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	      Head [dancestor] = d ;
           }
 	    }
-	  
+
 	  }
 
-	  /* prepare next supernode */  
+	  /* prepare next supernode */
 	  /* Lpos [s] is offset of first row of s affecting its parent */
 	  if ( nsrow - nscol > 0 ) {
 	    Lpos [s] = nscol ;
@@ -309,25 +342,33 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	/* Mark the descendant parsing complete */
+	{
+	  int inode;
+	  for ( inode=start_global; inode<end_global; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = -1;
+	    }
+	  }
+	}
 
 
 	/* copy matrix into supernode s (lower triangular part only) */
 #pragma omp parallel for private ( p, pend, pfend, pf, i, j, imap, q ) num_threads(numThreads) if ( k2-k1 > 64 )
-	for (k = k1 ; k < k2 ; k++) 
+	for (k = k1 ; k < k2 ; k++)
 	  {
 	    /* copy the kth column of A into the supernode */
-	    if (stype != 0) 
+	    if (stype != 0)
 	      {
 		p = Ap [k] ;
 		pend = (Apacked) ? (Ap [k+1]) : (p + Anz [k]) ;
 
-		for ( ; p < pend ; p++) 
+		for ( ; p < pend ; p++)
 		  {
 		    i = Ai [p] ;
-		    if (i >= k) 
+		    if (i >= k)
 		      {
 			imap = Map [i] ;					/* row i of L is located in row Map [i] of s */
-			if (imap >= 0 && imap < nsrow) 
+			if (imap >= 0 && imap < nsrow)
 			  {
 			    L_ASSIGN (Lx,(imap+(psx+(k-k1)*nsrow)), Ax,Az,p) ;	/* Lx [Map [i] + pk] = Ax [p] ; */
 			  }
@@ -335,18 +376,18 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  }
 	      }
 	    /* copy the kth column of A*F into the supernode */
-	    else				
+	    else
 	      {
 		double fjk[2];
 		pf = Fp [k] ;
 		pfend = (Fpacked) ? (Fp [k+1]) : (p + Fnz [k]) ;
-		for ( ; pf < pfend ; pf++) 
+		for ( ; pf < pfend ; pf++)
 		  {
 		    j = Fi [pf] ;
 		    L_ASSIGN (fjk,0, Fx,Fz,pf) ;				/* fjk = Fx [pf] ; */
 		    p = Ap [j] ;
 		    pend = (Apacked) ? (Ap [j+1]) : (p + Anz [j]) ;
-		    for ( ; p < pend ; p++) 
+		    for ( ; p < pend ; p++)
 		      {
 			i = Ai [p] ;
 			if (i >= k)
@@ -361,7 +402,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  }
 	      }
 	  }
-  
+
 
 	/* add beta (only real part) to the diagonal of the supernode, if nonzero */
 	if (beta [0] != 0.0)
@@ -420,11 +461,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	/* loop over descendants d of supernode s */
 	while( (idescendant < ndescendants) )
 	  {
-  
+
 	    iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
 	    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1*4 ) ) {
-	      nthreads = 1; 
+	      nthreads = 1;
 
 #ifdef MKLROOT
 	      mkl_set_num_threads_local(numThreads1);
@@ -436,8 +477,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    }
 
 
-	    /* get next descendant */  
-	    if ( idescendant > 0 )  {
+	    /* get next descendant */
+	    if ( idescendant > 0 ) {
 
 	      if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*4)) {
 		d = dsmall;
@@ -448,29 +489,24 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	      else {
 
 		cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
-		
-		if ( cuErr == cudaSuccess && 
-		     ( node_complete[dlarge] || (ndescendants-idescendant<=2) ||
-		    
-		       ( ((ndescendants-idescendant)>2 ) && 
-			 node_complete[Next_local[dlarge]] )
-		       ) 
-		     ) {
-		  
-		  if ( !node_complete[dlarge] && (ndescendants-idescendant) > 2 && node_complete[Next_local[dlarge]] ) {
-		    
+
+		if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
+        {
+
+		  if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
+
 		    Int Lpos_local_0 = Lpos_local[dlarge];
 		    Int Lpos_local_1 = Lpos_local[Next_local[dlarge]];
 		    Int dlarge_old = dlarge;
-		    
+
 		    dlarge = Next_local[dlarge];
-		    Next_local[dlarge_old] = Next_local[dlarge]; 
+		    Next_local[dlarge_old] = Next_local[dlarge];
 		    Next_local[dlarge] = dlarge_old;
 		    Previous_local[dlarge_old] = dlarge;
 		    Previous_local[Next_local[dlarge_old]] = dlarge_old;
-		    
+
 		  }
-		    
+
 
 		  d = dlarge;
 
@@ -482,14 +518,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  while ( ! node_complete[d] ) {
 		    continue;
 		  }
-		  
+
 		}
 		else {
 		  d = dsmall;
 		  dsmall = Previous_local[dsmall];
 		  GPUavailable = 0;
 		  skips = skip_max;
-		} 
+		}
 	      }
 	    }
 
@@ -499,7 +535,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	      continue;
 	    }
 
-    
+
 	    /* get the size of supernode d */
 	    kd1 = Super [d] ;      		/* d contains cols kd1 to kd2-1 of L */
 	    kd2 = Super [d+1] ;
@@ -508,21 +544,21 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    pdx = Lpx [d] ;         	 	/* pointer to first row of d in Lx */
 	    pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
 	    ndrow = pdend - pdi ;   	 	/* # rows in all of d */
-  
+
 	    /* find the range of rows of d that affect rows k1 to k2-1 of s */
 	    p = Lpos_local [d] ;          	/* offset of 1st row of d affecting s */
 	    pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
 	    pdx1 = pdx + p ;        	 	/* ptr to 1st row of d affecting s in Lx */
-  
+
 	    for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
 	    ndrow1 = pdi2 - pdi1 ;      	/* # rows in first part of d */
 	    ndrow2 = pdend - pdi1 ;     	/* # rows in remaining d */
-  
+
 	    /* construct the update matrix C for this supernode d */
 	    ndrow3 = ndrow2 - ndrow1 ;  	 	/* number of rows of C2 */
-  
 
-         
+
+
 	    /*
 	     *  Initialize Supernode
 	     *
@@ -576,17 +612,17 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		int gemm_count = 0;
 		Int counter = 0;
 
-		
+
 
 		nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
 		/* loop over descendants */
-		for(tid = 0; tid < nthreads; tid++) 
+		for(tid = 0; tid < nthreads; tid++)
 		  {
 
 		    /* ensure there are remaining descendants to assemble */
 		    if(idescendant >= ndescendants ) continue;
-		    
+
 		    if(tid > 0) {
 		      d = dsmall;
 		      dsmall = Previous_local[dsmall];
@@ -594,31 +630,31 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 		    /* make sure d is complete */
 		    if ( ! node_complete[d] ) continue;
-          
-		    idescendant++;                   
+
+		    idescendant++;
 
 		    /* get descendant dimensions */
-		    kd1 = Super [d] ;                       
+		    kd1 = Super [d] ;
 		    kd2 = Super [d+1] ;
-		    ndcol = kd2 - kd1 ;                     
-		    pdi = Lpi [d] ;                         
-		    pdx = Lpx [d] ;                         
-		    pdend = Lpi [d+1] ;                     
-		    ndrow = pdend - pdi ;                   
-		    
-		    p = Lpos_local [d] ;                          
-		    pdi1 = pdi + p ;                        
-		    pdx1 = pdx + p ;                        
-		    
+		    ndcol = kd2 - kd1 ;
+		    pdi = Lpi [d] ;
+		    pdx = Lpx [d] ;
+		    pdend = Lpi [d+1] ;
+		    ndrow = pdend - pdi ;
+
+		    p = Lpos_local [d] ;
+		    pdi1 = pdi + p ;
+		    pdx1 = pdx + p ;
+
 		    for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
-		    ndrow1 = pdi2 - pdi1 ;                  
-		    ndrow2 = pdend - pdi1 ;                 
-		    ndrow3 = ndrow2 - ndrow1 ;              
+		    ndrow1 = pdi2 - pdi1 ;
+		    ndrow2 = pdend - pdi1 ;
+		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
 		    if ( counter + ndrow1*ndrow2 > Common->devBuffSize ) continue;
 
-		    
+
 		    Int m   = ndrow2-ndrow1;
 		    Int n   = ndrow1;
 		    Int k   = ndcol;
@@ -654,10 +690,10 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    gemm[gemm_count].B     = (double *)(Lx + L_ENTRY*pdx1);
 		    gemm[gemm_count].C     = (double *)(&C1[counter] + L_ENTRY*n);
 		    gemm_count++;
-		    
+
 		    /* increment pointer to C buff */
 		    counter += n*ldc;
-		    
+
 		  } /* end loop over parallel descendants (threads) */
 
 
@@ -669,11 +705,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		 *   Perform dsyrk on batch of descendants
 		 *
 		 */
-		/* loop over syrk's */           
+		/* loop over syrk's */
 #pragma omp parallel for num_threads(nthreads)
-		for(i = 0; i < syrk_count; i++) 
-		  {  
-		    
+		for(i = 0; i < syrk_count; i++)
+		  {
+
 		    /* get syrk dimensions */
 		    Int n   = syrk[i].n;
 		    Int k   = syrk[i].k;
@@ -689,18 +725,18 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 #ifdef REAL
 		    BLAS_dsyrk ("L", "N",
-				n, k,              		
-				one,                        		
-				A, lda,   		
-				zero,                       		
-				C, ldc) ;                		
+				n, k,
+				one,
+				A, lda,
+				zero,
+				C, ldc) ;
 #else
 		    BLAS_zherk ("L", "N",
-				ndrow1, ndcol,              
-				one,                        
-				A, ndrow,   
-				zero,                       
-				C, ndrow2) ;                
+				ndrow1, ndcol,
+				one,
+				A, ndrow,
+				zero,
+				C, ndrow2) ;
 #endif
 		  } /* end loop over syrk's */
 
@@ -738,19 +774,19 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		      {
 #ifdef REAL
 			BLAS_dgemm ("N","T",
-				    m, n, k,          	
-				    one,                            	
-				    A, lda,                          	
-				    B, ldb,                          	
-				    zero,                           	
+				    m, n, k,
+				    one,
+				    A, lda,
+				    B, ldb,
+				    zero,
 				    C, ldc) ;
 #else
 			BLAS_zgemm ("N", "C",
-				    m, n, k,          
-				    one,                            
-				    A, lda,                          
+				    m, n, k,
+				    one,
+				    A, lda,
 				    B, ldb,
-				    zero,                           
+				    zero,
 				    C, ldc) ;
 #endif
 
@@ -783,13 +819,13 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 #pragma omp parallel for private ( j, ii, px, q ) num_threads(numThreads1) if (ndrow1 > 64 )
-		    for (j = 0 ; j < ndrow1 ; j++)              	
+		    for (j = 0 ; j < ndrow1 ; j++)
 		      {
 			px = psx + Map [Ls [pdi1 + j]]*nsrow ;
-			for (ii = j ; ii < ndrow2 ; ii++)          	
+			for (ii = j ; ii < ndrow2 ; ii++)
 			  {
 			    q = px + Map [Ls [pdi1 + ii]] ;
-			    L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;		
+			    L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
 			  }
 		      }
 		  } /* end loop over descendants */
@@ -805,7 +841,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 
-       
+
 	/*
 	 *  Final Supernode Assembly
 	 *
@@ -815,7 +851,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
 	iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
 	TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, &iHostBuff, &iDevBuff, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
-     
+
 
 
 
@@ -836,7 +872,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    LAPACK_dpotrf ("L",
 			   nscol2,                    	/* N: nscol2 */
 			   Lx + L_ENTRY*psx, nsrow,    	/* A, LDA: S1, nsrow */
-			   info) ;                    	/* INFO */    
+			   info) ;                    	/* INFO */
 #else
 	    LAPACK_zpotrf ("L",
 			   nscol2,                     /* N: nscol2 */
@@ -855,10 +891,10 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  {
 	    /* the leading part has been refactorized; it must have succeeded */
 	    info = 0 ;
-  
+
 	    /* zero out the rest of this supernode */
 	    p = psx + nsrow * nscol3 ;
-	    pend = psx + nsrow * nscol ;            
+	    pend = psx + nsrow * nscol ;
 	    for ( ; p < pend ; p++)
 	      {
 		L_CLEAR (Lx,p) ;				/* Lx [p] = 0 ; */
@@ -868,7 +904,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 
-	/* info is set to one in LAPACK_*potrf if blas_ok is FALSE.  It is
+	/* info is set to one in LAPACK_*potrf if blas_ok is FALSE. It is
 	 * set to zero in dpotrf/zpotrf if the factorization was successful. */
 	if (CHECK_BLAS_INT && !Common->blas_ok)
 	  {
@@ -882,8 +918,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	if (info != 0)
 	  {
 
-	    /* Matrix is not positive definite.  dpotrf/zpotrf do NOT report an
-	     * error if the diagonal of L has NaN's, only if it has a zero. 
+	    /* Matrix is not positive definite. dpotrf/zpotrf do NOT report an
+	     * error if the diagonal of L has NaN's, only if it has a zero.
 	     */
 	    if (Common->status == CHOLMOD_OK)
 	      {
@@ -892,7 +928,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	    /* L->minor is the column of L that contains a zero or negative
-	     * diagonal term. 
+	     * diagonal term.
 	     */
 	    L->minor = k1 + info - 1 ;
 
@@ -915,10 +951,10 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	    /* If L is indefinite, it still contains useful information.
 	     * Supernodes 0 to s-1 are valid, similar to MATLAB [R,p]=chol(A),
-	     * where the 1-based p is identical to the 0-based L->minor.  Since
+	     * where the 1-based p is identical to the 0-based L->minor. Since
 	     * L->minor is in the current supernode s, it and any columns to the
-	     * left of it in supernode s are also all zero.  This differs from
-	     * [R,p]=chol(A), which contains nonzero rows 1 to p-1.  Fix this
+	     * left of it in supernode s are also all zero. This differs from
+	     * [R,p]=chol(A), which contains nonzero rows 1 to p-1. Fix this
 	     * by setting repeat_supernode to TRUE, and repeating supernode s.
 	     *
 	     * If Common->quick_return_if_not_posdef is true, then the entire
@@ -928,7 +964,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	      {
 		/* If the first column of supernode s contains a zero or
 		 * negative diagonal entry, then it is already properly set to
-		 * zero.  Also, info will be 1 if integer overflow occured in
+		 * zero. Also, info will be 1 if integer overflow occured in
 		 * the BLAS. */
 		Head [s] = EMPTY ;
 
@@ -947,7 +983,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		nscol3 = info - 1 ;
 		continue ;
 	      }
-    
+
 	  } /* end if info */
 
 
@@ -958,18 +994,18 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	 *
 	 *  Compute the subdiagonal block in the following steps:
 	 *  1. perform dtrsm
-	 *  2. copy result back into factor Lx 
+	 *  2. copy result back into factor Lx
 	 *  3. prepare next supernode
 	 *
 	 */
 	nsrow2 = nsrow - nscol2 ;
 	if (nsrow2 > 0)
-	  { 
-	    /* The current supernode is columns k1 to k2-1 of L.  Let L1 be the
+	  {
+	    /* The current supernode is columns k1 to k2-1 of L. Let L1 be the
 	     * diagonal block (factorized by dpotrf/zpotrf above; rows/cols
-	     * k1:k2-1), and L2 be rows k2:n-1 and columns k1:k2-1 of L.  The
+	     * k1:k2-1), and L2 be rows k2:n-1 and columns k1:k2-1 of L. The
 	     * triangular system to solve is L2*L1' = S2, where S2 is
-	     * overwritten with L2.  More precisely, L2 = S2 / L1' in MATLAB
+	     * overwritten with L2. More precisely, L2 = S2 / L1' in MATLAB
 	     * notation.
 	     */
 	    if ( !(supernodeUsedGPU) || !TEMPLATE2 (CHOLMOD(gpu_triangular_solve_root)) (Common, gpu_p, Lx, nsrow2, nscol2, nsrow, psx ,gpuid) )
@@ -990,7 +1026,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 			    nsrow) ;
 #endif
 
-    
+
 	      }
 
 
@@ -1006,7 +1042,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    TEMPLATE2 ( CHOLMOD (gpu_copy_supernode_root) )( Common, gpu_p, Lx, psx, nscol, nscol2, nsrow, supernodeUsedGPU, iHostBuff, gpuid);
 	  }
 
-	Head [s] = EMPTY ;  /* link list for supernode s no longer needed */
+	Head [s] = EMPTY ; /* link list for supernode s no longer needed */
 
 
 	if (repeat_supernode)
@@ -1017,6 +1053,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  }
 
 	/* Mark the supernode complete */
+	{
+	  int inode;
+	  for ( inode=start_global; inode<end_global; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = 1;
+	    }
+	  }
+	}
     node_complete[s] = 1;
 
       } /* end loop over supenodes */
@@ -1028,7 +1072,20 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     free ( node_complete );
 
+    free ( event_nodes );
+    free ( event_complete );
   } /* end loop over levels */
+
+  for(gpuid = 0; gpuid < Common->numGPU; gpuid++) {
+      free (           d_list [gpuid]);
+      free (ndrow1_array_list [gpuid]);
+      free (ndrow2_array_list [gpuid]);
+      free ( ndrow_array_list [gpuid]);
+      free ( ndcol_array_list [gpuid]);
+      free ( nsrow_array_list [gpuid]);
+      free (  pdx1_array_list [gpuid]);
+      free (  pdi1_array_list [gpuid]);
+  }
 
 #endif
 

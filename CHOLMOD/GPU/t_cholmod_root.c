@@ -107,16 +107,16 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   base_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
       gpu_p->d_Lx_root[gpuid][k] = base_root + k * Common->devBuffSize;
-  gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_STREAMS + 0) * Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_STREAMS + 1) * Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_STREAMS + 2) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_STREAMS + 0) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_STREAMS + 1) * Common->devBuffSize;
+  gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_STREAMS + 2) * Common->devBuffSize;
 
   /* type Int */
   gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   //gpu_p->d_Map_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
   //gpu_p->d_RelativeMap_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
   gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1];
-  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + sizeof(Int) * (n + 1);
+  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + Common->devBuffSize / 2;
 
 
 
