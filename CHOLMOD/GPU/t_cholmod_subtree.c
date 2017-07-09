@@ -363,11 +363,11 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
   /* create map for batch of supernodes */
   createMapOnDevice_batch ( gpu_p->d_Map[gpuid],
-                	    gpu_p->d_Ls[gpuid],
+                	        gpu_p->d_Ls[gpuid],
                       	    d_super->psi,
                        	    d_super->nsrow,
                       	    maxsnsrow,
-			    n,
+                            n,
                       	    nbatch,
                       	    &(Common->gpuStream[gpuid * Common->numGPU_parallel][0]));
 
@@ -386,13 +386,13 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
                         gpu_p->d_Ai[gpuid],
                         gpu_p->d_Map[gpuid],
                         d_super->nsrow,
-		        d_super->psx,
-		        d_super->k1,
-		        d_super->k2,
+                        d_super->psx,
+                        d_super->k1,
+                        d_super->k2,
                         nzmax,
                         maxkdif,
                         n,
-		        nbatch,
+                        nbatch,
                         &(Common->gpuStream[gpuid * Common->numGPU_parallel][0]));
 
   if (cudaGetLastError()!=cudaSuccess) {
@@ -696,7 +696,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                              h_desc->ndrow2[i],
                              h_super->psx[h_desc->s[i]],
                              h_super->nsrow[h_desc->s[i]],
-		             (int)((n+1)*h_desc->s[i]),
+                             (int)((n+1)*h_desc->s[i]),
                              &(Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]));
   }
 

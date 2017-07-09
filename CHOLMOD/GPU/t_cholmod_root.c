@@ -106,7 +106,11 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   /* type double */
   base_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
+  {
       gpu_p->d_Lx_root[gpuid][k] = base_root + k * Common->devBuffSize;
+      printf ("init d_Lx_root[%d][%d] = %lx, dev_mempool[%ld] = %lx, devBuffSize = %lx\n",
+              gpuid, k, gpu_p->d_Lx_root[gpuid][k], gpuid / Common->numGPU_parallel, Common->dev_mempool[gpuid / Common->numGPU_parallel], Common->devBuffSize);
+  }
   gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_STREAMS + 0) * Common->devBuffSize;
   gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_STREAMS + 1) * Common->devBuffSize;
   gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_STREAMS + 2) * Common->devBuffSize;
@@ -116,7 +120,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   //gpu_p->d_Map_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
   //gpu_p->d_RelativeMap_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
   gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1];
-  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + Common->devBuffSize / 2;
+  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + sizeof(Int) * n;
 
 
 
@@ -138,10 +142,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
       + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
   */
 
-  for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
+  for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS*2; k++) {
     gpu_p->h_Lx_root[gpuid][k]
         = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
-        + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k * Common->devBuffSize;
+        + (gpuid % Common->numGPU_parallel * (CHOLMOD_HOST_SUPERNODE_BUFFERS*2)) * Common->devBuffSize + k * Common->devBuffSize;
   }
 
 
@@ -168,7 +172,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
  *   gpu_reorder_descendants_root
  *
  * Description:
- *   Reorders descendants in a supernode by size (ndrow2*ndcol) 
+ *   Reorders descendants in a supernode by size (ndrow2*ndcol)
  *
  */
 void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
@@ -218,7 +222,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       p = Lpos [d] ;          /* offset of 1st row of d affecting s */
       pdi1 = pdi + p ;        /* ptr to 1st row of d affecting s in Ls */
       ndrow2 = pdend - pdi1;
-     
+
       nextd = Next[d];
 
       /* compute the descendant's rough flops 'score' */
@@ -231,10 +235,10 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       scores[n_descendant].score = score;
       scores[n_descendant].d = d;
       n_descendant++;
- 
+
       d = nextd;
 
-  } 
+  }
 
 
 
@@ -297,7 +301,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       d = nextd;
     } /* end while loop */
 
-  } 
+  }
 
 
 
@@ -404,13 +408,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
    double *Lx,
-   double *C,
-   Int ndrow1,         
+   Int ndrow1,
    Int ndrow2,
-   Int ndrow,          
-   Int ndcol,          
+   Int ndrow,
+   Int ndcol,
    Int nsrow,
-   Int pdx1,           
+   Int pdx1,
    Int pdi1,
    int gpuid
    )
@@ -418,7 +421,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   /* local variables */
   int icol, irow, iHostBuff, iDevBuff, numThreads;
   Int ndrow3;
-  double alpha, beta; 
+  double alpha, beta;
   double *devPtrLx, *devPtrC;
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
@@ -432,7 +435,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* early exit if descendant too small for cuBlas */
   /*
-  if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) ) 
+  if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) )
   {
     return (0) ;
   }
@@ -495,12 +498,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
                               (Int *)(gpu_p->d_Ls_root[gpuid]),
                               (Int *)(gpu_p->d_RelativeMap_root[gpuid]),
-                               pdi1, 
+                               pdi1,
                                ndrow2,
                                &(Common->gpuStream[gpuid][iDevBuff]) );
 
   cudaErr = cudaGetLastError();
-  if (cudaErr) { 
+  if (cudaErr) {
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
@@ -516,7 +519,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
 
-  /* 
+  /*
    * Perform DSYRK on GPU for current descendant
    */
 
@@ -614,19 +617,19 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    * Assemble the update C on the devicet
    */
 #ifdef REAL
-  addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
+  addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
 		      devPtrC,
-                      gpu_p->d_RelativeMap_root[gpuid], 
-		      ndrow1, 
-		      ndrow2, 
+                      gpu_p->d_RelativeMap_root[gpuid],
+		      ndrow1,
+		      ndrow2,
 		      nsrow,
                       &(Common->gpuStream[gpuid][iDevBuff]) );
 #else
-  addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
+  addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
 			     devPtrC,
-        		     gpu_p->d_RelativeMap_root[gpuid], 
-			     ndrow1, 
-			     ndrow2, 
+        		     gpu_p->d_RelativeMap_root[gpuid],
+			     ndrow1,
+			     ndrow2,
 			     nsrow,
         		     &(Common->gpuStream[gpuid][iDevBuff]) );
 #endif
@@ -634,9 +637,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   cudaErr = cudaGetLastError();
-  if (cudaErr) { 
-    ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n"); 
-    return (0) ; 
+  if (cudaErr) {
+    ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n");
+    return (0) ;
   }
 
 
@@ -652,39 +655,49 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   (
-   int nbatch,
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
+   struct cholmod_desc_t *desc,
+   struct cholmod_syrk_t *syrk,
+   struct cholmod_gemm_t *gemm,
+   Int nbatch,
    double *Lx,
-   double *C,
-   Int ndrow1,         
-   Int ndrow2,
-   Int ndrow,          
-   Int ndcol,          
    Int nsrow,
-   Int pdx1,           
-   Int pdi1,
    int gpuid
    )
 {
   /* local variables */
   int icol, irow, iHostBuff, iDevBuff, numThreads;
-  Int ndrow3;
-  double alpha, beta; 
+  double alpha, beta;
   double *devPtrLx, *devPtrC;
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
 
+  Int i_offset, a_offset, b_offset, c_offset;
+
+  Int ndcol, ndrow, ndrow1, ndrow2, ndrow3, pdi1;
+
+  double *syrk_A, *syrk_C, *gemm_A, *gemm_B, *gemm_C;
+
+  Int *d_Ls_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+  Int *d_Map_root;
+  Int *d_RelativeMap_root;
+
+  Int batch_idx;
+
+  struct cholmod_desc_ptrs_t *h_desc = &gpu_p->h_desc[gpuid];
+  struct cholmod_syrk_ptrs_t *h_syrk = &gpu_p->h_syrk[gpuid];
+  struct cholmod_gemm_ptrs_t *h_gemm = &gpu_p->h_gemm[gpuid];
+
+  struct cholmod_desc_ptrs_t *d_desc = &gpu_p->d_desc[gpuid];
+  struct cholmod_syrk_ptrs_t *d_syrk = &gpu_p->d_syrk[gpuid];
+  struct cholmod_gemm_ptrs_t *d_gemm = &gpu_p->d_gemm[gpuid];
+
+  void *h_base, *d_base;
+
   cudaSetDevice(gpuid / Common->numGPU_parallel);
 
   numThreads = Common->ompNumThreads;
-
-
-
-  /* initialize variables */
-  ndrow3 = ndrow2 - ndrow1 ;
-  alpha  = 1.0 ;
-  beta   = 0.0 ;
 
   iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
   iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
@@ -693,6 +706,107 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
   devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
 
+  h_base = (void*) gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS+iHostBuff];
+  h_desc->C = h_base; h_base += sizeof(double*) * nbatch;
+  h_syrk->A = h_base; h_base += sizeof(double*) * nbatch;
+  h_syrk->C = h_base; h_base += sizeof(double*) * nbatch;
+  h_gemm->A = h_base; h_base += sizeof(double*) * nbatch;
+  h_gemm->B = h_base; h_base += sizeof(double*) * nbatch;
+  h_gemm->C = h_base; h_base += sizeof(double*) * nbatch;
+  h_desc->s = h_base; h_base += sizeof(Int) * nbatch;
+  h_desc->ndrow1 = h_base; h_base += sizeof(Int) * nbatch;
+  h_desc->ndrow2 = h_base; h_base += sizeof(Int) * nbatch;
+  h_desc->pdi1 = h_base; h_base += sizeof(Int) * nbatch;
+  h_syrk->n = h_base; h_base += sizeof(Int) * nbatch;
+  h_syrk->k = h_base; h_base += sizeof(Int) * nbatch;
+  h_syrk->lda = h_base; h_base += sizeof(Int) * nbatch;
+  h_syrk->ldc = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->m = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->n = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->k = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->lda = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->ldb = h_base; h_base += sizeof(Int) * nbatch;
+  h_gemm->ldc = h_base; h_base += sizeof(Int) * nbatch;
+  h_base = h_desc->C;
+
+  d_base = (void*) gpu_p->d_A_root[gpuid][1];
+  d_Map_root = d_base; d_base += sizeof(Int) * nsrow;
+  d_RelativeMap_root = d_base; d_base += sizeof(Int) * nsrow * nbatch;
+  d_desc->C = d_base; d_base += sizeof(double*) * nbatch;
+  d_syrk->A = d_base; d_base += sizeof(double*) * nbatch;
+  d_syrk->C = d_base; d_base += sizeof(double*) * nbatch;
+  d_gemm->A = d_base; d_base += sizeof(double*) * nbatch;
+  d_gemm->B = d_base; d_base += sizeof(double*) * nbatch;
+  d_gemm->C = d_base; d_base += sizeof(double*) * nbatch;
+  d_desc->s = d_base; d_base += sizeof(Int) * nbatch;
+  d_desc->ndrow1 = d_base; d_base += sizeof(Int) * nbatch;
+  d_desc->ndrow2 = d_base; d_base += sizeof(Int) * nbatch;
+  d_desc->pdi1 = d_base; d_base += sizeof(Int) * nbatch;
+  d_syrk->n = d_base; d_base += sizeof(Int) * nbatch;
+  d_syrk->k = d_base; d_base += sizeof(Int) * nbatch;
+  d_syrk->lda = d_base; d_base += sizeof(Int) * nbatch;
+  d_syrk->ldc = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->m = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->n = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->k = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->lda = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->ldb = d_base; d_base += sizeof(Int) * nbatch;
+  d_gemm->ldc = d_base; d_base += sizeof(Int) * nbatch;
+  d_base = d_desc->C;
+
+  a_offset = 0;
+  c_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
+      b_offset = a_offset + L_ENTRY * syrk[batch_idx].n;
+      h_desc->C[batch_idx] = devPtrC + c_offset;
+      h_syrk->A[batch_idx] = devPtrLx + a_offset;
+      h_syrk->C[batch_idx] = devPtrC + c_offset;
+      h_gemm->A[batch_idx] = devPtrLx + a_offset;
+      h_gemm->B[batch_idx] = devPtrLx + b_offset;
+      h_gemm->C[batch_idx] = devPtrC + c_offset;
+      h_desc->s[batch_idx] = desc[batch_idx].s;
+      h_desc->ndrow1[batch_idx] = desc[batch_idx].ndrow1;
+      h_desc->ndrow2[batch_idx] = desc[batch_idx].ndrow2;
+      h_desc->pdi1[batch_idx] = desc[batch_idx].pdi1;
+      h_syrk->n[batch_idx] = syrk[batch_idx].n;
+      h_syrk->k[batch_idx] = syrk[batch_idx].k;
+      h_syrk->lda[batch_idx] = syrk[batch_idx].lda;
+      h_syrk->ldc[batch_idx] = syrk[batch_idx].ldc;
+      h_gemm->m[batch_idx] = gemm[batch_idx].m;
+      h_gemm->n[batch_idx] = gemm[batch_idx].n;
+      h_gemm->k[batch_idx] = gemm[batch_idx].k;
+      h_gemm->lda[batch_idx] = gemm[batch_idx].lda;
+      h_gemm->ldb[batch_idx] = gemm[batch_idx].ldb;
+      h_gemm->ldc[batch_idx] = gemm[batch_idx].ldc;
+      a_offset += L_ENTRY * ndcol * ndrow2;
+      c_offset += L_ENTRY * ndrow1 * ndrow2;
+      printf("assign devPtrLx = %lx, devPtrC = %lx, batch_idx = %ld, h_syrk->A = %lx, h_syrk->A[%ld] = %lx, ndcol = %ld, ndrow1 = %ld, ndrow2 = %ld\n",
+              devPtrLx, devPtrC, batch_idx, h_syrk->A, batch_idx, h_syrk->A[batch_idx], ndcol, ndrow1, ndrow2);
+  }
+
+  cudaErr = cudaMemcpyAsync (
+          d_base,
+          h_base,
+          (6 * sizeof(double*) + 14 * sizeof(Int)) * nbatch,
+          cudaMemcpyHostToDevice,
+          Common->gpuStream[gpuid][iDevBuff]);
+
+  if ( cudaErr ) {
+      printf ("cuda error: %s\n", cudaGetErrorString(cudaErr));
+      CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
+      return (0);
+  }
 
 
 
@@ -702,26 +816,40 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
    * better H2D bandwidth.
    */
   /* copy host data to pinned buffer */
+  a_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
 #pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
-  for ( icol=0; icol<ndcol; icol++ ) {
-    for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
-      gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow] =
-        Lx[pdx1*L_ENTRY+icol*ndrow*L_ENTRY + irow];
-    }
-  }
+      for ( icol=0; icol<ndcol; icol++ ) {
+          for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
+              gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow+a_offset] =
+                  syrk_A[icol*ndrow*L_ENTRY + irow];
+          }
+      }
 
+      /* copy pinned buffer to device */
+      cudaErr = cudaMemcpyAsync ( devPtrLx + a_offset,
+              gpu_p->h_Lx_root[gpuid][iHostBuff] + a_offset,
+              ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
+              cudaMemcpyHostToDevice,
+              Common->gpuStream[gpuid][iDevBuff] );
 
+      if ( cudaErr ) {
+          CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
+          return (0);
+      }
 
-  /* copy pinned buffer to device */
-  cudaErr = cudaMemcpyAsync ( devPtrLx,
-                              gpu_p->h_Lx_root[gpuid][iHostBuff],
-                              ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
-                              cudaMemcpyHostToDevice,
-                              Common->gpuStream[gpuid][iDevBuff] );
-
-  if ( cudaErr ) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
-    return (0);
+      a_offset += L_ENTRY * ndcol * ndrow2;
   }
 
 
@@ -733,15 +861,30 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
 
   /* create relative map for the descendant */
-  createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
-                              (Int *)(gpu_p->d_Ls_root[gpuid]),
-                              (Int *)(gpu_p->d_RelativeMap_root[gpuid]),
-                               pdi1, 
-                               ndrow2,
-                               &(Common->gpuStream[gpuid][iDevBuff]) );
+  i_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
+      createRelativeMapOnDevice ( (Int *)(d_Map_root),
+              (Int *)(d_Ls_root),
+              (Int *)(d_RelativeMap_root + i_offset),
+              pdi1,
+              ndrow2,
+              &(Common->gpuStream[gpuid][iDevBuff]) );
+      i_offset += nsrow;
+  }
 
   cudaErr = cudaGetLastError();
-  if (cudaErr) { 
+  if (cudaErr) {
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
@@ -757,41 +900,54 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
 
 
-  /* 
+  /*
    * Perform DSYRK on GPU for current descendant
    */
 
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
 #ifdef REAL
-  cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
-                              CUBLAS_FILL_MODE_LOWER,
-                              CUBLAS_OP_N,
-                              (int) ndrow1,
-                              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
-                              &alpha,         				/* ALPHA:  1 */
-                              devPtrLx,
-                              ndrow2,         				/* A, LDA: L1, ndrow2 */
-                              &beta,          				/* BETA:   0 */
-                              devPtrC,
-                              ndrow2) ;       				/* C, LDC: C1 */
+      cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
+              CUBLAS_FILL_MODE_LOWER,
+              CUBLAS_OP_N,
+              (int) ndrow1,
+              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
+              &alpha,         				/* ALPHA:  1 */
+              h_syrk->A[batch_idx],
+              ndrow2,         				/* A, LDA: L1, ndrow2 */
+              &beta,          				/* BETA:   0 */
+              h_syrk->C[batch_idx],
+              ndrow2);       				/* C, LDC: C1 */
 #else
-  cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
-        		      CUBLAS_FILL_MODE_LOWER,
-  		              CUBLAS_OP_N,
-		              (int) ndrow1,
-	                      (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
-		              &alpha,         				/* ALPHA:  1 */
-		              (const cuDoubleComplex *) devPtrLx,
-		              ndrow2,         				/* A, LDA: L1, ndrow2 */
-		              &beta,          				/* BETA:   0 */
-		              (cuDoubleComplex *) devPtrC,
-		              ndrow2) ;       				/* C, LDC: C1 */
+      cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
+              CUBLAS_FILL_MODE_LOWER,
+              CUBLAS_OP_N,
+              (int) ndrow1,
+              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
+              &alpha,         				/* ALPHA:  1 */
+              (const cuDoubleComplex *) h_syrk->A[batch_idx],
+              ndrow2,         				/* A, LDA: L1, ndrow2 */
+              &beta,          				/* BETA:   0 */
+              (cuDoubleComplex *) h_syrk->C[batch_idx],
+              ndrow2);       				/* C, LDC: C1 */
 #endif
+  }
 
 
-  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDsyrk error") ;
     return(0);
   }
@@ -802,51 +958,70 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   /*
    * Perform DSYRK on GPU for current descendant
    */
-  if (ndrow3 > 0)
-  {
+for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+{
+    ndcol = syrk[batch_idx].k;
+    ndrow = syrk[batch_idx].lda;
+    ndrow1 = desc[batch_idx].ndrow1;
+    ndrow2 = desc[batch_idx].ndrow2;
+    pdi1 = desc[batch_idx].pdi1;
+    syrk_A = syrk[batch_idx].A;
+    syrk_C = syrk[batch_idx].C;
+    gemm_A = gemm[batch_idx].A;
+    gemm_B = gemm[batch_idx].B;
+    gemm_C = gemm[batch_idx].C;
+    ndrow3 = ndrow2 - ndrow1 ;
+    printf("dgemm devPtrLx = %lx, devPtrC = %lx, batch_idx = %ld, h_syrk->A = %lx, h_syrk->A[%ld] = %lx, ndcol = %ld, ndrow1 = %ld, ndrow2 = %ld, ndrow3 = %ld, nbatch = %ld\n",
+            devPtrLx, devPtrC, batch_idx, h_syrk->A, batch_idx, h_syrk->A[batch_idx], ndcol, ndrow1, ndrow2, ndrow3, nbatch);
 
-#ifndef REAL
-    cuDoubleComplex calpha  = {1.0,0.0} ;
-    cuDoubleComplex cbeta   = {0.0,0.0} ;
+    if (ndrow3 > 0)
+    {
+#ifdef REAL
+        alpha  = 1.0 ;
+        beta   = 0.0 ;
+#else
+        cuDoubleComplex calpha  = {1.0,0.0} ;
+        cuDoubleComplex cbeta   = {0.0,0.0} ;
 #endif
 
 #ifdef REAL
-    alpha  = 1.0 ;
-    beta   = 0.0 ;
-
-    cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
-                                CUBLAS_OP_N, CUBLAS_OP_T,
-                                ndrow3, ndrow1, ndcol,          	/* M, N, K */
-                                &alpha,                         	/* ALPHA:  1 */
-                                devPtrLx + L_ENTRY*(ndrow1),    	/* A, LDA: L2*/
-                                ndrow2,                         	/* ndrow */
-                                devPtrLx,                       	/* B, LDB: L1 */
-                                ndrow2,                         	/* ndrow */
-                                &beta,                          	/* BETA:   0 */
-                                devPtrC + L_ENTRY*ndrow1,       	/* C, LDC: C2 */
-                                ndrow2) ;
+        cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
+                CUBLAS_OP_N, CUBLAS_OP_T,
+                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+                &alpha,                         	/* ALPHA:  1 */
+                h_syrk->A[batch_idx] + L_ENTRY*(ndrow1),    	/* A, LDA: L2*/
+                ndrow2,                         	/* ndrow */
+                h_syrk->A[batch_idx],                       	/* B, LDB: L1 */
+                ndrow2,                         	/* ndrow */
+                &beta,                          	/* BETA:   0 */
+                h_syrk->C[batch_idx] + L_ENTRY*ndrow1,       	/* C, LDC: C2 */
+                ndrow2);
 #else
-    cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
-    	 		        CUBLAS_OP_N, CUBLAS_OP_C,
-		                ndrow3, ndrow1, ndcol,          	/* M, N, K */
-		                &calpha,                        	/* ALPHA:  1 */
-		                (const cuDoubleComplex*) devPtrLx + ndrow1,
-		                ndrow2,                         	/* ndrow */
-		                (const cuDoubleComplex *) devPtrLx,
-		                ndrow2,                         	/* ndrow */
-		                &cbeta,                         	/* BETA:   0 */
-		                (cuDoubleComplex *)devPtrC + ndrow1,
-		                ndrow2) ;
+        cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
+                CUBLAS_OP_N, CUBLAS_OP_C,
+                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+                &calpha,                        	/* ALPHA:  1 */
+                (const cuDoubleComplex*) h_syrk->A[batch_idx] + ndrow1,
+                ndrow2,                         	/* ndrow */
+                (const cuDoubleComplex *) h_syrk->A[batch_idx],
+                ndrow2,                         	/* ndrow */
+                &cbeta,                         	/* BETA:   0 */
+                (cuDoubleComplex *)h_syrk->C[batch_idx] + ndrow1,
+                ndrow2);
+#endif
+#if 1 //printf
+        if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+            ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
+            return(0);
+        }
 #endif
 
-
-
-    if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
-      return(0);
+        if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+            ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
+            return(0);
+        }
     }
-
-  }
+}
 
 
 
@@ -854,30 +1029,45 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   /*
    * Assemble the update C on the devicet
    */
+    i_offset = 0;
+    for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+    {
+        ndcol = syrk[batch_idx].k;
+        ndrow = syrk[batch_idx].lda;
+        ndrow1 = desc[batch_idx].ndrow1;
+        ndrow2 = desc[batch_idx].ndrow2;
+        pdi1 = desc[batch_idx].pdi1;
+        syrk_A = syrk[batch_idx].A;
+        syrk_C = syrk[batch_idx].C;
+        gemm_A = gemm[batch_idx].A;
+        gemm_B = gemm[batch_idx].B;
+        gemm_C = gemm[batch_idx].C;
 #ifdef REAL
-  addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
-		      devPtrC,
-                      gpu_p->d_RelativeMap_root[gpuid], 
-		      ndrow1, 
-		      ndrow2, 
-		      nsrow,
-                      &(Common->gpuStream[gpuid][iDevBuff]) );
+        addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
+                h_desc->C[batch_idx],
+                d_RelativeMap_root + i_offset,
+                ndrow1,
+                ndrow2,
+                nsrow,
+                &(Common->gpuStream[gpuid][iDevBuff]) );
 #else
-  addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0], 
-			     devPtrC,
-        		     gpu_p->d_RelativeMap_root[gpuid], 
-			     ndrow1, 
-			     ndrow2, 
-			     nsrow,
-        		     &(Common->gpuStream[gpuid][iDevBuff]) );
+        addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
+                h_desc->C[batch_idx],
+                d_RelativeMap_root + i_offset,
+                ndrow1,
+                ndrow2,
+                nsrow,
+                &(Common->gpuStream[gpuid][iDevBuff]) );
 #endif
+        i_offset += nsrow;
+    }
 
 
 
   cudaErr = cudaGetLastError();
-  if (cudaErr) { 
-    ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n"); 
-    return (0) ; 
+  if (cudaErr) {
+    ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n");
+    return (0) ;
   }
 
 
@@ -913,7 +1103,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
    cholmod_gpu_pointers *gpu_p,
    double *Lx,
    int *iHostBuff,
-   int *iDevBuff,   
+   int *iDevBuff,
    Int psx,
    Int nscol,
    Int nsrow,
@@ -947,9 +1137,9 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       /* wait until a buffer is free */
       cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][*iHostBuff] );
       cudaErr = cudaGetLastError();
-      if (cudaErr) { 
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nsynchronize error!\n"); 
-        return; 
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nsynchronize error!\n");
+        return;
       }
 
 
@@ -974,9 +1164,9 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
                         Common->gpuStream[gpuid][*iDevBuff] );
 
       cudaErr = cudaGetLastError();
-      if (cudaErr) { 
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n"); 
-        return; 
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
+        return;
       }
 
     } /* end if descendant large enough */
@@ -990,16 +1180,16 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
     /* copy assembled Schur-complement updates computed on GPU */
-    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2], 
+    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2],
 		      gpu_p->d_A_root[gpuid][0],
                       nscol*nsrow*L_ENTRY*sizeof(double),
                       cudaMemcpyDeviceToHost,
                       Common->gpuStream[gpuid][iDevBuff2] );
 
     cudaErr = cudaGetLastError();
-    if (cudaErr) { 
+    if (cudaErr) {
       ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy D-H error!\n");
-      return ; 
+      return ;
     }
 
 
@@ -1011,8 +1201,8 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     /* only if descendant large enough for GPU */
     if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
-      /* 
-       * sum updates from cpu and device on device 
+      /*
+       * sum updates from cpu and device on device
        */
 #ifdef REAL
       sumAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol );
@@ -1022,9 +1212,9 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
       cudaErr = cudaGetLastError();
-      if (cudaErr) { 
+      if (cudaErr) {
         ERROR (CHOLMOD_GPU_PROBLEM,"\nsumAonDevice error!\n");
-        return; 
+        return;
       }
 
 
@@ -1081,12 +1271,12 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   (
    cholmod_common *Common,
-   cholmod_gpu_pointers *gpu_p,   
-   double *Lx,     				
-   Int *info,	   				
-   Int nscol2,     				
-   Int nsrow,      				
-   Int psx,        				
+   cholmod_gpu_pointers *gpu_p,
+   double *Lx,
+   Int *info,
+   Int nscol2,
+   Int nsrow,
+   Int psx,
    int gpuid
    )
 {
@@ -1109,7 +1299,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
     return (0) ;
   }
 
-  
+
   /* set dimnsions & strides */
   nsrow2 = nsrow - nscol2 ;
   n  = nscol2 ;
@@ -1175,36 +1365,36 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
 
-  /* 
-   * block Cholesky factorization of S 
+  /*
+   * block Cholesky factorization of S
    */
   /* loop over blocks */
   for (j = 0 ; j < n ; j += nb) {
 
-    jb = nb < (n-j) ? nb : (n-j) ;     
+    jb = nb < (n-j) ? nb : (n-j) ;
 
 
-    /* 
-     * Perform DSYRK on GPU 
+    /*
+     * Perform DSYRK on GPU
      */
     alpha = -1.0;
     beta  = 1.0;
 
 #ifdef REAL
     cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
-                                CUBLAS_FILL_MODE_LOWER, 
- 		                CUBLAS_OP_N, 
-			        jb, 
+                                CUBLAS_FILL_MODE_LOWER,
+ 		                CUBLAS_OP_N,
+			        jb,
 			        j,
-                                &alpha, devPtrA + j, 
+                                &alpha, devPtrA + j,
 				gpu_lda,
-                                &beta,  devPtrA + j + j*gpu_lda, 
+                                &beta,  devPtrA + j + j*gpu_lda,
 				gpu_lda);
 #else
     cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
-    			        CUBLAS_FILL_MODE_LOWER, 
-			 	CUBLAS_OP_N, 
-				jb, 
+    			        CUBLAS_FILL_MODE_LOWER,
+			 	CUBLAS_OP_N,
+				jb,
 				j,
    			        &alpha, (cuDoubleComplex*)devPtrA + j,
 		                gpu_lda,
@@ -1249,7 +1439,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
     /*
-     * Perform DGEMM on GPU   
+     * Perform DGEMM on GPU
      */
     if ((j+jb) < n) {
 
@@ -1258,28 +1448,28 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       alpha = -1.0 ;
       beta  = 1.0 ;
       cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
-                                  CUBLAS_OP_N, 
+                                  CUBLAS_OP_N,
 				  CUBLAS_OP_T,
-                                  (n-j-jb), 
-				  jb, 
+                                  (n-j-jb),
+				  jb,
 				  j,
                                   &alpha,
-                                  devPtrA + (j+jb), 
+                                  devPtrA + (j+jb),
 				  gpu_lda,
-                                  devPtrA + (j), 
+                                  devPtrA + (j),
 				  gpu_lda,
                                   &beta,
-                                  devPtrA + (j+jb + j*gpu_lda), 
+                                  devPtrA + (j+jb + j*gpu_lda),
  		                  gpu_lda);
 #else
       cuDoubleComplex calpha = {-1.0,0.0} ;
       cuDoubleComplex cbeta  = { 1.0,0.0} ;
 
       cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
-	                   	  CUBLAS_OP_N, 
+	                   	  CUBLAS_OP_N,
 				  CUBLAS_OP_C,
-   		                  (n-j-jb), 
-				  jb, 
+   		                  (n-j-jb),
+				  jb,
 				  j,
 		                  &calpha,
 		                  (cuDoubleComplex*)devPtrA + (j+jb),
@@ -1342,9 +1532,9 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
 
-    /* 
+    /*
      * Perform DTRSM on GPU
-     */ 
+     */
     if ((j+jb) < n) {
 
 #ifdef REAL
@@ -1352,14 +1542,14 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       cublasStatus = cublasDtrsm (Common->cublasHandle[gpuid],
                                   CUBLAS_SIDE_RIGHT,
                                   CUBLAS_FILL_MODE_LOWER,
-                                  CUBLAS_OP_T, 
+                                  CUBLAS_OP_T,
 				  CUBLAS_DIAG_NON_UNIT,
-                                  (n-j-jb), 
+                                  (n-j-jb),
 				  jb,
                                   &alpha,
-                                  devPtrA + (j + j*gpu_lda), 
+                                  devPtrA + (j + j*gpu_lda),
 				  gpu_lda,
-                                  devPtrA + (j+jb + j*gpu_lda), 
+                                  devPtrA + (j+jb + j*gpu_lda),
 				  gpu_lda);
 #else
       cuDoubleComplex calpha  = {1.0,0.0};
@@ -1367,9 +1557,9 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       cublasStatus = cublasZtrsm (Common->cublasHandle[gpuid],
 		                  CUBLAS_SIDE_RIGHT,
                			  CUBLAS_FILL_MODE_LOWER,
-		                  CUBLAS_OP_C, 
+		                  CUBLAS_OP_C,
 				  CUBLAS_DIAG_NON_UNIT,
-		                  (n-j-jb), 
+		                  (n-j-jb),
 				  jb,
 		                  &calpha,
 		                  (cuDoubleComplex *)devPtrA + (j + j*gpu_lda),
@@ -1445,14 +1635,14 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
    double *Lx,
-   Int nsrow2,     
-   Int nscol2,     
-   Int nsrow,      
-   Int psx,        
+   Int nsrow2,
+   Int nscol2,
+   Int nsrow,
+   Int psx,
    int gpuid
    )
 {
-  /* local variables */ 
+  /* local variables */
   int i, j, iwrap, ibuf = 0, iblock = 0, iHostBuff, numThreads;
   Int iidx, gpu_lda, gpu_ldb, gpu_rowstep, gpu_row_max_chunk, gpu_row_chunk, gpu_row_start = 0;
   double *devPtrA, *devPtrB;
@@ -1465,7 +1655,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
   numThreads = Common->ompNumThreads;
 
- 
+
 
   /* early exit */
   if ( nsrow2 <= 0 )
@@ -1595,7 +1785,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
       cudaErr = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iblock%CHOLMOD_HOST_SUPERNODE_BUFFERS] );
       if ( cudaErr ) {
-        printf ("ERROR cudaEventSynchronize\n");
+        ERROR (CHOLMOD_GPU_PROBLEM, "ERROR cudaEventSynchronize") ;
       }
 
 
@@ -1646,8 +1836,8 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
       if ( gpu_row_end > nsrow ) gpu_row_end = nsrow;
 
       cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iblock%CHOLMOD_HOST_SUPERNODE_BUFFERS] );
-         
- 
+
+
       /* copy Lx from pinned to host memory */
       #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if ( nscol2 > 32 )
       for ( j=0; j<nscol2; j++ ) {
@@ -1708,7 +1898,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
 
   /* if supernode large enough for GPU */
   if ( supernodeUsedGPU && nscol2 * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
-  
+
     /* synchronize device */
     cudaDeviceSynchronize();
 

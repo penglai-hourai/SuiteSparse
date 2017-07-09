@@ -29,7 +29,6 @@
 #endif
 #include "nvToolsExt.h"
 
-#define MAXNBATCHCOUNT 1
 
 /* undef macros */
 #undef L_ENTRY
@@ -111,28 +110,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
   cudaError_t cuErr;
 
-  const size_t batchsize = sizeof (double) * L_ENTRY * CHOLMOD_ND_ROW_LIMIT * CHOLMOD_ND_ROW_LIMIT;
-  const Int minmaxnbatch = Common->devBuffSize / batchsize;
-
-  Int *           d_list [CHOLMOD_MAX_NUM_GPUS];
-  Int *ndrow1_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int *ndrow2_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int * ndrow_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int * ndcol_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int * nsrow_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int *  pdx1_array_list [CHOLMOD_MAX_NUM_GPUS];
-  Int *  pdi1_array_list [CHOLMOD_MAX_NUM_GPUS];
-
-  for(gpuid = 0; gpuid < Common->numGPU; gpuid++) {
-                 d_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-      ndrow1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-      ndrow2_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-       ndrow_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-       ndcol_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-       nsrow_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-        pdx1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-        pdi1_array_list [gpuid] = (Int *) malloc (sizeof(Int) * minmaxnbatch);
-  }
 
   /*
    * Set variables & pointers
@@ -185,7 +162,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
   /* initialize GPU */
   for(gpuid = 0; gpuid < Common->numGPU; gpuid++) {
-    TEMPLATE2 (CHOLMOD (gpu_init_root))(Common, gpu_p, L, Lpi, L->nsuper, n,gpuid);
+    TEMPLATE2 (CHOLMOD (gpu_init_root))(Common, gpu_p, L, Lpi, L->nsuper, n, gpuid);
   }
 
   gpuid = gpu_p->gpuid;
@@ -251,7 +228,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	Int *Map  	= &h_Map[gpuid*n];			/* set map */
 	double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
 
-    Int nbatch, d_idx, d_itr;
 
 	cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
@@ -488,7 +464,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	      else {
 
-		cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+		cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
 		if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
         {
@@ -568,18 +544,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  2. create Map for supernode
 	     *
 	     */
-	    if ( GPUavailable == 1) {
-	      if ( ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT || ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT ) {
-		if ( ! mapCreatedOnGpu ) {
-		  /* initialize supernode (create Map) */
-		  TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
-		  mapCreatedOnGpu = 1;
-		}
-	      }
-	      else {
-		GPUavailable = -1;
-	      }
-	    }
+        if ( GPUavailable == 1) {
+            if ( ! mapCreatedOnGpu ) {
+                /* initialize supernode (create Map) */
+                TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
+                mapCreatedOnGpu = 1;
+            }
+            if ( ndrow2 * L_ENTRY < CHOLMOD_ND_ROW_LIMIT && ndcol * L_ENTRY < CHOLMOD_ND_COL_LIMIT ) {
+                GPUavailable = -1;
+            }
+        }
 
 
 
@@ -596,7 +570,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     */
         if ( GPUavailable == 1 )
         {
-            TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, C1, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
+            TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
             Common->ibuffer[gpuid]++;
             Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
@@ -617,7 +591,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
 		/* loop over descendants */
-		for(tid = 0; tid < nthreads; tid++)
+		//for(tid = 0; tid < nthreads; tid++)
+		for(tid = 0; tid < 1; tid++) //checkpoint
 		  {
 
 		    /* ensure there are remaining descendants to assemble */
@@ -652,7 +627,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if ( counter + ndrow1*ndrow2 > Common->devBuffSize ) continue;
+		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize ) continue;
 
 
 		    Int m   = ndrow2-ndrow1;
@@ -667,7 +642,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    desc[desc_count].pdi1   = pdi1;
 		    desc[desc_count].ndrow1 = ndrow1;
 		    desc[desc_count].ndrow2 = ndrow2;
-		    desc[desc_count].C      = (double *)&C1[counter];
+		    desc[desc_count].C      = (double *)&C1[L_ENTRY*counter];
 		    desc_count++;
 
 		    /* store syrk dimensions & pointers */
@@ -676,7 +651,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    syrk[syrk_count].lda   = lda;
 		    syrk[syrk_count].ldc   = ldc;
 		    syrk[syrk_count].A     = (double *)(Lx + L_ENTRY*pdx1);
-		    syrk[syrk_count].C     = (double *)&C1[counter];
+		    syrk[syrk_count].C     = (double *)&C1[L_ENTRY*counter];
 		    syrk_count++;
 
 		    /* store gemm dimensions & pointers */
@@ -688,17 +663,28 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    gemm[gemm_count].ldc   = ldc;
 		    gemm[gemm_count].A     = (double *)(Lx + L_ENTRY*(pdx1 + n));
 		    gemm[gemm_count].B     = (double *)(Lx + L_ENTRY*pdx1);
-		    gemm[gemm_count].C     = (double *)(&C1[counter] + L_ENTRY*n);
+		    gemm[gemm_count].C     = (double *)(&C1[L_ENTRY*counter] + L_ENTRY*n);
 		    gemm_count++;
 
 		    /* increment pointer to C buff */
-		    counter += n*ldc;
+		    counter += L_ENTRY*n*ldc;
 
 		  } /* end loop over parallel descendants (threads) */
 
 
-
-
+        //if ( GPUavailable == -1 )
+        if ( TRUE ) //checkpoint
+        {
+            printf ("checkpoint 0, s = %ld, desc_count = %ld, syrk_count = %ld, gemm_count = %ld\n", s, desc_count, syrk_count, gemm_count);
+            TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
+            //TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
+            printf ("checkpoint 1\n");
+            supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
+            Common->ibuffer[gpuid]++;
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+        }
+        else
+        {
 		/*
 		 *  DSYRK
 		 *
@@ -829,6 +815,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 			  }
 		      }
 		  } /* end loop over descendants */
+        }
 
 		nvtxRangeEnd(id2);
 
@@ -1076,16 +1063,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     free ( event_complete );
   } /* end loop over levels */
 
-  for(gpuid = 0; gpuid < Common->numGPU; gpuid++) {
-      free (           d_list [gpuid]);
-      free (ndrow1_array_list [gpuid]);
-      free (ndrow2_array_list [gpuid]);
-      free ( ndrow_array_list [gpuid]);
-      free ( ndcol_array_list [gpuid]);
-      free ( nsrow_array_list [gpuid]);
-      free (  pdx1_array_list [gpuid]);
-      free (  pdi1_array_list [gpuid]);
-  }
 
 #endif
 

@@ -339,7 +339,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         /* store potrf dimensions & pointers */
         potrf[super_count].score  = (double)(n);
         potrf[super_count].n 	  = n;
-	potrf[super_count].lda    = lda; 
+        potrf[super_count].lda    = lda; 
         potrf[super_count].A 	  = (double *)(d_Lx + psx);
 
         /* store trsm dimensions & pointers */
@@ -632,7 +632,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         h_syrk->lda[j]       	= syrk[i].lda;
         h_syrk->ldc[j]       	= syrk[i].ldc;
         h_syrk->A[j]         	= syrk[i].A;
-        h_syrk->C[j]     	= syrk[i].C;
+        h_syrk->C[j]     	    = syrk[i].C;
         j++;       
       }
       syrk_count = j; 
@@ -744,8 +744,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       cudaMemcpyAsync(d_ptrSuper, h_ptrSuper,3*maxbatch*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
       /* memcpy dimensions and pointers of a batch of descendants from host to device */
-      cudaMemcpyAsync(d_dimDesc, h_dimDesc,14*strideSize*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
-      cudaMemcpyAsync(d_ptrDesc, h_ptrDesc,6*strideSize*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+      cudaMemcpyAsync(d_dimDesc, h_dimDesc,14*strideSize*sizeof(int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][1]);
+      cudaMemcpyAsync(d_ptrDesc, h_ptrDesc,6*strideSize*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][1]);
 
 
       /* 
