@@ -108,8 +108,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
   {
       gpu_p->d_Lx_root[gpuid][k] = base_root + k * Common->devBuffSize;
-      printf ("init d_Lx_root[%d][%d] = %lx, dev_mempool[%ld] = %lx, devBuffSize = %lx\n",
-              gpuid, k, gpu_p->d_Lx_root[gpuid][k], gpuid / Common->numGPU_parallel, Common->dev_mempool[gpuid / Common->numGPU_parallel], Common->devBuffSize);
   }
   gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_STREAMS + 0) * Common->devBuffSize;
   gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_STREAMS + 1) * Common->devBuffSize;
@@ -791,8 +789,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       h_gemm->ldc[batch_idx] = gemm[batch_idx].ldc;
       a_offset += L_ENTRY * ndcol * ndrow2;
       c_offset += L_ENTRY * ndrow1 * ndrow2;
-      printf("assign devPtrLx = %lx, devPtrC = %lx, batch_idx = %ld, h_syrk->A = %lx, h_syrk->A[%ld] = %lx, ndcol = %ld, ndrow1 = %ld, ndrow2 = %ld\n",
-              devPtrLx, devPtrC, batch_idx, h_syrk->A, batch_idx, h_syrk->A[batch_idx], ndcol, ndrow1, ndrow2);
   }
 
   cudaErr = cudaMemcpyAsync (
@@ -803,7 +799,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
           Common->gpuStream[gpuid][iDevBuff]);
 
   if ( cudaErr ) {
-      printf ("cuda error: %s\n", cudaGetErrorString(cudaErr));
       CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
       return (0);
   }
@@ -971,8 +966,6 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
     gemm_B = gemm[batch_idx].B;
     gemm_C = gemm[batch_idx].C;
     ndrow3 = ndrow2 - ndrow1 ;
-    printf("dgemm devPtrLx = %lx, devPtrC = %lx, batch_idx = %ld, h_syrk->A = %lx, h_syrk->A[%ld] = %lx, ndcol = %ld, ndrow1 = %ld, ndrow2 = %ld, ndrow3 = %ld, nbatch = %ld\n",
-            devPtrLx, devPtrC, batch_idx, h_syrk->A, batch_idx, h_syrk->A[batch_idx], ndcol, ndrow1, ndrow2, ndrow3, nbatch);
 
     if (ndrow3 > 0)
     {
@@ -1008,12 +1001,6 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
                 &cbeta,                         	/* BETA:   0 */
                 (cuDoubleComplex *)h_syrk->C[batch_idx] + ndrow1,
                 ndrow2);
-#endif
-#if 1 //printf
-        if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-            ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
-            return(0);
-        }
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS) {

@@ -456,15 +456,15 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    /* get next descendant */
 	    if ( idescendant > 0 ) {
 
-	      if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*4)) {
-		d = dsmall;
-		dsmall = Previous_local[dsmall];
-		(skips)--;
-	      }
+            if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*4)) {
+                d = dsmall;
+                dsmall = Previous_local[dsmall];
+                (skips)--;
+            }
 
 	      else {
 
-		cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
+		cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
 		if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
         {
@@ -544,12 +544,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  2. create Map for supernode
 	     *
 	     */
-        if ( GPUavailable == 1) {
+        if ( GPUavailable != 0) {
             if ( ! mapCreatedOnGpu ) {
                 /* initialize supernode (create Map) */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
                 mapCreatedOnGpu = 1;
             }
+        }
+        if ( GPUavailable == 1) {
             if ( ndrow2 * L_ENTRY < CHOLMOD_ND_ROW_LIMIT && ndcol * L_ENTRY < CHOLMOD_ND_COL_LIMIT ) {
                 GPUavailable = -1;
             }
@@ -586,13 +588,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		int gemm_count = 0;
 		Int counter = 0;
 
+        const Int minmaxnbatch = Common->devBuffSize / (L_ENTRY * sizeof (double) * CHOLMOD_ND_COL_LIMIT * CHOLMOD_ND_ROW_LIMIT);
 
 
 		nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
 		/* loop over descendants */
 		//for(tid = 0; tid < nthreads; tid++)
-		for(tid = 0; tid < 1; tid++) //checkpoint
+		for(tid = 0; tid < minmaxnbatch; tid++)
 		  {
 
 		    /* ensure there are remaining descendants to assemble */
@@ -627,7 +630,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize ) continue;
+		    if (
+                    ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize )
+                    || ( GPUavailable == 0 && tid >= nthreads )
+                    || ( GPUavailable == -1 && ( ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT || ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT ) )
+               )
+                continue;
 
 
 		    Int m   = ndrow2-ndrow1;
@@ -672,13 +680,9 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  } /* end loop over parallel descendants (threads) */
 
 
-        //if ( GPUavailable == -1 )
-        if ( TRUE ) //checkpoint
+        if (GPUavailable == -1)
         {
-            printf ("checkpoint 0, s = %ld, desc_count = %ld, syrk_count = %ld, gemm_count = %ld\n", s, desc_count, syrk_count, gemm_count);
             TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
-            //TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
-            printf ("checkpoint 1\n");
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
             Common->ibuffer[gpuid]++;
             Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
