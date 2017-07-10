@@ -832,19 +832,19 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
           }
       }
 
-      /* copy pinned buffer to device */
-      cudaErr = cudaMemcpyAsync ( devPtrLx + a_offset,
-              gpu_p->h_Lx_root[gpuid][iHostBuff] + a_offset,
-              ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
-              cudaMemcpyHostToDevice,
-              Common->gpuStream[gpuid][iDevBuff] );
-
-      if ( cudaErr ) {
-          CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
-          return (0);
-      }
-
       a_offset += L_ENTRY * ndcol * ndrow2;
+  }
+
+  /* copy pinned buffer to device */
+  cudaErr = cudaMemcpyAsync ( devPtrLx,
+          gpu_p->h_Lx_root[gpuid][iHostBuff],
+          a_offset*sizeof(devPtrLx[0]),
+          cudaMemcpyHostToDevice,
+          Common->gpuStream[gpuid][iDevBuff] );
+
+  if ( cudaErr ) {
+      CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
+      return (0);
   }
 
 
@@ -902,6 +902,21 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
+#if 0
+  dsyrk_custom_simple_1block_batch(
+          Common->gpuStream[gpuid][iDevBuff],
+          CUBLAS_FILL_MODE_LOWER,
+          CUBLAS_OP_N,
+          d_syrk->n,
+          d_syrk->k,
+          &alpha,
+          d_syrk->A,
+          d_syrk->lda,
+          &beta,
+          d_syrk->C,
+          d_syrk->ldc,
+          nbatch);
+#else
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
       ndcol = syrk[batch_idx].k;
@@ -940,6 +955,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
               ndrow2);       				/* C, LDC: C1 */
 #endif
   }
+#endif
 
 
 if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
