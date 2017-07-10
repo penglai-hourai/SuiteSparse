@@ -225,7 +225,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
 
       /* compute the descendant's rough flops 'score' */
       score = ndrow2 * ndcol;
-      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) || (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
+      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) ) {
         score += Common->devBuffSize;
       }
 
@@ -287,7 +287,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nreverse++;
 
       /* place descendant at the front of the list */
-      if ( (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) || (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) ) {
+      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) ) {
         Next[previousd] = Next[d];
         Next[d] = Head[locals];
         Head[locals] = d;
@@ -433,7 +433,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* early exit if descendant too small for cuBlas */
   /*
-  if ( (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) && (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) )
+  if ( (ndcol*L_ENTRY <  CHOLMOD_ND_COL_LIMIT) || (ndrow2*L_ENTRY < CHOLMOD_ND_ROW_LIMIT) )
   {
     return (0) ;
   }
@@ -902,7 +902,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
-#if 0
+if (nbatch >= 4)
+{
   dsyrk_custom_simple_1block_batch(
           Common->gpuStream[gpuid][iDevBuff],
           CUBLAS_FILL_MODE_LOWER,
@@ -916,7 +917,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
           d_syrk->C,
           d_syrk->ldc,
           nbatch);
-#else
+}
+else
+{
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
       ndcol = syrk[batch_idx].k;
@@ -955,7 +958,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
               ndrow2);       				/* C, LDC: C1 */
 #endif
   }
-#endif
+}
 
 
 if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
@@ -969,6 +972,34 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
   /*
    * Perform DSYRK on GPU for current descendant
    */
+#ifdef REAL
+        alpha  = 1.0 ;
+        beta   = 0.0 ;
+#else
+        cuDoubleComplex calpha  = {1.0,0.0} ;
+        cuDoubleComplex cbeta   = {0.0,0.0} ;
+#endif
+
+if (nbatch >= 4)
+{
+        dgemm_custom_simple_1block_batch(
+                Common->gpuStream[gpuid][iDevBuff],
+                CUBLAS_OP_N, CUBLAS_OP_T,
+                d_gemm->m,
+                d_gemm->n,
+                d_gemm->k,
+                &alpha,
+                d_gemm->A,
+                d_gemm->lda,
+                d_gemm->B,
+                d_gemm->ldb,
+                &beta,
+                d_gemm->C,
+                d_gemm->ldc,
+                nbatch);
+}
+else
+{
 for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 {
     ndcol = syrk[batch_idx].k;
@@ -985,14 +1016,6 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 
     if (ndrow3 > 0)
     {
-#ifdef REAL
-        alpha  = 1.0 ;
-        beta   = 0.0 ;
-#else
-        cuDoubleComplex calpha  = {1.0,0.0} ;
-        cuDoubleComplex cbeta   = {0.0,0.0} ;
-#endif
-
 #ifdef REAL
         cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
                 CUBLAS_OP_N, CUBLAS_OP_T,
@@ -1024,6 +1047,7 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
             return(0);
         }
     }
+}
 }
 
 
@@ -1315,7 +1339,9 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
   /* heuristic to get the block size depending of the problem size */
-  nb = 128 ;
+  nb = 32 ;
+  if (nscol2 > 64) nb = 64 ;
+  if (nscol2 > 128) nb = 128 ;
   if (nscol2 > 4096) nb = 256 ;
   if (nscol2 > 8192) nb = 384 ;
 

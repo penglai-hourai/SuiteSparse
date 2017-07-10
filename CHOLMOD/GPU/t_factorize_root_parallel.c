@@ -188,16 +188,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
     int *node_complete = (int *) malloc (end_global*sizeof(int));
     int event_len = end_global - start_global;
-    int *event_nodes = (int *) malloc (event_len*sizeof(int));
-    volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
 
     for ( node=0; node<end_global; node++ ) {
       node_complete[node] = 1;
     }
 
     for ( node = start_global; node < end_global; node++ ) {
-      event_nodes[node-start_global] = supernode_levels[node];
-      event_complete[node-start_global] = 0;
       node_complete[supernode_levels[node]] = 0;
     }
 
@@ -217,7 +213,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	int i, j, k;
 	Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3=0,
           kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-          idescendant, ndescendants, dnext, dlarge, iHostBuff, iDevBuff, skips, skip_max, dsmall, tail, info,
+          idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, skips, skip_max, dsmall, tail, info,
           GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
 	struct cholmod_desc_t desc[Common->ompNumThreads];
 	struct cholmod_syrk_t syrk[Common->ompNumThreads];
@@ -259,14 +255,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	 * This is required since a supernode doesn't know it dependent list is complete until all previous
 	 * supernodes (really levels) are complete.
 	*/
-	{
-	  int inode;
-	  for ( inode=start_global; inode < node; inode++ ) {
-	    while ( event_complete[inode-start_global] != 1 ) {
-	      continue;
-	    }
-	  }
-	}
 
 
 //#pragma omp critical
@@ -292,11 +280,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	    if (Lpos [d] < ndrow) {
 	      dancestor = SuperMap [Ls [pdi2]] ;
-#pragma omp critical
-          {
 	      Next [d] = Head [dancestor] ;
 	      Head [dancestor] = d ;
-          }
 	    }
 
 	  }
@@ -306,26 +291,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  if ( nsrow - nscol > 0 ) {
 	    Lpos [s] = nscol ;
 	    sparent = SuperMap [Ls [psi + nscol]] ;
-#pragma omp critical
-        {
 	    /* place s in link list of its parent */
 	    Next [s] = Head [sparent] ;
 	    Head [sparent] = s ;
-        }
 	  }
 
 	} /* end pragma omp critical */
-
-
-	/* Mark the descendant parsing complete */
-	{
-	  int inode;
-	  for ( inode=start_global; inode<end_global; inode++ ) {
-	    if ( s == event_nodes[inode-start_global] ) {
-	      event_complete[inode-start_global] = -1;
-	    }
-	  }
-	}
 
 
 	/* copy matrix into supernode s (lower triangular part only) */
@@ -416,7 +387,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	supernodeUsedGPU = 0;
 	idescendant = 0;
 	d = Head[s];
-	dnext = d;
 	dlarge = Next_local[d];
 	dsmall = tail;
 	GPUavailable = 1;
@@ -440,7 +410,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	    iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
-	    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1*4 ) ) {
+	    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1*(1+CHOLMOD_GPU_SKIP) ) ) {
 	      nthreads = 1;
 
 #ifdef MKLROOT
@@ -456,7 +426,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	    /* get next descendant */
 	    if ( idescendant > 0 ) {
 
-            if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*4)) {
+            if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*(1+CHOLMOD_GPU_SKIP))) {
                 d = dsmall;
                 dsmall = Previous_local[dsmall];
                 (skips)--;
@@ -471,8 +441,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 		  if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
 
-		    Int Lpos_local_0 = Lpos_local[dlarge];
-		    Int Lpos_local_1 = Lpos_local[Next_local[dlarge]];
 		    Int dlarge_old = dlarge;
 
 		    dlarge = Next_local[dlarge];
@@ -544,15 +512,19 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  2. create Map for supernode
 	     *
 	     */
-        if ( GPUavailable != 0) {
-            if ( ! mapCreatedOnGpu ) {
+        if ( GPUavailable != 0)
+        {
+            if ( ! mapCreatedOnGpu )
+            {
                 /* initialize supernode (create Map) */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
                 mapCreatedOnGpu = 1;
             }
         }
-        if ( GPUavailable == 1) {
-            if ( ndrow2 * L_ENTRY < CHOLMOD_ND_ROW_LIMIT && ndcol * L_ENTRY < CHOLMOD_ND_COL_LIMIT ) {
+        if ( GPUavailable == 1)
+        {
+            if ( ndcol * L_ENTRY < CHOLMOD_ND_COL_LIMIT || ndrow2 * L_ENTRY < CHOLMOD_ND_ROW_LIMIT )
+            {
                 GPUavailable = -1;
             }
         }
@@ -627,12 +599,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if (
-                    ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize )
-                    || ( GPUavailable == 0 && tid >= nthreads )
-                    || ( GPUavailable == -1 && ( ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT || ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT ) )
-               )
-                continue;
+		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize ) continue;
 
 
 		    Int m   = ndrow2-ndrow1;
@@ -1041,27 +1008,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  }
 
 	/* Mark the supernode complete */
-	{
-	  int inode;
-	  for ( inode=start_global; inode<end_global; inode++ ) {
-	    if ( s == event_nodes[inode-start_global] ) {
-	      event_complete[inode-start_global] = 1;
-	    }
-	  }
-	}
     node_complete[s] = 1;
 
       } /* end loop over supenodes */
     }
 
 	free ( Next_local );
-	free ( Previous_local );
 	free ( Lpos_local );
 
     free ( node_complete );
 
-    free ( event_nodes );
-    free ( event_complete );
   } /* end loop over levels */
 
 
