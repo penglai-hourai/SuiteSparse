@@ -588,14 +588,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		int gemm_count = 0;
 		Int counter = 0;
 
-        const Int minmaxnbatch = Common->devBuffSize / (L_ENTRY * sizeof (double) * CHOLMOD_ND_COL_LIMIT * CHOLMOD_ND_ROW_LIMIT);
-
 
 		nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
 		/* loop over descendants */
-		//for(tid = 0; tid < nthreads; tid++)
-		for(tid = 0; tid < minmaxnbatch; tid++)
+		for(tid = 0; tid < nthreads; tid++)
 		  {
 
 		    /* ensure there are remaining descendants to assemble */
