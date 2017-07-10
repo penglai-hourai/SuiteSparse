@@ -512,18 +512,18 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  2. create Map for supernode
 	     *
 	     */
-        if ( GPUavailable != 0)
-        {
-            if ( ! mapCreatedOnGpu )
-            {
-                /* initialize supernode (create Map) */
-                TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
-                mapCreatedOnGpu = 1;
-            }
-        }
         if ( GPUavailable == 1)
         {
-            if ( ndcol * L_ENTRY < CHOLMOD_ND_COL_LIMIT || ndrow2 * L_ENTRY < CHOLMOD_ND_ROW_LIMIT )
+            if ( ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT && ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT )
+            {
+                if ( ! mapCreatedOnGpu )
+                {
+                    /* initialize supernode (create Map) */
+                    TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
+                    mapCreatedOnGpu = 1;
+                }
+            }
+            else
             {
                 GPUavailable = -1;
             }
@@ -547,7 +547,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
             TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
             Common->ibuffer[gpuid]++;
-            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
             idescendant++;
         }
         else
@@ -649,7 +649,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
             TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
             Common->ibuffer[gpuid]++;
-            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
         }
         else
         {
@@ -804,7 +804,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	 *
 	 */
 	iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-	iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+	iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 	TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, &iHostBuff, &iDevBuff, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
 
 

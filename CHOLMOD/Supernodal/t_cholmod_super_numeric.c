@@ -639,13 +639,22 @@ static int TEMPLATE (cholmod_super_numeric)
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
           Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
+#ifdef TDEBUG
+      double loop_time;
+#endif
 
           PRINTF("\n\nCPU start -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
 
     	  TIMER_START(bstart,deviceid);
+#ifdef TDEBUG
+        loop_time = SuiteSparse_time();
+#endif
           check = TEMPLATE2 (CHOLMOD(gpu_factorize_cpu_parallel))( Common, L, gb_p, cpu_p, tree_p, prof_p, deviceid, subtree);
+#ifdef TDEBUG
+        printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
+#endif
           TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nCPU end -\t");

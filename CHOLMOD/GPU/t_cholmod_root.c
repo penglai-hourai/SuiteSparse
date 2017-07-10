@@ -105,13 +105,13 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
   /* type double */
   base_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
-  for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
+  for (k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++)
   {
       gpu_p->d_Lx_root[gpuid][k] = base_root + k * Common->devBuffSize;
   }
-  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_STREAMS + 0) * Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_STREAMS + 1) * Common->devBuffSize;
-  gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_STREAMS + 2) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 0) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 1) * Common->devBuffSize;
+  gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 2) * Common->devBuffSize;
 
   /* type Int */
   gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
@@ -447,7 +447,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
   iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
   /* initialize poitners */
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
@@ -698,7 +698,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   numThreads = Common->ompNumThreads;
 
   iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
   /* initialize poitners */
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
@@ -1155,7 +1155,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* set host/device buffer coutners */
     *iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    *iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+    *iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
 
     /* only if descendant is large enough for GPU */
@@ -1201,8 +1201,9 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* update buffer counters */
     Common->ibuffer[gpuid]++;
+    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_STREAMS;
+    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
 
 
