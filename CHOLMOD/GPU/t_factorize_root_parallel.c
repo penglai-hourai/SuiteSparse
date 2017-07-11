@@ -103,12 +103,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   /* local variables */
   size_t devBuffSize;
   int gpuid, numThreads, numThreads1;
-  Int start_global, end_global, start, end, node, level, repeat_supernode, Apacked, Fpacked, stype, n;
+  Int start_global, end_global, start, end, node, level, Apacked, Fpacked, stype, n;
   Int *Ls, *Lpi, *Lpx, *Lpos, *Fp, *Fi, *Fnz, *Ap, *Ai, *Anz, *Super, *h_Map, *SuperMap, *Head, *Next, *Next_save, *Previous, *Lpos_save,
     *supernode_levels, *supernode_levels_ptrs, *supernode_levels_subtree_ptrs, *supernode_num_levels;
   double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
   double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
-  cudaError_t cuErr;
 
 
   /*
@@ -120,7 +119,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
   numThreads1		= (Common->ompNumThreads + Common->numGPU - 1)/Common->numGPU;
   gpu_p->gpuid 		= 0;
   devBuffSize		= ((size_t)(Common->devBuffSize))/sizeof(double);
-  repeat_supernode 	= FALSE;
   Apacked               = cpu_p->Apacked;
   Fpacked               = cpu_p->Fpacked;
   stype                 = cpu_p->stype;
@@ -165,7 +163,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     TEMPLATE2 (CHOLMOD (gpu_init_root))(Common, gpu_p, L, Lpi, L->nsuper, n, gpuid);
   }
 
-  gpuid = gpu_p->gpuid;
+  //gpuid = gpu_p->gpuid;
 
 
   /*
@@ -188,6 +186,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
     /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
     int *node_complete = (int *) malloc (end_global*sizeof(int));
     int event_len = end_global - start_global;
+    int *event_nodes = (int *) malloc (event_len*sizeof(int));
+    volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
 
     for ( node=0; node<end_global; node++ ) {
       node_complete[node] = 1;
@@ -195,6 +195,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
     for ( node = start_global; node < end_global; node++ ) {
       node_complete[supernode_levels[node]] = 0;
+      event_nodes[node-start_global] = supernode_levels[node];
+      event_complete[node-start_global] = 0;
     }
 
     /* loop over supernodes */
@@ -204,17 +206,19 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
         //end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];
         start = start_global;
         end = end_global;
-#pragma omp parallel for schedule(dynamic,1) ordered private ( gpuid ) num_threads(Common->numGPU)
+#pragma omp parallel for schedule(dynamic,1) ordered private ( node, gpuid ) num_threads(Common->numGPU)
     for(node = start; node < end; node++)
       {
 
 
 	/* local variables */
 	int i, j, k;
-	Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3=0,
+	Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
           kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
           idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, skips, skip_max, dsmall, tail, info,
           GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
+    Int repeat_supernode;
+    cudaError_t cuErr;
 	struct cholmod_desc_t desc[Common->ompNumThreads];
 	struct cholmod_syrk_t syrk[Common->ompNumThreads];
 	struct cholmod_gemm_t gemm[Common->ompNumThreads];
@@ -224,9 +228,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	Int *Map  	= &h_Map[gpuid*n];			/* set map */
 	double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
 
+	int nthreads = numThreads1;
 
 	cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
+    repeat_supernode = FALSE;
+    nscol3 = 0;
 
 	/* get supernode dimensions */
 	s = supernode_levels[node];
@@ -255,6 +262,12 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	 * This is required since a supernode doesn't know it dependent list is complete until all previous
 	 * supernodes (really levels) are complete.
 	*/
+	{
+	  int inode;
+	  for ( inode = start_global; inode < node; inode++ ) {
+	    while ( event_complete[inode-start_global] != 1 );
+	  }
+	}
 
 
 //#pragma omp critical
@@ -280,8 +293,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	    if (Lpos [d] < ndrow) {
 	      dancestor = SuperMap [Ls [pdi2]] ;
-	      Next [d] = Head [dancestor] ;
-	      Head [dancestor] = d ;
+//#pragma omp critical
+          {
+              Next [d] = Head [dancestor] ;
+              Head [dancestor] = d ;
+          }
 	    }
 
 	  }
@@ -290,13 +306,27 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  /* Lpos [s] is offset of first row of s affecting its parent */
 	  if ( nsrow - nscol > 0 ) {
 	    Lpos [s] = nscol ;
-	    sparent = SuperMap [Ls [psi + nscol]] ;
-	    /* place s in link list of its parent */
-	    Next [s] = Head [sparent] ;
-	    Head [sparent] = s ;
+        sparent = SuperMap [Ls [psi + nscol]] ;
+        /* place s in link list of its parent */
+//#pragma omp critical
+        {
+            Next [s] = Head [sparent] ;
+            Head [sparent] = s ;
+        }
 	  }
 
 	} /* end pragma omp critical */
+
+
+	/* Mark the descendant parsing complete */
+	{
+	  int inode;
+	  for ( inode=start; inode<end; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = -1;
+	    }
+	  }
+	}
 
 
 	/* copy matrix into supernode s (lower triangular part only) */
@@ -394,7 +424,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	skips = 0;
 
 
-	int nthreads = numThreads1;
 
 #ifdef MKLROOT
 	mkl_set_num_threads_local(1);
@@ -459,9 +488,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  skips = 0;
 
 		  /* make sure d is complete */
-		  while ( ! node_complete[d] ) {
-		    continue;
-		  }
+		  while ( ! node_complete[d] );
 
 		}
 		else {
@@ -475,9 +502,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	    /* make sure d is complete */
-	    while ( ! node_complete[d] ) {
-	      continue;
-	    }
+	    while ( ! node_complete[d] );
 
 
 	    /* get the size of supernode d */
@@ -568,7 +593,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  {
 
 		    /* ensure there are remaining descendants to assemble */
-		    if(idescendant >= ndescendants ) continue;
+		    if(idescendant < ndescendants )
+            {
 
 		    if(tid > 0) {
 		      d = dsmall;
@@ -576,7 +602,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    }
 
 		    /* make sure d is complete */
-		    if ( ! node_complete[d] ) continue;
+		    if ( node_complete[d] )
+            {
 
 		    idescendant++;
 
@@ -599,8 +626,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) > Common->devBuffSize ) continue;
-
+		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
+            {
 
 		    Int m   = ndrow2-ndrow1;
 		    Int n   = ndrow1;
@@ -641,6 +668,9 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    /* increment pointer to C buff */
 		    counter += L_ENTRY*n*ldc;
 
+            }
+            }
+            }
 		  } /* end loop over parallel descendants (threads) */
 
 
@@ -936,12 +966,13 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		repeat_supernode = TRUE ;
 		s-- ;
 		nscol3 = info - 1 ;
-		continue ;
 	      }
 
 	  } /* end if info */
 
 
+    if (!repeat_supernode)
+    {
 
 
 	/*
@@ -1008,7 +1039,16 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	  }
 
 	/* Mark the supernode complete */
+	{
+	  int inode;
+	  for ( inode=start; inode<end; inode++ ) {
+	    if ( s == event_nodes[inode-start_global] ) {
+	      event_complete[inode-start_global] = 1;
+	    }
+	  }
+	}
     node_complete[s] = 1;
+    }
 
       } /* end loop over supenodes */
     }
@@ -1017,6 +1057,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	free ( Lpos_local );
 
     free ( node_complete );
+    free ( event_nodes );
+    free ( event_complete );
 
   } /* end loop over levels */
 

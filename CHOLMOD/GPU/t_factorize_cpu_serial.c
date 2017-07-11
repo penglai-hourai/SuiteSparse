@@ -403,8 +403,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_serial))
           {
             dancestor = SuperMap [Ls [pdi2]] ;
             /* place d in the link list of its next ancestor */
-            Next [d] = Head [dancestor] ;
-            Head [dancestor] = d ;
+//#pragma omp critical
+            {
+                Next [d] = Head [dancestor] ;
+                Head [dancestor] = d ;
+            }
           }
         }
 
@@ -587,8 +590,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_serial))
            Lpos [s] = nscol ;
            sparent = SuperMap [Ls [psi + nscol]] ;
            /* place s in link list of its parent */
-           Next [s] = Head [sparent] ;
-           Head [sparent] = s ;
+//#pragma omp critical
+           {
+               Next [s] = Head [sparent] ;
+               Head [sparent] = s ;
+           }
          }
 
       }

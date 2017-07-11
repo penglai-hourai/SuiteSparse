@@ -533,8 +533,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           if (Lpos [d] < ndrow) {
             dancestor = SuperMap [Ls [pdi2]] ;
-            Next [d] = Head [dancestor] ;
-            Head [dancestor] = d ;
+//#pragma omp critical
+            {
+                Next [d] = Head [dancestor] ;
+                Head [dancestor] = d ;
+            }
           }
 
 
@@ -590,8 +593,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         if(nsrow2 > 0) {
           Lpos [s] = nscol;
           sparent = SuperMap [Ls [psi + nscol]] ;
-          Next [s] = Head [sparent] ;
-          Head [sparent] = s ;
+//#pragma omp critical
+          {
+              Next [s] = Head [sparent] ;
+              Head [sparent] = s ;
+          }
         }
 
         Head [s] = EMPTY ;

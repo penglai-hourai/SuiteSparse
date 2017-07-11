@@ -323,8 +323,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
           if (Lpos [d] < ndrow)
           {
             Int dancestor    = SuperMap [Ls [pdi2]] ;
-            Next [d] 	     = Head [dancestor] ;
-            Head [dancestor] = d ;
+//#pragma omp critical
+            {
+                Next [d] 	     = Head [dancestor] ;
+                Head [dancestor] = d ;
+            }
           }
 
           Int m   = ndrow2-ndrow1;
@@ -379,8 +382,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
         if(nsrow2 > 0) {
           Lpos [s]        = nscol ;
           Int sparent     = SuperMap [Ls [psi + nscol]] ;
-          Next [s]        = Head [sparent] ;
-          Head [sparent]  = s ;
+//#pragma omp critical
+          {
+              Next [s]        = Head [sparent] ;
+              Head [sparent]  = s ;
+          }
         }
 
         Head [s] = EMPTY ;

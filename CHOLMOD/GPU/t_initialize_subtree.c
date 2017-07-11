@@ -533,7 +533,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* reorder subtrees by size (largest to smallest number of flop) */
-  qsort(subtreeReorder, numSubtree, sizeof(struct cholmod_subtree_order_t),CHOLMOD(subtree_comp));
+  qsort(subtreeReorder, numSubtree, sizeof(struct cholmod_subtree_order_t), CHOLMOD(subtree_comp));
 
 
 
@@ -917,8 +917,11 @@ void TEMPLATE2 (CHOLMOD (build_tree))
       Lpos [d] = pdi2 - pdi ;
       if (Lpos [d] < ndrow) {
         dancestor = SuperMap [Ls [pdi2]] ;
-        Next [d] = Head [dancestor] ;
-        Head [dancestor] = d ;
+//#pragma omp critical
+        {
+            Next [d] = Head [dancestor] ;
+            Head [dancestor] = d ;
+        }
       }
 
       /* cumulate total size of all descendants in current supernode */
@@ -941,8 +944,11 @@ void TEMPLATE2 (CHOLMOD (build_tree))
     if(nsrow > nscol) {
       Lpos [s] = nscol ;
       sparent = SuperMap [Ls [psi + nscol]] ;
-      Next [s] = Head [sparent] ;
-      Head [sparent] = s ;
+//#pragma omp critical
+      {
+          Next [s] = Head [sparent] ;
+          Head [sparent] = s ;
+      }
     }
     Head [s] = EMPTY ;
 
