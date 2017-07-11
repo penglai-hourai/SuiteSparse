@@ -291,7 +291,7 @@
   #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */ /* can not be less than CHOLMOD_DEVICE_SUPERNODE_BUFFERS */
   #define CHOLMOD_DEVICE_LX_BUFFERS 2
   #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3+CHOLMOD_DEVICE_LX_BUFFERS)		/* # device buffers for root alg. */
-  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 4		/* # host buffers for root alg. */
+  #define CHOLMOD_HOST_SUPERNODE_BUFFERS 6		/* # host buffers for root alg. */
 #else
   #define CHOLMOD_MAX_NUM_PGPUS 1			/* max # GPUs */
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */
