@@ -140,10 +140,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
       + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
   */
 
-  for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS*2; k++) {
+  for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
     gpu_p->h_Lx_root[gpuid][k]
         = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
-        + (gpuid % Common->numGPU_parallel * (CHOLMOD_HOST_SUPERNODE_BUFFERS*2)) * Common->devBuffSize + k * Common->devBuffSize;
+        + (gpuid % Common->numGPU_parallel * (CHOLMOD_HOST_SUPERNODE_BUFFERS)) * Common->devBuffSize + k * Common->devBuffSize;
   }
 
 
@@ -677,9 +677,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
   double *syrk_A, *syrk_C, *gemm_A, *gemm_B, *gemm_C;
 
-  Int *d_Ls_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
-  Int *d_Map_root;
-  Int *d_RelativeMap_root;
+  Int *d_Ls_root = gpu_p->d_Ls_root[gpuid];
+  Int *d_Map_root = gpu_p->d_Map_root[gpuid];
+  Int *d_RelativeMap_root = gpu_p->d_RelativeMap_root[gpuid];
 
   Int batch_idx;
 
@@ -704,7 +704,96 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
   devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
 
-  h_base = (void*) gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS+iHostBuff];
+
+
+  /*
+   * Copy Lx to the device:
+   * First copy to pinned buffer, then to the device for
+   * better H2D bandwidth.
+   */
+  /* copy host data to pinned buffer */
+  a_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
+#pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
+      for ( icol=0; icol<ndcol; icol++ ) {
+          for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
+              gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow+a_offset] =
+                  syrk_A[icol*ndrow*L_ENTRY + irow];
+          }
+      }
+      a_offset += L_ENTRY * ndcol * ndrow2;
+  }
+
+  /* copy pinned buffer to device */
+  cudaErr = cudaMemcpyAsync ( devPtrLx,
+          gpu_p->h_Lx_root[gpuid][iHostBuff],
+          a_offset*sizeof(devPtrLx[0]),
+          cudaMemcpyHostToDevice,
+          Common->gpuStream[gpuid][iDevBuff] );
+
+  if ( cudaErr ) {
+      CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
+      return (0);
+  }
+
+
+
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
+                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+
+
+
+  /* create relative map for the descendant */
+  i_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
+      createRelativeMapOnDevice ( (Int *)(d_Map_root),
+              (Int *)(d_Ls_root),
+              (Int *)(d_RelativeMap_root + i_offset),
+              pdi1,
+              ndrow2,
+              &(Common->gpuStream[gpuid][iDevBuff]) );
+      i_offset += nsrow;
+  }
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
+  }
+
+
+
+  /* set cuBlas stream  */
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
+  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
+    return(0);
+  }
+
+  h_base = (void*) gpu_p->h_Lx_root[gpuid][iHostBuff];
+  h_base = (void*) ((((size_t)h_base - 1) / sizeof(double*) + 1) * sizeof(double*)); //align
   h_desc->C = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->A = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->C = h_base; h_base += sizeof(double*) * nbatch;
@@ -730,6 +819,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   d_base = (void*) gpu_p->d_A_root[gpuid][1];
   d_Map_root = d_base; d_base += sizeof(Int) * nsrow;
   d_RelativeMap_root = d_base; d_base += sizeof(Int) * nsrow * nbatch;
+  d_base = (void*) ((((size_t)d_base - 1) / sizeof(double*) + 1) * sizeof(double*)); //align
   d_desc->C = d_base; d_base += sizeof(double*) * nbatch;
   d_syrk->A = d_base; d_base += sizeof(double*) * nbatch;
   d_syrk->C = d_base; d_base += sizeof(double*) * nbatch;
@@ -805,95 +895,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
 
 
-  /*
-   * Copy Lx to the device:
-   * First copy to pinned buffer, then to the device for
-   * better H2D bandwidth.
-   */
-  /* copy host data to pinned buffer */
-  a_offset = 0;
-  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
-  {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
-#pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
-      for ( icol=0; icol<ndcol; icol++ ) {
-          for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
-              gpu_p->h_Lx_root[gpuid][iHostBuff][icol*ndrow2*L_ENTRY+irow+a_offset] =
-                  syrk_A[icol*ndrow*L_ENTRY + irow];
-          }
-      }
-
-      a_offset += L_ENTRY * ndcol * ndrow2;
-  }
-
-  /* copy pinned buffer to device */
-  cudaErr = cudaMemcpyAsync ( devPtrLx,
-          gpu_p->h_Lx_root[gpuid][iHostBuff],
-          a_offset*sizeof(devPtrLx[0]),
-          cudaMemcpyHostToDevice,
-          Common->gpuStream[gpuid][iDevBuff] );
-
-  if ( cudaErr ) {
-      CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
-      return (0);
-  }
-
-
-
-  /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCKernelsComplete[gpuid], 0 ) ;
-
-
-
-  /* create relative map for the descendant */
-  i_offset = 0;
-  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
-  {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
-      createRelativeMapOnDevice ( (Int *)(d_Map_root),
-              (Int *)(d_Ls_root),
-              (Int *)(d_RelativeMap_root + i_offset),
-              pdi1,
-              ndrow2,
-              &(Common->gpuStream[gpuid][iDevBuff]) );
-      i_offset += nsrow;
-  }
-
-  cudaErr = cudaGetLastError();
-  if (cudaErr) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
-  }
-
-
-
-  /* set cuBlas stream  */
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
-  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
-    return(0);
-  }
-
-
-
 
   /*
    * Perform DSYRK on GPU for current descendant
@@ -902,20 +903,20 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
-if (nbatch >= 4)
+if (FALSE)
 {
   dsyrk_custom_simple_1block_batch(
           Common->gpuStream[gpuid][iDevBuff],
           CUBLAS_FILL_MODE_LOWER,
           CUBLAS_OP_N,
-          d_syrk->n,
-          d_syrk->k,
+          h_syrk->n,
+          h_syrk->k,
           &alpha,
-          d_syrk->A,
-          d_syrk->lda,
+          h_syrk->A,
+          h_syrk->lda,
           &beta,
-          d_syrk->C,
-          d_syrk->ldc,
+          h_syrk->C,
+          h_syrk->ldc,
           nbatch);
 }
 else
@@ -980,22 +981,22 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
         cuDoubleComplex cbeta   = {0.0,0.0} ;
 #endif
 
-if (nbatch >= 4)
+if (FALSE)
 {
         dgemm_custom_simple_1block_batch(
                 Common->gpuStream[gpuid][iDevBuff],
                 CUBLAS_OP_N, CUBLAS_OP_T,
-                d_gemm->m,
-                d_gemm->n,
-                d_gemm->k,
+                h_gemm->m,
+                h_gemm->n,
+                h_gemm->k,
                 &alpha,
-                d_gemm->A,
-                d_gemm->lda,
-                d_gemm->B,
-                d_gemm->ldb,
+                h_gemm->A,
+                h_gemm->lda,
+                h_gemm->B,
+                h_gemm->ldb,
                 &beta,
-                d_gemm->C,
-                d_gemm->ldc,
+                h_gemm->C,
+                h_gemm->ldc,
                 nbatch);
 }
 else
@@ -1070,7 +1071,8 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
         gemm_B = gemm[batch_idx].B;
         gemm_C = gemm[batch_idx].C;
 #ifdef REAL
-        addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
+        addUpdateOnDevice (
+                gpu_p->d_A_root[gpuid][0],
                 h_desc->C[batch_idx],
                 d_RelativeMap_root + i_offset,
                 ndrow1,
@@ -1078,7 +1080,8 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
                 nsrow,
                 &(Common->gpuStream[gpuid][iDevBuff]) );
 #else
-        addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
+        addComplexUpdateOnDevice (
+                gpu_p->d_A_root[gpuid][0],
                 h_desc->C[batch_idx],
                 d_RelativeMap_root + i_offset,
                 ndrow1,

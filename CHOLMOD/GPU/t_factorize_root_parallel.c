@@ -463,7 +463,8 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 	      else {
 
-		cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+        //cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+		cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
 		if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
         {
