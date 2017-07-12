@@ -627,7 +627,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
+		    if ( (sizeof(int) * (desc_count+1) <= Common->devBuffSize) && ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize ) )
             {
 
 		    Int m   = ndrow2-ndrow1;

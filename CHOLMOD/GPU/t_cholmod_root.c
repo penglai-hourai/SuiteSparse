@@ -658,7 +658,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
    struct cholmod_desc_t *desc,
    struct cholmod_syrk_t *syrk,
    struct cholmod_gemm_t *gemm,
-   Int nbatch,
+   int nbatch,
    double *Lx,
    Int nsrow,
    int gpuid
@@ -681,17 +681,13 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   Int *d_Map_root = gpu_p->d_Map_root[gpuid];
   Int *d_RelativeMap_root = gpu_p->d_RelativeMap_root[gpuid];
 
-  Int batch_idx;
+  int batch_idx;
 
   void *h_base;
 
   struct cholmod_desc_ptrs_t *h_desc = &gpu_p->h_desc[gpuid];
   struct cholmod_syrk_ptrs_t *h_syrk = &gpu_p->h_syrk[gpuid];
   struct cholmod_gemm_ptrs_t *h_gemm = &gpu_p->h_gemm[gpuid];
-
-  struct cholmod_desc_ptrs_t *d_desc = &gpu_p->d_desc[gpuid];
-  struct cholmod_syrk_ptrs_t *d_syrk = &gpu_p->d_syrk[gpuid];
-  struct cholmod_gemm_ptrs_t *d_gemm = &gpu_p->d_gemm[gpuid];
 
   cudaSetDevice(gpuid / Common->numGPU_parallel);
 
@@ -748,49 +744,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   }
 
 
+  cudaStreamSynchronize (Common->gpuStream[gpuid][iDevBuff]);
 
-  /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCKernelsComplete[gpuid], 0 ) ;
-
-
-
-  /* create relative map for the descendant */
-  i_offset = 0;
-  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
-  {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
-      createRelativeMapOnDevice ( (Int *)(d_Map_root),
-              (Int *)(d_Ls_root),
-              (Int *)(d_RelativeMap_root + i_offset),
-              pdi1,
-              ndrow2,
-              &(Common->gpuStream[gpuid][iDevBuff]) );
-      i_offset += nsrow;
-  }
-
-  cudaErr = cudaGetLastError();
-  if (cudaErr) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
-  }
-
-
-
-  /* set cuBlas stream  */
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
-  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
-    return(0);
-  }
 
   h_base = (void*) gpu_p->h_Lx_root[gpuid][iHostBuff];
   h_base = (void*) ((((size_t)h_base - 1) / sizeof(double*) + 1) * sizeof(double*)); //align
@@ -800,20 +755,20 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   h_gemm->A = h_base; h_base += sizeof(double*) * nbatch;
   h_gemm->B = h_base; h_base += sizeof(double*) * nbatch;
   h_gemm->C = h_base; h_base += sizeof(double*) * nbatch;
-  h_desc->s = h_base; h_base += sizeof(Int) * nbatch;
-  h_desc->ndrow1 = h_base; h_base += sizeof(Int) * nbatch;
-  h_desc->ndrow2 = h_base; h_base += sizeof(Int) * nbatch;
-  h_desc->pdi1 = h_base; h_base += sizeof(Int) * nbatch;
-  h_syrk->n = h_base; h_base += sizeof(Int) * nbatch;
-  h_syrk->k = h_base; h_base += sizeof(Int) * nbatch;
-  h_syrk->lda = h_base; h_base += sizeof(Int) * nbatch;
-  h_syrk->ldc = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->m = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->n = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->k = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->lda = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->ldb = h_base; h_base += sizeof(Int) * nbatch;
-  h_gemm->ldc = h_base; h_base += sizeof(Int) * nbatch;
+  h_desc->s = h_base; h_base += sizeof(int) * nbatch;
+  h_desc->ndrow1 = h_base; h_base += sizeof(int) * nbatch;
+  h_desc->ndrow2 = h_base; h_base += sizeof(int) * nbatch;
+  h_desc->pdi1 = h_base; h_base += sizeof(int) * nbatch;
+  h_syrk->n = h_base; h_base += sizeof(int) * nbatch;
+  h_syrk->k = h_base; h_base += sizeof(int) * nbatch;
+  h_syrk->lda = h_base; h_base += sizeof(int) * nbatch;
+  h_syrk->ldc = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->m = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->n = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->k = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->lda = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->ldb = h_base; h_base += sizeof(int) * nbatch;
+  h_gemm->ldc = h_base; h_base += sizeof(int) * nbatch;
   h_base = h_desc->C;
 
   a_offset = 0;
@@ -833,9 +788,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       h_desc->C[batch_idx] = devPtrC + c_offset;
       h_syrk->A[batch_idx] = devPtrLx + a_offset;
       h_syrk->C[batch_idx] = devPtrC + c_offset;
-      h_gemm->A[batch_idx] = devPtrLx + a_offset + L_ENTRY * syrk[batch_idx].n;
+      h_gemm->A[batch_idx] = devPtrLx + a_offset + L_ENTRY * ndrow1;
       h_gemm->B[batch_idx] = devPtrLx + a_offset;
-      h_gemm->C[batch_idx] = devPtrC + c_offset + L_ENTRY * syrk[batch_idx].n;
+      h_gemm->C[batch_idx] = devPtrC + c_offset + L_ENTRY * ndrow1;
       h_desc->s[batch_idx] = desc[batch_idx].s;
       h_desc->ndrow1[batch_idx] = desc[batch_idx].ndrow1;
       h_desc->ndrow2[batch_idx] = desc[batch_idx].ndrow2;
@@ -855,6 +810,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   }
 
 
+  /* set cuBlas stream  */
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
+  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
+    return(0);
+  }
 
 
   /*
@@ -1011,6 +972,42 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
     }
 }
 }
+
+
+
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
+                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+
+
+
+  /* create relative map for the descendant */
+  i_offset = 0;
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      ndcol = syrk[batch_idx].k;
+      ndrow = syrk[batch_idx].lda;
+      ndrow1 = desc[batch_idx].ndrow1;
+      ndrow2 = desc[batch_idx].ndrow2;
+      pdi1 = desc[batch_idx].pdi1;
+      syrk_A = syrk[batch_idx].A;
+      syrk_C = syrk[batch_idx].C;
+      gemm_A = gemm[batch_idx].A;
+      gemm_B = gemm[batch_idx].B;
+      gemm_C = gemm[batch_idx].C;
+      createRelativeMapOnDevice ( (Int *)(d_Map_root),
+              (Int *)(d_Ls_root),
+              (Int *)(d_RelativeMap_root + i_offset),
+              pdi1,
+              ndrow2,
+              &(Common->gpuStream[gpuid][iDevBuff]) );
+      i_offset += nsrow;
+  }
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
+  }
 
 
 
