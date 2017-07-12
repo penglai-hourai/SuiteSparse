@@ -215,7 +215,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	int i, j, k;
 	Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
           kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-          idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, skips, skip_max, dsmall, tail, info,
+          idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, dsmall, tail, info,
           GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
     Int repeat_supernode;
     cudaError_t cuErr;
@@ -420,8 +420,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	dlarge = Next_local[d];
 	dsmall = tail;
 	GPUavailable = 1;
-	skip_max = 0;
-	skips = 0;
 
 
 
@@ -448,23 +446,21 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	      openblas_set_num_threads(numThreads1);
 #endif
 
-	      skip_max = CHOLMOD_GPU_SKIP;
 	    }
 
 
 	    /* get next descendant */
 	    if ( idescendant > 0 ) {
 
-            if ( (GPUavailable == -1 || skips > 0) && (ndescendants-idescendant>numThreads1*(1+CHOLMOD_GPU_SKIP))) {
+            if ( (GPUavailable == -1) && (ndescendants-idescendant>numThreads1*(1+CHOLMOD_GPU_SKIP))) {
                 d = dsmall;
                 dsmall = Previous_local[dsmall];
-                (skips)--;
             }
 
 	      else {
 
-        //cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
-		cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
+        cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+		//cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
 		if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
         {
@@ -486,7 +482,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 		  dlarge = Next_local[dlarge];
 		  GPUavailable = 1;
-		  skips = 0;
 
 		  /* make sure d is complete */
 		  while ( ! node_complete[d] );
@@ -496,7 +491,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  d = dsmall;
 		  dsmall = Previous_local[dsmall];
 		  GPUavailable = 0;
-		  skips = skip_max;
 		}
 	      }
 	    }
@@ -538,6 +532,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 	     *  2. create Map for supernode
 	     *
 	     */
+#if 1
         if ( GPUavailable == 1)
         {
             if ( ndcol * L_ENTRY >= CHOLMOD_ND_COL_LIMIT && ndrow2 * L_ENTRY >= CHOLMOD_ND_ROW_LIMIT )
@@ -554,6 +549,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
                 GPUavailable = -1;
             }
         }
+#else
+        if ( ! mapCreatedOnGpu )
+        {
+            /* initialize supernode (create Map) */
+            TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
+            mapCreatedOnGpu = 1;
+        }
+#endif
 
 
 
@@ -572,8 +575,6 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
         {
             TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
-            Common->ibuffer[gpuid]++;
-            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
             idescendant++;
         }
         else
@@ -675,12 +676,10 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  } /* end loop over parallel descendants (threads) */
 
 
-        if (GPUavailable == -1)
+        if (GPUavailable == -1 && cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] ) == cudaSuccess)
         {
             TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
             supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
-            Common->ibuffer[gpuid]++;
-            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
         }
         else
         {
@@ -820,6 +819,9 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 
 
 	      }
+
+            Common->ibuffer[gpuid]++;
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
 	  } /* end loop over descendants */
 

@@ -38,7 +38,6 @@
 
 
 
-//#define BATCHED_UPDATE
 
 
 
@@ -672,6 +671,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
 
+  Int ndcol_max = 0, ndrow2_max = 0;
+
   size_t a_offset, c_offset;
 
   int batch_idx;
@@ -710,6 +711,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       int ndrow2 = desc[batch_idx].ndrow2;
       int pdi1 = desc[batch_idx].pdi1;
       double *syrk_A = syrk[batch_idx].A;
+      if (ndcol_max < ndcol) ndcol_max = ndcol;
+      if (ndrow2_max < ndrow2) ndrow2_max = ndrow2;
 #pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
       for ( icol=0; icol<ndcol; icol++ ) {
           for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
@@ -733,10 +736,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   }
 
 
-  cudaStreamSynchronize (Common->gpuStream[gpuid][iDevBuff]);
-
-
-  h_base = (void*) gpu_p->h_Lx_root[gpuid][iHostBuff];
+  h_base = (void*) gpu_p->h_Lx_root[gpuid][iHostBuff] + sizeof(double) * a_offset;
   h_desc->C = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->A = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->C = h_base; h_base += sizeof(double*) * nbatch;
@@ -807,6 +807,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
 
   /* create relative map for the descendant */
+#pragma omp parallel for num_threads(numThreads)
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
       createRelativeMapOnDevice (
@@ -831,7 +832,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
-#ifdef BATCHED_UPDATE
+if (L_ENTRY * ndcol_max <= 64 * ndrow2_max <= 64)
 {
   dsyrk_custom_simple_1block_batch(
           Common->gpuStream[gpuid][iDevBuff],
@@ -847,8 +848,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
           h_syrk->ldc,
           nbatch);
 }
-#else
+else
 {
+#pragma omp parallel for num_threads(numThreads)
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
 #ifdef REAL
@@ -879,14 +881,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
               h_syrk->ldc[batch_idx]);       				/* C, LDC: C1 */
 #endif
   }
-}
-#endif
-
 
 if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDsyrk error") ;
     return(0);
   }
+}
 
 
 
@@ -902,7 +902,7 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
         cuDoubleComplex cbeta   = {0.0,0.0} ;
 #endif
 
-#ifdef BATCHED_UPDATE
+if (L_ENTRY * ndcol_max <= 64 && L_ENTRY * ndrow2_max <= 64)
 {
         dgemm_custom_simple_1block_batch(
                 Common->gpuStream[gpuid][iDevBuff],
@@ -920,8 +920,9 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
                 h_gemm->ldc,
                 nbatch);
 }
-#else
+else
 {
+#pragma omp parallel for num_threads(numThreads)
 for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 {
     if (h_gemm->m[batch_idx] > 0)
@@ -951,15 +952,14 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
                 (cuDoubleComplex *) h_gemm->C[batch_idx],
                 h_gemm->ldc[batch_idx]);
 #endif
+    }
+}
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
             ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasDgemm error") ;
             return(0);
         }
-    }
 }
-}
-#endif
 
 
 
@@ -1851,7 +1851,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
 
 
 
-#undef BATCHED_UPDATE
 
 
 
