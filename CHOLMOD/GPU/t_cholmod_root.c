@@ -38,6 +38,7 @@
 
 
 
+//#define BATCHED_UPDATE
 
 
 
@@ -825,7 +826,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
-if (FALSE)
+#ifdef BATCHED_UPDATE
 {
   dsyrk_custom_simple_1block_batch(
           Common->gpuStream[gpuid][iDevBuff],
@@ -841,7 +842,7 @@ if (FALSE)
           h_syrk->ldc,
           nbatch);
 }
-else
+#else
 {
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
@@ -882,6 +883,7 @@ else
 #endif
   }
 }
+#endif
 
 
 if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
@@ -903,7 +905,7 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
         cuDoubleComplex cbeta   = {0.0,0.0} ;
 #endif
 
-if (FALSE)
+#ifdef BATCHED_UPDATE
 {
         dgemm_custom_simple_1block_batch(
                 Common->gpuStream[gpuid][iDevBuff],
@@ -921,7 +923,7 @@ if (FALSE)
                 h_gemm->ldc,
                 nbatch);
 }
-else
+#else
 {
 for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 {
@@ -972,6 +974,7 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
     }
 }
 }
+#endif
 
 
 
@@ -1911,7 +1914,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
 
 
 
-
+#undef BATCHED_UPDATE
 
 
 
