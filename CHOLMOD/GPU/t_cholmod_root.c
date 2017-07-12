@@ -671,7 +671,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
 
-  Int i_offset, a_offset, b_offset, c_offset;
+  Int i_offset, a_offset, c_offset;
 
   Int ndcol, ndrow, ndrow1, ndrow2, ndrow3, pdi1;
 
@@ -683,6 +683,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
   Int batch_idx;
 
+  void *h_base;
+
   struct cholmod_desc_ptrs_t *h_desc = &gpu_p->h_desc[gpuid];
   struct cholmod_syrk_ptrs_t *h_syrk = &gpu_p->h_syrk[gpuid];
   struct cholmod_gemm_ptrs_t *h_gemm = &gpu_p->h_gemm[gpuid];
@@ -690,8 +692,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   struct cholmod_desc_ptrs_t *d_desc = &gpu_p->d_desc[gpuid];
   struct cholmod_syrk_ptrs_t *d_syrk = &gpu_p->d_syrk[gpuid];
   struct cholmod_gemm_ptrs_t *d_gemm = &gpu_p->d_gemm[gpuid];
-
-  void *h_base, *d_base;
 
   cudaSetDevice(gpuid / Common->numGPU_parallel);
 
@@ -816,32 +816,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   h_gemm->ldc = h_base; h_base += sizeof(Int) * nbatch;
   h_base = h_desc->C;
 
-  d_base = (void*) gpu_p->d_A_root[gpuid][1];
-  d_Map_root = d_base; d_base += sizeof(Int) * nsrow;
-  d_RelativeMap_root = d_base; d_base += sizeof(Int) * nsrow * nbatch;
-  d_base = (void*) ((((size_t)d_base - 1) / sizeof(double*) + 1) * sizeof(double*)); //align
-  d_desc->C = d_base; d_base += sizeof(double*) * nbatch;
-  d_syrk->A = d_base; d_base += sizeof(double*) * nbatch;
-  d_syrk->C = d_base; d_base += sizeof(double*) * nbatch;
-  d_gemm->A = d_base; d_base += sizeof(double*) * nbatch;
-  d_gemm->B = d_base; d_base += sizeof(double*) * nbatch;
-  d_gemm->C = d_base; d_base += sizeof(double*) * nbatch;
-  d_desc->s = d_base; d_base += sizeof(Int) * nbatch;
-  d_desc->ndrow1 = d_base; d_base += sizeof(Int) * nbatch;
-  d_desc->ndrow2 = d_base; d_base += sizeof(Int) * nbatch;
-  d_desc->pdi1 = d_base; d_base += sizeof(Int) * nbatch;
-  d_syrk->n = d_base; d_base += sizeof(Int) * nbatch;
-  d_syrk->k = d_base; d_base += sizeof(Int) * nbatch;
-  d_syrk->lda = d_base; d_base += sizeof(Int) * nbatch;
-  d_syrk->ldc = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->m = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->n = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->k = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->lda = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->ldb = d_base; d_base += sizeof(Int) * nbatch;
-  d_gemm->ldc = d_base; d_base += sizeof(Int) * nbatch;
-  d_base = d_desc->C;
-
   a_offset = 0;
   c_offset = 0;
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
@@ -856,13 +830,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       gemm_A = gemm[batch_idx].A;
       gemm_B = gemm[batch_idx].B;
       gemm_C = gemm[batch_idx].C;
-      b_offset = a_offset + L_ENTRY * syrk[batch_idx].n;
       h_desc->C[batch_idx] = devPtrC + c_offset;
       h_syrk->A[batch_idx] = devPtrLx + a_offset;
       h_syrk->C[batch_idx] = devPtrC + c_offset;
-      h_gemm->A[batch_idx] = devPtrLx + a_offset;
-      h_gemm->B[batch_idx] = devPtrLx + b_offset;
-      h_gemm->C[batch_idx] = devPtrC + c_offset;
+      h_gemm->A[batch_idx] = devPtrLx + a_offset + L_ENTRY * syrk[batch_idx].n;
+      h_gemm->B[batch_idx] = devPtrLx + a_offset;
+      h_gemm->C[batch_idx] = devPtrC + c_offset + L_ENTRY * syrk[batch_idx].n;
       h_desc->s[batch_idx] = desc[batch_idx].s;
       h_desc->ndrow1[batch_idx] = desc[batch_idx].ndrow1;
       h_desc->ndrow2[batch_idx] = desc[batch_idx].ndrow2;
@@ -879,18 +852,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       h_gemm->ldc[batch_idx] = gemm[batch_idx].ldc;
       a_offset += L_ENTRY * ndcol * ndrow2;
       c_offset += L_ENTRY * ndrow1 * ndrow2;
-  }
-
-  cudaErr = cudaMemcpyAsync (
-          d_base,
-          h_base,
-          (6 * sizeof(double*) + 14 * sizeof(Int)) * nbatch,
-          cudaMemcpyHostToDevice,
-          Common->gpuStream[gpuid][iDevBuff]);
-
-  if ( cudaErr ) {
-      CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
-      return (0);
   }
 
 
