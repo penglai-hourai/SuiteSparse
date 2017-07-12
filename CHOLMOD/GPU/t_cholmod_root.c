@@ -672,15 +672,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
 
-  Int i_offset, a_offset, c_offset;
-
-  Int ndcol, ndrow, ndrow1, ndrow2, ndrow3, pdi1;
-
-  double *syrk_A, *syrk_C, *gemm_A, *gemm_B, *gemm_C;
-
-  Int *d_Ls_root = gpu_p->d_Ls_root[gpuid];
-  Int *d_Map_root = gpu_p->d_Map_root[gpuid];
-  Int *d_RelativeMap_root = gpu_p->d_RelativeMap_root[gpuid];
+  size_t a_offset, c_offset;
 
   int batch_idx;
 
@@ -712,16 +704,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   a_offset = 0;
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
+      int ndcol = syrk[batch_idx].k;
+      int ndrow = syrk[batch_idx].lda;
+      int ndrow1 = desc[batch_idx].ndrow1;
+      int ndrow2 = desc[batch_idx].ndrow2;
+      int pdi1 = desc[batch_idx].pdi1;
+      double *syrk_A = syrk[batch_idx].A;
 #pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
       for ( icol=0; icol<ndcol; icol++ ) {
           for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
@@ -749,7 +737,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 
 
   h_base = (void*) gpu_p->h_Lx_root[gpuid][iHostBuff];
-  h_base = (void*) ((((size_t)h_base - 1) / sizeof(double*) + 1) * sizeof(double*)); //align
   h_desc->C = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->A = h_base; h_base += sizeof(double*) * nbatch;
   h_syrk->C = h_base; h_base += sizeof(double*) * nbatch;
@@ -770,22 +757,15 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   h_gemm->lda = h_base; h_base += sizeof(int) * nbatch;
   h_gemm->ldb = h_base; h_base += sizeof(int) * nbatch;
   h_gemm->ldc = h_base; h_base += sizeof(int) * nbatch;
-  h_base = h_desc->C;
 
   a_offset = 0;
   c_offset = 0;
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
+      int ndcol = syrk[batch_idx].k;
+      int ndrow1 = desc[batch_idx].ndrow1;
+      int ndrow2 = desc[batch_idx].ndrow2;
+      int pdi1 = desc[batch_idx].pdi1;
       h_desc->C[batch_idx] = devPtrC + c_offset;
       h_syrk->A[batch_idx] = devPtrLx + a_offset;
       h_syrk->C[batch_idx] = devPtrC + c_offset;
@@ -793,19 +773,19 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
       h_gemm->B[batch_idx] = devPtrLx + a_offset;
       h_gemm->C[batch_idx] = devPtrC + c_offset + L_ENTRY * ndrow1;
       h_desc->s[batch_idx] = desc[batch_idx].s;
-      h_desc->ndrow1[batch_idx] = desc[batch_idx].ndrow1;
-      h_desc->ndrow2[batch_idx] = desc[batch_idx].ndrow2;
-      h_desc->pdi1[batch_idx] = desc[batch_idx].pdi1;
-      h_syrk->n[batch_idx] = syrk[batch_idx].n;
-      h_syrk->k[batch_idx] = syrk[batch_idx].k;
-      h_syrk->lda[batch_idx] = syrk[batch_idx].lda;
-      h_syrk->ldc[batch_idx] = syrk[batch_idx].ldc;
-      h_gemm->m[batch_idx] = gemm[batch_idx].m;
-      h_gemm->n[batch_idx] = gemm[batch_idx].n;
-      h_gemm->k[batch_idx] = gemm[batch_idx].k;
-      h_gemm->lda[batch_idx] = gemm[batch_idx].lda;
-      h_gemm->ldb[batch_idx] = gemm[batch_idx].ldb;
-      h_gemm->ldc[batch_idx] = gemm[batch_idx].ldc;
+      h_desc->ndrow1[batch_idx] = ndrow1;
+      h_desc->ndrow2[batch_idx] = ndrow2;
+      h_desc->pdi1[batch_idx] = pdi1;
+      h_syrk->n[batch_idx] = ndrow1;
+      h_syrk->k[batch_idx] = ndcol;
+      h_syrk->lda[batch_idx] = ndrow2;
+      h_syrk->ldc[batch_idx] = ndrow2;
+      h_gemm->m[batch_idx] = ndrow2 - ndrow1;
+      h_gemm->n[batch_idx] = ndrow1;
+      h_gemm->k[batch_idx] = ndcol;
+      h_gemm->lda[batch_idx] = ndrow2;
+      h_gemm->ldb[batch_idx] = ndrow2;
+      h_gemm->ldc[batch_idx] = ndrow2;
       a_offset += L_ENTRY * ndcol * ndrow2;
       c_offset += L_ENTRY * ndrow1 * ndrow2;
   }
@@ -816,6 +796,31 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
   if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     return(0);
+  }
+
+
+
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
+                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+
+
+
+  /* create relative map for the descendant */
+  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
+  {
+      createRelativeMapOnDevice (
+              (Int *)(gpu_p->d_Map_root[gpuid]),
+              (Int *)(gpu_p->d_Ls_root[gpuid]),
+              (Int *)(gpu_p->d_RelativeMap_root[gpuid] + nsrow * batch_idx),
+              h_desc->pdi1[batch_idx],
+              h_desc->ndrow2[batch_idx],
+              &(Common->gpuStream[gpuid][iDevBuff]) );
+  }
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
 
@@ -846,40 +851,32 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched))
 {
   for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
   {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
 #ifdef REAL
-      cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
+      cublasStatus = cublasDsyrk (
+              Common->cublasHandle[gpuid],
               CUBLAS_FILL_MODE_LOWER,
               CUBLAS_OP_N,
-              (int) ndrow1,
-              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
+              (int) h_syrk->n[batch_idx],
+              (int) h_syrk->k[batch_idx],    				/* N, K: L1 is ndrow1-by-ndcol */
               &alpha,         				/* ALPHA:  1 */
               h_syrk->A[batch_idx],
-              ndrow2,         				/* A, LDA: L1, ndrow2 */
+              h_syrk->lda[batch_idx],         				/* A, LDA: L1, ndrow2 */
               &beta,          				/* BETA:   0 */
               h_syrk->C[batch_idx],
-              ndrow2);       				/* C, LDC: C1 */
+              h_syrk->ldc[batch_idx]);       				/* C, LDC: C1 */
 #else
-      cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
+      cublasStatus = cublasZherk (
+              Common->cublasHandle[gpuid],
               CUBLAS_FILL_MODE_LOWER,
               CUBLAS_OP_N,
-              (int) ndrow1,
-              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
+              (int) h_syrk->n[batch_idx],
+              (int) h_syrk->k[batch_idx],    				/* N, K: L1 is ndrow1-by-ndcol */
               &alpha,         				/* ALPHA:  1 */
               (const cuDoubleComplex *) h_syrk->A[batch_idx],
-              ndrow2,         				/* A, LDA: L1, ndrow2 */
+              h_syrk->lda[batch_idx],         				/* A, LDA: L1, ndrow2 */
               &beta,          				/* BETA:   0 */
               (cuDoubleComplex *) h_syrk->C[batch_idx],
-              ndrow2);       				/* C, LDC: C1 */
+              h_syrk->ldc[batch_idx]);       				/* C, LDC: C1 */
 #endif
   }
 }
@@ -927,44 +924,32 @@ if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
 {
 for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 {
-    ndcol = syrk[batch_idx].k;
-    ndrow = syrk[batch_idx].lda;
-    ndrow1 = desc[batch_idx].ndrow1;
-    ndrow2 = desc[batch_idx].ndrow2;
-    pdi1 = desc[batch_idx].pdi1;
-    syrk_A = syrk[batch_idx].A;
-    syrk_C = syrk[batch_idx].C;
-    gemm_A = gemm[batch_idx].A;
-    gemm_B = gemm[batch_idx].B;
-    gemm_C = gemm[batch_idx].C;
-    ndrow3 = ndrow2 - ndrow1 ;
-
-    if (ndrow3 > 0)
+    if (h_gemm->m[batch_idx] > 0)
     {
 #ifdef REAL
         cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
                 CUBLAS_OP_N, CUBLAS_OP_T,
-                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+                h_gemm->m[batch_idx], h_gemm->n[batch_idx], h_gemm->k[batch_idx],          	/* M, N, K */
                 &alpha,                         	/* ALPHA:  1 */
-                h_syrk->A[batch_idx] + L_ENTRY*(ndrow1),    	/* A, LDA: L2*/
-                ndrow2,                         	/* ndrow */
-                h_syrk->A[batch_idx],                       	/* B, LDB: L1 */
-                ndrow2,                         	/* ndrow */
+                h_gemm->A[batch_idx],    	/* A, LDA: L2*/
+                h_gemm->lda[batch_idx],                         	/* ndrow */
+                h_gemm->B[batch_idx],                       	/* B, LDB: L1 */
+                h_gemm->ldb[batch_idx],                         	/* ndrow */
                 &beta,                          	/* BETA:   0 */
-                h_syrk->C[batch_idx] + L_ENTRY*ndrow1,       	/* C, LDC: C2 */
-                ndrow2);
+                h_gemm->C[batch_idx],       	/* C, LDC: C2 */
+                h_gemm->ldc[batch_idx]);
 #else
         cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
                 CUBLAS_OP_N, CUBLAS_OP_C,
-                ndrow3, ndrow1, ndcol,          	/* M, N, K */
+                h_gemm->m[batch_idx], h_gemm->n[batch_idx], h_gemm->k[batch_idx],          	/* M, N, K */
                 &calpha,                        	/* ALPHA:  1 */
-                (const cuDoubleComplex*) h_syrk->A[batch_idx] + ndrow1,
-                ndrow2,                         	/* ndrow */
-                (const cuDoubleComplex *) h_syrk->A[batch_idx],
-                ndrow2,                         	/* ndrow */
+                (const cuDoubleComplex*) h_gemm->A[batch_idx],
+                h_gemm->lda[batch_idx],                         	/* ndrow */
+                (const cuDoubleComplex *) h_gemm->B[batch_idx],
+                h_gemm->ldb[batch_idx],                         	/* ndrow */
                 &cbeta,                         	/* BETA:   0 */
-                (cuDoubleComplex *)h_syrk->C[batch_idx] + ndrow1,
-                ndrow2);
+                (cuDoubleComplex *) h_gemm->C[batch_idx],
+                h_gemm->ldc[batch_idx]);
 #endif
 
         if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
@@ -978,79 +963,31 @@ for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
 
 
 
-  /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCKernelsComplete[gpuid], 0 ) ;
-
-
-
-  /* create relative map for the descendant */
-  i_offset = 0;
-  for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
-  {
-      ndcol = syrk[batch_idx].k;
-      ndrow = syrk[batch_idx].lda;
-      ndrow1 = desc[batch_idx].ndrow1;
-      ndrow2 = desc[batch_idx].ndrow2;
-      pdi1 = desc[batch_idx].pdi1;
-      syrk_A = syrk[batch_idx].A;
-      syrk_C = syrk[batch_idx].C;
-      gemm_A = gemm[batch_idx].A;
-      gemm_B = gemm[batch_idx].B;
-      gemm_C = gemm[batch_idx].C;
-      createRelativeMapOnDevice ( (Int *)(d_Map_root),
-              (Int *)(d_Ls_root),
-              (Int *)(d_RelativeMap_root + i_offset),
-              pdi1,
-              ndrow2,
-              &(Common->gpuStream[gpuid][iDevBuff]) );
-      i_offset += nsrow;
-  }
-
-  cudaErr = cudaGetLastError();
-  if (cudaErr) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
-  }
-
-
-
 
   /*
    * Assemble the update C on the devicet
    */
-    i_offset = 0;
     for (batch_idx = 0; batch_idx < nbatch; batch_idx++)
     {
-        ndcol = syrk[batch_idx].k;
-        ndrow = syrk[batch_idx].lda;
-        ndrow1 = desc[batch_idx].ndrow1;
-        ndrow2 = desc[batch_idx].ndrow2;
-        pdi1 = desc[batch_idx].pdi1;
-        syrk_A = syrk[batch_idx].A;
-        syrk_C = syrk[batch_idx].C;
-        gemm_A = gemm[batch_idx].A;
-        gemm_B = gemm[batch_idx].B;
-        gemm_C = gemm[batch_idx].C;
 #ifdef REAL
         addUpdateOnDevice (
                 gpu_p->d_A_root[gpuid][0],
                 h_desc->C[batch_idx],
-                d_RelativeMap_root + i_offset,
-                ndrow1,
-                ndrow2,
+                gpu_p->d_RelativeMap_root[gpuid] + nsrow * batch_idx,
+                h_desc->ndrow1[batch_idx],
+                h_desc->ndrow2[batch_idx],
                 nsrow,
                 &(Common->gpuStream[gpuid][iDevBuff]) );
 #else
         addComplexUpdateOnDevice (
                 gpu_p->d_A_root[gpuid][0],
                 h_desc->C[batch_idx],
-                d_RelativeMap_root + i_offset,
-                ndrow1,
-                ndrow2,
+                gpu_p->d_RelativeMap_root + nsrow * batch_idx,
+                h_desc->ndrow1[batch_idx],
+                h_desc->ndrow2[batch_idx],
                 nsrow,
                 &(Common->gpuStream[gpuid][iDevBuff]) );
 #endif
-        i_offset += nsrow;
     }
 
 

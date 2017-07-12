@@ -627,7 +627,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		    ndrow3 = ndrow2 - ndrow1 ;
 
 		    /* ensure there is sufficient C buffer space to hold Schur complement update */
-		    if ( (sizeof(Int) * (L->n + nsrow * (desc_count+1) ) ) && ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize ) )
+		    if ( (sizeof(Int) * (L->n + L->n * desc_count ) <= Common->devBuffSize ) && ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize ) )
             {
 
 		    Int m   = ndrow2-ndrow1;
@@ -675,14 +675,14 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 		  } /* end loop over parallel descendants (threads) */
 
 
-        //if (GPUavailable == -1)
-        //{
-        //    TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
-        //    supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
-        //    Common->ibuffer[gpuid]++;
-        //    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
-        //}
-        //else
+        if (GPUavailable == -1)
+        {
+            TEMPLATE2 (CHOLMOD (gpu_updateC_root_batched)) (Common, gpu_p, desc, syrk, gemm, desc_count, Lx, nsrow, gpuid);
+            supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
+            Common->ibuffer[gpuid]++;
+            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+        }
+        else
         {
 		/*
 		 *  DSYRK
@@ -717,11 +717,11 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_root_parallel))
 				C, ldc) ;
 #else
 		    BLAS_zherk ("L", "N",
-				ndrow1, ndcol,
+				n, k,
 				one,
-				A, ndrow,
+				A, lda,
 				zero,
-				C, ndrow2) ;
+				C, ldc) ;
 #endif
 		  } /* end loop over syrk's */
 
