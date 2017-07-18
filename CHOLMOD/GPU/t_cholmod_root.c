@@ -413,11 +413,13 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    Int nsrow,
    Int pdx1,
    Int pdi1,
+   int iHostBuff,
+   int iDevBuff,
    int gpuid
    )
 {
   /* local variables */
-  int icol, irow, iHostBuff, iDevBuff, numThreads;
+  int icol, irow, numThreads;
   Int ndrow3;
   double alpha, beta;
   double *devPtrLx, *devPtrC;
@@ -446,9 +448,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   alpha  = 1.0 ;
   beta   = 0.0 ;
 
-  iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-  iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
-
   /* initialize poitners */
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
   devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
@@ -474,7 +473,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* make the current stream wait for kernels in previous streams */
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+                        Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
 
 
 
@@ -490,21 +489,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     return (0);
   }
 
-
-
-  /* create relative map for the descendant */
-  createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
-                              (Int *)(gpu_p->d_Ls_root[gpuid]),
-                              (Int *)(gpu_p->d_RelativeMap_root[gpuid]),
-                               pdi1,
-                               ndrow2,
-                               &(Common->gpuStream[gpuid][iDevBuff]) );
-
-  cudaErr = cudaGetLastError();
-  if (cudaErr) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
-  }
-
+  cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
   /* set cuBlas stream  */
@@ -515,6 +500,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
+
+
+
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
+                        Common->updateCKernelsComplete[gpuid], 0 ) ;
 
 
   /*
@@ -608,6 +599,22 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   }
 
+  cudaEventRecord ( Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
+
+
+
+  /* create relative map for the descendant */
+  createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
+                              (Int *)(gpu_p->d_Ls_root[gpuid]),
+                              (Int *)(gpu_p->d_RelativeMap_root[gpuid]),
+                               pdi1,
+                               ndrow2,
+                               &(Common->gpuStream[gpuid][iDevBuff]) );
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
+  }
 
 
 
@@ -644,7 +651,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* record event indicating that kernels for descendant are complete */
   cudaEventRecord ( Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
-  cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
 

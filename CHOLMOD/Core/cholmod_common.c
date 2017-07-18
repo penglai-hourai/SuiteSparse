@@ -186,9 +186,12 @@ int CHOLMOD(start)
 
     int gpuid;
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
-      Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
+      }
+      Common->updateCKernelsComplete[gpuid] = NULL;
+      for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {
+        Common->updateCDevBuffersFree[gpuid][k] = NULL ;
       }
       for(k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
         Common->updateCBuffersFree[gpuid][k] = NULL ;

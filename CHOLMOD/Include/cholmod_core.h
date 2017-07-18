@@ -1017,6 +1017,7 @@ typedef struct cholmod_common_struct
     /* events for root code */
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CHOLMOD_MAX_NUM_GPUS][3] ;
     CHOLMOD_CUDAEVENT     updateCKernelsComplete[CHOLMOD_MAX_NUM_GPUS];
+    CHOLMOD_CUDAEVENT     updateCDevBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     /* device memory buffer & size */

@@ -436,6 +436,10 @@
                 {
 
                     iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
+                    iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
+
+                    Common->ibuffer[gpuid]++;
+                    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                     if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1*(1+CHOLMOD_GPU_SKIP) ) ) {
                         nthreads = 1;
@@ -446,8 +450,8 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
-                        //cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        //cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
                         if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
@@ -466,6 +470,7 @@
 
 
                             d = dlarge;
+                            dlarge = Next_local[dlarge];
 
                             GPUavailable = 1;
 
@@ -542,10 +547,8 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, gpuid);
+                        TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
-                        if ( idescendant > 0 )
-                            dlarge = Next_local[dlarge];
                         idescendant++;
                     }
                     else
@@ -784,9 +787,6 @@
 
 
                     }
-
-                    Common->ibuffer[gpuid]++;
-                    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                 } /* end loop over descendants */
 

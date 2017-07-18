@@ -448,6 +448,19 @@ void CHOLMOD(gpu_end)
       }
 
 
+      /* updateCDevBuffersFree event */
+      for(j = 0; j < CHOLMOD_DEVICE_LX_BUFFERS; j++)
+      {
+
+        if (Common->updateCDevBuffersFree[k][j])
+        {
+            cudaEventDestroy (Common->updateCDevBuffersFree[k][j]) ;
+            Common->updateCDevBuffersFree[k][j] = NULL ;
+        }
+
+      }
+
+
       /* updateCBuffersFree event */
       for(j = 0; j < CHOLMOD_HOST_SUPERNODE_BUFFERS; j++)
       {
@@ -725,18 +738,26 @@ int CHOLMOD(gpu_allocate)
         }
       }
 
+      cudaErr = cudaEventCreateWithFlags ( &(Common->updateCKernelsComplete[k]), cudaEventDisableTiming );
+      if (cudaErr != cudaSuccess) {
+        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCKernelsComplete event") ;
+        return (0) ;
+      }
+
+      for (i = 0 ; i < CHOLMOD_DEVICE_LX_BUFFERS ; i++) {
+        cudaErr = cudaEventCreateWithFlags(&(Common->updateCDevBuffersFree[k][i]), cudaEventDisableTiming) ;
+        if (cudaErr != cudaSuccess) {
+          ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCDevBuffersFree event") ;
+          return (0) ;
+        }
+      }
+
       for (i = 0 ; i < CHOLMOD_HOST_SUPERNODE_BUFFERS ; i++) {
         cudaErr = cudaEventCreateWithFlags(&(Common->updateCBuffersFree[k][i]), cudaEventDisableTiming) ;
         if (cudaErr != cudaSuccess) {
           ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCBuffersFree event") ;
           return (0) ;
         }
-      }
-
-      cudaErr = cudaEventCreateWithFlags ( &(Common->updateCKernelsComplete[k]), cudaEventDisableTiming );
-      if (cudaErr != cudaSuccess) {
-        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCKernelsComplete event") ;
-        return (0) ;
       }
 
     }
