@@ -836,7 +836,8 @@ void sumAOnDevice ( double *a1,
                     double *a2,
                     const double alpha,
                     int nsrow,
-                    int nscol )
+                    int nscol,
+                    cudaStream_t stream )
 {
   /* set blocks & grids */
   dim3 grids;
@@ -846,7 +847,7 @@ void sumAOnDevice ( double *a1,
   grids.y = (nscol + blocks.y - 1)/blocks.y;
 
   /* call kernel */
-  kernelSumA <<<grids, blocks, 0, 0>>> ( a1, a2, alpha, nsrow, nscol );
+  kernelSumA <<<grids, blocks, 0, stream>>> ( a1, a2, alpha, nsrow, nscol );
 
 }
 
@@ -866,7 +867,8 @@ void sumComplexAOnDevice ( double *a1,
                            double *a2,
                            const double alpha,
                            int nsrow,
-                           int nscol )
+                           int nscol,
+                           cudaStream_t stream )
 {
   /* set blocks & grids */
   dim3 grids;
@@ -876,7 +878,7 @@ void sumComplexAOnDevice ( double *a1,
   grids.y = (nscol + blocks.y - 1)/blocks.y;
 
   /* call kernel */
-  kernelSumComplexA <<<grids, blocks, 0, 0>>> ( a1, a2, alpha, nsrow, nscol );
+  kernelSumComplexA <<<grids, blocks, 0, stream>>> ( a1, a2, alpha, nsrow, nscol );
 
 }
 

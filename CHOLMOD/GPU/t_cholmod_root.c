@@ -701,6 +701,13 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     *iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
 
+    /* update buffer counters */
+    Common->ibuffer[gpuid]++;
+    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+    iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
+    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
+
+
     /* only if descendant is large enough for GPU */
     if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
@@ -739,46 +746,17 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         return;
       }
 
-    } /* end if descendant large enough */
-
-
-    /* update buffer counters */
-    Common->ibuffer[gpuid]++;
-    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
-    iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
-
-
-
-    /* copy assembled Schur-complement updates computed on GPU */
-    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2],
-		      gpu_p->d_A_root[gpuid][0],
-                      nscol*nsrow*L_ENTRY*sizeof(double),
-                      cudaMemcpyDeviceToHost,
-                      Common->gpuStream[gpuid][iDevBuff2] );
-
-    cudaErr = cudaGetLastError();
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy D-H error!\n");
-      return ;
-    }
-
-
     /* need both H2D and D2H copies to be complete */
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize(Common->gpuStream[gpuid][*iDevBuff]);
 
-
-
-    /* only if descendant large enough for GPU */
-    if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
       /*
        * sum updates from cpu and device on device
        */
 #ifdef REAL
-      sumAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol );
+      sumAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol, Common->gpuStream[gpuid][0] );
 #else
-      sumComplexAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol );
+      sumComplexAOnDevice ( gpu_p->d_A_root[gpuid][1], gpu_p->d_A_root[gpuid][0], -1.0, nsrow, nscol, Common->gpuStream[gpuid][0] );
 #endif
 
 
@@ -803,6 +781,23 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     /* if descendant too small assemble on CPU */
     else
     {
+
+    /* copy assembled Schur-complement updates computed on GPU */
+    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2],
+		      gpu_p->d_A_root[gpuid][0],
+                      nscol*nsrow*L_ENTRY*sizeof(double),
+                      cudaMemcpyDeviceToHost,
+                      Common->gpuStream[gpuid][iDevBuff2] );
+
+    cudaErr = cudaGetLastError();
+    if (cudaErr) {
+      ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy D-H error!\n");
+      return ;
+    }
+
+
+    /* need both H2D and D2H copies to be complete */
+    cudaStreamSynchronize(Common->gpuStream[gpuid][iDevBuff2]);
 
       /* assemble with CPU updates */
       #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
