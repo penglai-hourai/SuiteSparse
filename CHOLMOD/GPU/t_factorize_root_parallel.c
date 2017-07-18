@@ -451,10 +451,26 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
+                        /*
                         if (CPUavailable > 0)
-                            cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                            cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         else
-                            cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                            cuErr = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        */
+
+                        cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        //cuErr = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        while ( cuErr != cudaSuccess && CPUavailable <= 0 )
+                        {
+                            iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
+                            iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
+
+                            Common->ibuffer[gpuid]++;
+                            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+
+                            cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                            //cuErr = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        }
 
                         if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
@@ -605,7 +621,7 @@
                                     ndrow3 = ndrow2 - ndrow1 ;
 
                                     /* ensure there is sufficient C buffer space to hold Schur complement update */
-                                    if ( (sizeof(Int) * (L->n + L->n * desc_count ) <= Common->devBuffSize ) && ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize ) )
+                                    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
                                     {
 
                                         Int m   = ndrow2-ndrow1;

@@ -453,6 +453,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
 
 
+  //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCBuffersFree[gpuid][iHostBuff], 0 ) ;
 
 
   /*
@@ -472,8 +473,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
 
 
 
@@ -504,8 +504,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff],
-                        Common->updateCKernelsComplete[gpuid], 0 ) ;
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
 
 
   /*
