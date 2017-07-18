@@ -109,6 +109,7 @@
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
 
+    int CPUavailable = 1;
 
     /*
      * Set variables & pointers
@@ -450,8 +451,10 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
-                        cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        //cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        if (CPUavailable > 0)
+                            cuErr = cudaEventQuery( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        else
+                            cuErr = cudaEventSynchronize( Common->updateCBuffersFree[gpuid][iHostBuff] );
 
                         if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
@@ -650,6 +653,9 @@
                         } /* end loop over parallel descendants (threads) */
 
 
+#pragma omp atomic
+                            CPUavailable--;
+#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -781,6 +787,8 @@
                                     }
                                 }
                             } /* end loop over descendants */
+#pragma omp atomic
+                            CPUavailable++;
                         }
 
                         nvtxRangeEnd(id2);
@@ -793,6 +801,7 @@
 
 
 
+#pragma omp taskwait
 
 
                 /*
