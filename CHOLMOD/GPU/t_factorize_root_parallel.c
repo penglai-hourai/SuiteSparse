@@ -442,9 +442,8 @@
                     Common->ibuffer[gpuid]++;
                     Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
-                    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1*(1+CHOLMOD_GPU_SKIP) ) ) {
+                    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 2 ) ) {
                         nthreads = 1;
-
                     }
 
 

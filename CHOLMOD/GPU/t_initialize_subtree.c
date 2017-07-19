@@ -1502,7 +1502,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
           if(Csize > maxsubtreeCsize) maxsubtreeCsize = Csize;		/* store maximum C buffer size in any given level */
           if(ndesc > maxsubtreendesc) maxsubtreendesc = ndesc;		/* store maximum # descendants in any given level */
-	  if(nbatch > maxsubtreebatch) maxsubtreebatch = nbatch;		/* store maximum batch size in any given level */
+          if(nbatch > maxsubtreebatch) maxsubtreebatch = nbatch;	/* store maximum batch size in any given level */
           if(ndesc > maxnumdescendantsperlevel) maxnumdescendantsperlevel = ndesc;
 
 

@@ -549,24 +549,24 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           Int ldc = ndrow2;
 
           /* store descendant dimensions & pointers (for addUpdate) */
-	  desc[desc_count].score 	= (double)(ndrow1*ndrow2);
+          desc[desc_count].score 	= (double)(ndrow1*ndrow2);
           desc[desc_count].s 		= i;
           desc[desc_count].pdi1 	= pdi1;
-	  desc[desc_count].pdx1 	= pdx1;
+          desc[desc_count].pdx1 	= pdx1;
           desc[desc_count].ndrow1 	= ndrow1;
           desc[desc_count].ndrow2 	= ndrow2;
-	  desc[desc_count].C 		= (double *)(devPtrC);
+          desc[desc_count].C 		= (double *)(devPtrC);
 
-	  /* store syrk dimensions & pointers */
-	  syrk[desc_count].score 	= (double)(n*k);
-	  syrk[desc_count].n 		= n;
-	  syrk[desc_count].k 		= k;
-	  syrk[desc_count].lda 		= lda;
-	  syrk[desc_count].ldc 		= ldc;	   
+          /* store syrk dimensions & pointers */
+          syrk[desc_count].score 	= (double)(n*k);
+          syrk[desc_count].n 		= n;
+          syrk[desc_count].k 		= k;
+          syrk[desc_count].lda 		= lda;
+          syrk[desc_count].ldc 		= ldc;	   
           syrk[desc_count].A 		= (double *)(d_Lx + pdx1);
           syrk[desc_count].C 		= (double *)(devPtrC);
 	
-	  /* store gemm dimensions & pointers */
+          /* store gemm dimensions & pointers */
           gemm[desc_count].score 	= (double)(2.0*m*n*k);
           gemm[desc_count].m 		= m;
           gemm[desc_count].n 		= n;
@@ -578,7 +578,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           gemm[desc_count].B 		= (double *)(d_Lx + pdx1);
           gemm[desc_count].C 		= (double *)(devPtrC + ndrow1);
 
-	  /* update flops */
+          /* update flops */
           SUM(syrk_flops,1,(double)(n*n*k));
           SUM(gemm_flops,1,(double)(2*m*n*k));
 
