@@ -671,7 +671,6 @@
 
 #pragma omp atomic
                             CPUavailable--;
-//#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -817,7 +816,6 @@
 
 
 
-//#pragma omp taskwait
 
 
                 /*

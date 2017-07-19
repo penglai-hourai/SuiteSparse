@@ -1029,6 +1029,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
    * Copies a batch of supernodes from
    * device to pinned memory.
    */
+#if 0
   copyLx_small ( gpu_p->h_pLx[gpuid],
                  gpu_p->d_Lx[gpuid],
                  d_super->psx,
@@ -1037,6 +1038,19 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
                  nbatch,
                  maxnsrownscol,
                  &Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+#else
+  int k;
+  for (k = 0; k < nbatch; k++)
+  {
+      cudaMemcpyAsync (
+              gpu_p->h_pLx[gpuid] + h_super->psx[k],
+              gpu_p->d_Lx[gpuid] + h_super->psx[k],
+              sizeof(double) * h_super->nscol[k] * h_super->nsrow[k],
+              cudaMemcpyDefault,
+              Common->gpuStream[gpuid * Common->numGPU_parallel][0]
+              );
+  }
+#endif
 
 }
 

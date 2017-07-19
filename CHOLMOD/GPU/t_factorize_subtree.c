@@ -661,7 +661,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       j = 0;
       for(i = 0; i < desc_count; i++)
       {
- 	int m = gemm[i].m;
+        int m = gemm[i].m;
         int n = gemm[i].n;
         int k = gemm[i].k;
 
