@@ -592,16 +592,18 @@ int CHOLMOD(gpu_allocate)
      * Compute the amount of device & host memory requested
      */
     requestedDeviceMemory = maxGpuMemBytes;
-    requestedHostMemory = requestedDeviceMemory
-        * ((size_t) (CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->numGPU_parallel)
-        / ((size_t) CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->numGPU_parallel + 1);
+    requestedHostMemory = (size_t) (requestedDeviceMemory
+        * ((double) CHOLMOD_HOST_SUPERNODE_BUFFERS * Common->numGPU_parallel)
+        / ((double) CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->numGPU_parallel + CHOLMOD_LS_RATIO)
+        );
 
 
 
 
 
     /* Set maximum size of buffers */
-    Common->devBuffSize = requestedDeviceMemory / ((size_t) CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->numGPU_parallel + 1);
+    Common->devBuffSize = (size_t) (requestedDeviceMemory / ((double) CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->numGPU_parallel + CHOLMOD_LS_RATIO));
+    //Common->devBuffSize -= Common->devBuffSize%0x20000;
     Common->devBuffSize -= Common->devBuffSize%0x20000;
 
 

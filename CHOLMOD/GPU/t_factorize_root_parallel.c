@@ -458,6 +458,7 @@
                             cuErr = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         */
 
+
                         cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         //cuErr = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
                         while ( cuErr != cudaSuccess && CPUavailable <= 0 )
@@ -671,7 +672,7 @@
 
 #pragma omp atomic
                             CPUavailable--;
-#pragma omp task
+//#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -817,7 +818,7 @@
 
 
 
-#pragma omp taskwait
+//#pragma omp taskwait
 
 
                 /*

@@ -292,6 +292,7 @@
   #define CHOLMOD_DEVICE_LX_BUFFERS 2
   #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3+CHOLMOD_DEVICE_LX_BUFFERS)		/* # device buffers for root alg. */
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 6		/* # host buffers for root alg. */
+  #define CHOLMOD_LS_RATIO 0.25
 #else
   #define CHOLMOD_MAX_NUM_PGPUS 1			/* max # GPUs */
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */
