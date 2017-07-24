@@ -826,7 +826,7 @@
                  */
                 iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
                 iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
-                TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, &iHostBuff, &iDevBuff, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
+                TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, &iHostBuff, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
 
 
 

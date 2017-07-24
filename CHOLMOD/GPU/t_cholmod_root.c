@@ -680,7 +680,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
    cholmod_gpu_pointers *gpu_p,
    double *Lx,
    int *iHostBuff,
-   int *iDevBuff,
    Int psx,
    Int nscol,
    Int nsrow,
@@ -689,7 +688,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
    )
 {
   /* local variables */
-  Int iidx, i, j, iHostBuff2, iDevBuff2;
+  Int iidx, i, j, iHostBuff2;
   cudaError_t cudaErr ;
   int numThreads;
 
@@ -705,14 +704,12 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* set host/device buffer coutners */
     *iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    *iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
 
     /* update buffer counters */
     Common->ibuffer[gpuid]++;
     Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-    iDevBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
 
 
     /* only if descendant is large enough for GPU */
@@ -745,7 +742,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       cudaMemcpyAsync ( gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][*iHostBuff],
                         nscol*nsrow*L_ENTRY*sizeof(double),
                         cudaMemcpyHostToDevice,
-                        Common->gpuStream[gpuid][*iDevBuff] );
+                        Common->gpuStream[gpuid][0] );
 
       cudaErr = cudaGetLastError();
       if (cudaErr) {
@@ -754,7 +751,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       }
 
     /* need both H2D and D2H copies to be complete */
-    cudaStreamSynchronize(Common->gpuStream[gpuid][*iDevBuff]);
+    cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
 
 
       /*
@@ -794,7 +791,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 		      gpu_p->d_A_root[gpuid][0],
                       nscol*nsrow*L_ENTRY*sizeof(double),
                       cudaMemcpyDeviceToHost,
-                      Common->gpuStream[gpuid][iDevBuff2] );
+                      Common->gpuStream[gpuid][2] );
 
     cudaErr = cudaGetLastError();
     if (cudaErr) {
@@ -804,7 +801,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
     /* need both H2D and D2H copies to be complete */
-    cudaStreamSynchronize(Common->gpuStream[gpuid][iDevBuff2]);
+    cudaStreamSynchronize(Common->gpuStream[gpuid][2]);
 
       /* assemble with CPU updates */
       #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
