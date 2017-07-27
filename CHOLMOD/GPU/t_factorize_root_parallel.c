@@ -216,10 +216,10 @@
                 int i, j, k;
                 Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
                     kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, dsmall, tail, info,
+                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, dsmall, tail, info = 0,
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
-                cudaError_t cuErr;
+                cudaError_t cuErrHost, cuErrDev;
                 struct cholmod_desc_t desc[Common->ompNumThreads];
                 struct cholmod_syrk_t syrk[Common->ompNumThreads];
                 struct cholmod_gemm_t gemm[Common->ompNumThreads];
@@ -393,6 +393,16 @@
                     }
                 }
 
+                /*
+                 *  Initialize Supernode
+                 *
+                 *  Initializes the supernode with the following steps:
+                 *
+                 *  1. clear supernode (Lx) on device
+                 *  2. create Map for supernode
+                 *
+                 */
+                TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, Lx, nscol, nsrow, psi, psx, gpuid );
 
                 /* save/restore the list of supernodes */
                 if (!repeat_supernode)
@@ -414,7 +424,7 @@
 
 
                 /* initialize the buffer counter */
-                Common->ibuffer[gpuid] = 0;
+                Common->ibuffer[gpuid] = 1;
                 supernodeUsedGPU = 0;
                 idescendant = 0;
                 d = Head[s];
@@ -450,17 +460,9 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
-                        /*
-                        if (CPUavailable > 0)
-                            cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        else
-                            cuErr = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        */
-
-
-                        cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        //cuErr = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        while ( cuErr != cudaSuccess && CPUavailable <= 0 )
+                        cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        while ( (cuErrHost != cudaSuccess || cuErrDev != cudaSuccess) && CPUavailable <= 0 )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
@@ -468,11 +470,11 @@
                             Common->ibuffer[gpuid]++;
                             Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
-                            cuErr = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                            //cuErr = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                            cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                            cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
                         }
 
-                        if ( cuErr == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
+                        if ( cuErrHost == cudaSuccess && cuErrDev == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
 
                             if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
@@ -529,27 +531,6 @@
 
                     /* construct the update matrix C for this supernode d */
                     ndrow3 = ndrow2 - ndrow1 ;  	 	/* number of rows of C2 */
-
-
-
-                    /*
-                     *  Initialize Supernode
-                     *
-                     *  Initializes the supernode with the following steps:
-                     *
-                     *  1. clear supernode (Lx) on device
-                     *  2. create Map for supernode
-                     *
-                     */
-                    if ( GPUavailable == 1)
-                    {
-                        if ( ! mapCreatedOnGpu )
-                        {
-                            /* initialize supernode (create Map) */
-                            TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, gpuid );
-                            mapCreatedOnGpu = 1;
-                        }
-                    }
 
 
 

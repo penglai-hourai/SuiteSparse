@@ -23,6 +23,7 @@
 /* includes */
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cusolverDn.h>
 #include <string.h>
 #include <time.h>
 
@@ -112,21 +113,22 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 0) * Common->devBuffSize;
   gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 1) * Common->devBuffSize;
   gpu_p->d_C_root[gpuid]     = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 2) * Common->devBuffSize;
+  gpu_p->d_Ls_root[gpuid]    = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + 3) * Common->devBuffSize;
 
   /* type Int */
-  gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
+  //gpu_p->d_Ls_root[gpuid] = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   //gpu_p->d_Map_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int);
   //gpu_p->d_RelativeMap_root[gpuid] = base_root + 5*Common->devBuffSize + (nls+1)*sizeof(Int) + (n+1)*sizeof(Int);
   //gpu_p->d_Ls_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1];
-  gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + sizeof(Int) * nls;
-  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_A_root[gpuid][1] + sizeof(Int) * nls + sizeof(Int) * n;
+  gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls;
+  gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls + sizeof(Int) * n;
 
   printf ("devBuffSize = %lx, size = %lx\n", Common->devBuffSize, sizeof(Int) * (nls + 2 * n));
 
 
 
   /* copy Ls and Lpi to device */
-  if (gpuid % Common->numGPU_parallel == 0)
+  //if (gpuid % Common->numGPU_parallel == 0)
   {
   cudaErr = cudaMemcpy ( gpu_p->d_Ls_root[gpuid], L->s, nls*sizeof(Int), cudaMemcpyHostToDevice );
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls_root)");
@@ -359,16 +361,21 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   (
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
+   double *Lx,
    Int nscol,
    Int nsrow,
    Int psi,
+   Int psx,
    int gpuid
    )
 {
   /* local variables */
+  Int iidx, i, j;
+  int numThreads;
   cudaError_t cudaErr;
 
   cudaSetDevice(gpuid / Common->numGPU_parallel);
+  numThreads = Common->ompNumThreads;
 
   /* initialize the device supernode assemby memory to zero */
   cudaErr = cudaMemset ( gpu_p->d_A_root[gpuid][0], 0, nscol*nsrow*L_ENTRY*sizeof(double) );
@@ -380,6 +387,30 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   cudaErr = cudaGetLastError();
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createMapOnDevice error");
 
+
+      /* copy update assembled on CPU to a pinned buffer */
+#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
+
+      for ( j=0; j<nscol; j++ ) {
+        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
+          iidx = j*nsrow*L_ENTRY+i;
+          gpu_p->h_Lx_root[gpuid][0][iidx] = Lx[psx*L_ENTRY+iidx];
+        }
+      }
+
+      /* H2D transfer of update assembled on CPU */
+      cudaMemcpyAsync ( gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][0],
+                        nscol*nsrow*L_ENTRY*sizeof(double),
+                        cudaMemcpyHostToDevice,
+                        Common->gpuStream[gpuid][0] );
+
+      cudaErr = cudaGetLastError();
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
+        return;
+      }
+
+  cudaEventRecord ( Common->updateCBuffersFree[gpuid][0], Common->gpuStream[gpuid][0]);
 }
 
 
@@ -475,16 +506,17 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
+  //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
 
 
 
   /* copy pinned buffer to device */
-  cudaErr = cudaMemcpyAsync ( devPtrLx,
-                              gpu_p->h_Lx_root[gpuid][iHostBuff],
-                              ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
-                              cudaMemcpyHostToDevice,
-                              Common->gpuStream[gpuid][iDevBuff] );
+  cudaErr = cudaMemcpyAsync (
+          devPtrLx,
+          gpu_p->h_Lx_root[gpuid][iHostBuff],
+          ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
+          cudaMemcpyHostToDevice,
+          Common->gpuStream[gpuid][iDevBuff]);
 
   if ( cudaErr ) {
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
@@ -623,21 +655,23 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    * Assemble the update C on the devicet
    */
 #ifdef REAL
-  addUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
-		      devPtrC,
-                      gpu_p->d_RelativeMap_root[gpuid],
-		      ndrow1,
-		      ndrow2,
-		      nsrow,
-                      &(Common->gpuStream[gpuid][iDevBuff]) );
+  addUpdateOnDevice (
+          gpu_p->d_A_root[gpuid][0],
+          devPtrC,
+          gpu_p->d_RelativeMap_root[gpuid],
+          ndrow1,
+          ndrow2,
+          nsrow,
+          &(Common->gpuStream[gpuid][iDevBuff]));
 #else
-  addComplexUpdateOnDevice ( gpu_p->d_A_root[gpuid][0],
-			     devPtrC,
-        		     gpu_p->d_RelativeMap_root[gpuid],
-			     ndrow1,
-			     ndrow2,
-			     nsrow,
-        		     &(Common->gpuStream[gpuid][iDevBuff]) );
+  addComplexUpdateOnDevice (
+          gpu_p->d_A_root[gpuid][0],
+          devPtrC,
+          gpu_p->d_RelativeMap_root[gpuid],
+          ndrow1,
+          ndrow2,
+          nsrow,
+          &(Common->gpuStream[gpuid][iDevBuff]));
 #endif
 
 
@@ -723,35 +757,8 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         return;
       }
 
-
-      /* copy update assembled on CPU to a pinned buffer */
-#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
-
-      for ( j=0; j<nscol; j++ ) {
-        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
-          iidx = j*nsrow*L_ENTRY+i;
-          gpu_p->h_Lx_root[gpuid][*iHostBuff][iidx] = Lx[psx*L_ENTRY+iidx];
-        }
-      }
-
-
-    /* wait for all kernels to complete */
-    cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] );
-
-      /* H2D transfer of update assembled on CPU */
-      cudaMemcpyAsync ( gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][*iHostBuff],
-                        nscol*nsrow*L_ENTRY*sizeof(double),
-                        cudaMemcpyHostToDevice,
-                        Common->gpuStream[gpuid][0] );
-
-      cudaErr = cudaGetLastError();
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
-        return;
-      }
-
     /* need both H2D and D2H copies to be complete */
-    cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
+    cudaStreamSynchronize(Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS-1]);
 
 
       /*
@@ -770,17 +777,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         return;
       }
 
-
-      /* place final assembled supernode in pinned buffer */
-      #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
-      for ( j=0; j<nscol; j++ ) {
-        for ( i=j*L_ENTRY; i<nscol*L_ENTRY; i++ ) {
-          iidx = j*nsrow*L_ENTRY+i;
-          gpu_p->h_Lx_root[gpuid][*iHostBuff][iidx] -=
-            gpu_p->h_Lx_root[gpuid][iHostBuff2][iidx];
-        }
-      }
-
     } /* end if descendant large enough */
     /* if descendant too small assemble on CPU */
     else
@@ -791,7 +787,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 		      gpu_p->d_A_root[gpuid][0],
                       nscol*nsrow*L_ENTRY*sizeof(double),
                       cudaMemcpyDeviceToHost,
-                      Common->gpuStream[gpuid][2] );
+                      Common->gpuStream[gpuid][0] );
 
     cudaErr = cudaGetLastError();
     if (cudaErr) {
@@ -801,7 +797,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
     /* need both H2D and D2H copies to be complete */
-    cudaStreamSynchronize(Common->gpuStream[gpuid][2]);
+    cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
 
       /* assemble with CPU updates */
       #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
@@ -854,10 +850,12 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   int ilda, ijb, iinfo = 0;
   Int j, n, jb, nb, nsrow2, gpu_lda, lda, gpu_ldb;
   double alpha, beta;
-  double *devPtrA, *devPtrB, *A;
+  double *devPtrA, *devPtrB, *devPtrC, *A;
   cudaError_t cudaErr ;
   cublasStatus_t cublasStatus ;
 
+  int worksize;
+  int *devInfo;
 
   cudaSetDevice(gpuid / Common->numGPU_parallel);
 
@@ -893,48 +891,57 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   A = gpu_p->h_Lx_root[gpuid][(Common->ibuffer[gpuid]+CHOLMOD_HOST_SUPERNODE_BUFFERS-1)%CHOLMOD_HOST_SUPERNODE_BUFFERS];
   devPtrA = gpu_p->d_Lx_root[gpuid][0];
   devPtrB = gpu_p->d_Lx_root[gpuid][1];
+  devPtrC = (double *)(gpu_p->d_C_root[gpuid]);
+  devInfo = (void *) devPtrC + Common->devBuffSize - sizeof(int);
 
 
 
   /* copy A from device to device */
-  cudaErr = cudaMemcpy2DAsync ( devPtrA,
-                                gpu_lda * L_ENTRY * sizeof (devPtrA[0]),
-                                gpu_p->d_A_root[gpuid][1],
-                                nsrow * L_ENTRY * sizeof (Lx[0]),
-                                nscol2 * L_ENTRY * sizeof (devPtrA[0]),
-                                nscol2,
-                                cudaMemcpyDeviceToDevice,
-                                Common->gpuStream[gpuid][0] );
+  cudaErr = cudaMemcpy2DAsync (
+          devPtrA,
+          gpu_lda * L_ENTRY * sizeof (devPtrA[0]),
+          gpu_p->d_A_root[gpuid][1],
+          nsrow * L_ENTRY * sizeof (Lx[0]),
+          nscol2 * L_ENTRY * sizeof (devPtrA[0]),
+          nscol2,
+          cudaMemcpyDeviceToDevice,
+          Common->gpuStream[gpuid][0]);
 
   if ( cudaErr ){
     ERROR ( CHOLMOD_GPU_PROBLEM, "GPU memcopy device to device");
   }
 
 
+    /* record end of cublasDsyrk */
+    cudaErr = cudaEventRecord (Common->cublasEventPotrf[gpuid][0], Common->gpuStream[gpuid][0]) ;
+    if (cudaErr) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
+    }
+
+
 
   /* copy B in advance, for gpu_triangular_solve */
   if (nsrow2 > 0) {
-    cudaErr = cudaMemcpy2DAsync (devPtrB,
-                                 gpu_ldb * L_ENTRY * sizeof (devPtrB [0]),
-                                 gpu_p->d_A_root[gpuid][1] + L_ENTRY*nscol2,
-                                 nsrow * L_ENTRY * sizeof (Lx [0]),
-                                 nsrow2 * L_ENTRY * sizeof (devPtrB [0]),
-                                 nscol2,
-                                 cudaMemcpyDeviceToDevice,
-                                 Common->gpuStream[gpuid][0]) ;
+      cudaErr = cudaMemcpy2DAsync (
+              devPtrB,
+              gpu_ldb * L_ENTRY * sizeof (devPtrB [0]),
+              gpu_p->d_A_root[gpuid][1] + L_ENTRY*nscol2,
+              nsrow * L_ENTRY * sizeof (Lx [0]),
+              nsrow2 * L_ENTRY * sizeof (devPtrB [0]),
+              nscol2,
+              cudaMemcpyDeviceToDevice,
+              Common->gpuStream[gpuid][2]) ;
     if (cudaErr) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
     }
   }
 
 
-
-  /* define the dpotrf stream */
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][0]) ;
-  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
-  }
-
+    /* wait for cublasDsyrk to end */
+    cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][1], Common->cublasEventPotrf[gpuid][0], 0) ;
+    if (cudaErr) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
+    }
 
 
   /*
@@ -942,6 +949,12 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
    */
   /* loop over blocks */
   for (j = 0 ; j < n ; j += nb) {
+
+  /* define the dpotrf stream */
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][0]) ;
+  if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
+    ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
+  }
 
     jb = nb < (n-j) ? nb : (n-j) ;
 
@@ -953,26 +966,28 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
     beta  = 1.0;
 
 #ifdef REAL
-    cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
-                                CUBLAS_FILL_MODE_LOWER,
- 		                CUBLAS_OP_N,
-			        jb,
-			        j,
-                                &alpha, devPtrA + j,
-				gpu_lda,
-                                &beta,  devPtrA + j + j*gpu_lda,
-				gpu_lda);
+    cublasStatus = cublasDsyrk (
+            Common->cublasHandle[gpuid],
+            CUBLAS_FILL_MODE_LOWER,
+            CUBLAS_OP_N,
+            jb,
+            j,
+            &alpha, devPtrA + j,
+            gpu_lda,
+            &beta,  devPtrA + j + j*gpu_lda,
+            gpu_lda);
 #else
-    cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
-    			        CUBLAS_FILL_MODE_LOWER,
-			 	CUBLAS_OP_N,
-				jb,
-				j,
-   			        &alpha, (cuDoubleComplex*)devPtrA + j,
-		                gpu_lda,
-		                &beta,
-		                (cuDoubleComplex*)devPtrA + j + j*gpu_lda,
-		                gpu_lda) ;
+    cublasStatus = cublasZherk (
+            Common->cublasHandle[gpuid],
+            CUBLAS_FILL_MODE_LOWER,
+            CUBLAS_OP_N,
+            jb,
+            j,
+            &alpha, (cuDoubleComplex*)devPtrA + j,
+            gpu_lda,
+            &beta,
+            (cuDoubleComplex*)devPtrA + j + j*gpu_lda,
+            gpu_lda);
 #endif
 
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
@@ -980,33 +995,11 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
     }
 
 
-    /* record end of cublasDsyrk */
-    cudaErr = cudaEventRecord (Common->cublasEventPotrf[gpuid][0], Common->gpuStream[gpuid][0]) ;
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
-    }
-
-
-    /* wait for cublasDsyrk to end */
-    cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][1], Common->cublasEventPotrf[gpuid][0], 0) ;
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
-    }
-
-
-    /* copy back the jb columns on two different streams */
-    cudaErr = cudaMemcpy2DAsync (A + L_ENTRY*(j + j*lda),
-                                 lda * L_ENTRY * sizeof (double),
-                                 devPtrA + L_ENTRY*(j + j*gpu_lda),
-                                 gpu_lda * L_ENTRY * sizeof (double),
-                                 L_ENTRY * sizeof (double)*jb,
-                                 jb,
-                                 cudaMemcpyDeviceToHost,
-                                 Common->gpuStream[gpuid][1]) ;
-
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
-    }
+      /* wait fo end of DTRSM */
+      cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][1], Common->cublasEventPotrf[gpuid][2], 0) ;
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
+      }
 
 
 
@@ -1015,42 +1008,45 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
      */
     if ((j+jb) < n) {
 
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][1]) ;
 
 #ifdef REAL
       alpha = -1.0 ;
       beta  = 1.0 ;
-      cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
-                                  CUBLAS_OP_N,
-				  CUBLAS_OP_T,
-                                  (n-j-jb),
-				  jb,
-				  j,
-                                  &alpha,
-                                  devPtrA + (j+jb),
-				  gpu_lda,
-                                  devPtrA + (j),
-				  gpu_lda,
-                                  &beta,
-                                  devPtrA + (j+jb + j*gpu_lda),
- 		                  gpu_lda);
+      cublasStatus = cublasDgemm (
+              Common->cublasHandle[gpuid],
+              CUBLAS_OP_N,
+              CUBLAS_OP_T,
+              (n-j-jb),
+              jb,
+              j,
+              &alpha,
+              devPtrA + (j+jb),
+              gpu_lda,
+              devPtrA + (j),
+              gpu_lda,
+              &beta,
+              devPtrA + (j+jb + j*gpu_lda),
+              gpu_lda);
 #else
       cuDoubleComplex calpha = {-1.0,0.0} ;
       cuDoubleComplex cbeta  = { 1.0,0.0} ;
 
-      cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
-	                   	  CUBLAS_OP_N,
-				  CUBLAS_OP_C,
-   		                  (n-j-jb),
-				  jb,
-				  j,
-		                  &calpha,
-		                  (cuDoubleComplex*)devPtrA + (j+jb),
-		                  gpu_lda,
-		                  (cuDoubleComplex*)devPtrA + (j),
-		                  gpu_lda,
-		                  &cbeta,
-		                  (cuDoubleComplex*)devPtrA + (j+jb + j*gpu_lda),
-		                  gpu_lda ) ;
+      cublasStatus = cublasZgemm (
+              Common->cublasHandle[gpuid],
+              CUBLAS_OP_N,
+              CUBLAS_OP_C,
+              (n-j-jb),
+              jb,
+              j,
+              &calpha,
+              (cuDoubleComplex*)devPtrA + (j+jb),
+              gpu_lda,
+              (cuDoubleComplex*)devPtrA + (j),
+              gpu_lda,
+              &cbeta,
+              (cuDoubleComplex*)devPtrA + (j+jb + j*gpu_lda),
+              gpu_lda);
 #endif
 
 
@@ -1061,8 +1057,31 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
     }
 
 
+      /* record end of DTRSM  */
+      cudaErr = cudaEventRecord (Common->cublasEventPotrf[gpuid][1], Common->gpuStream[gpuid][1]) ;
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
+      }
+
+
+    /* copy back the jb columns on two different streams */
+    cudaErr = cudaMemcpy2DAsync (
+            A + L_ENTRY*(j + j*lda),
+            lda * L_ENTRY * sizeof (double),
+            devPtrA + L_ENTRY*(j + j*gpu_lda),
+            gpu_lda * L_ENTRY * sizeof (double),
+            L_ENTRY * sizeof (double)*jb,
+            jb,
+            cudaMemcpyDeviceToHost,
+            Common->gpuStream[gpuid][0]) ;
+
+    if (cudaErr) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
+    }
+
+
     /* synchronize stream */
-    cudaErr = cudaStreamSynchronize (Common->gpuStream[gpuid][1]) ;
+    cudaErr = cudaStreamSynchronize (Common->gpuStream[gpuid][0]) ;
     if (cudaErr) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
     }
@@ -1089,14 +1108,15 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
     /* copy the result back to the GPU */
-    cudaErr = cudaMemcpy2DAsync (devPtrA + L_ENTRY*(j + j*gpu_lda),
-                                 gpu_lda * L_ENTRY * sizeof (double),
-                                 A + L_ENTRY * (j + j*lda),
-                                 lda * L_ENTRY * sizeof (double),
-                                 L_ENTRY * sizeof (double) * jb,
-                                 jb,
-                                 cudaMemcpyHostToDevice,
-                                 Common->gpuStream[gpuid][0]) ;
+    cudaErr = cudaMemcpy2DAsync (
+            devPtrA + L_ENTRY*(j + j*gpu_lda),
+            gpu_lda * L_ENTRY * sizeof (double),
+            A + L_ENTRY * (j + j*lda),
+            lda * L_ENTRY * sizeof (double),
+            L_ENTRY * sizeof (double) * jb,
+            jb,
+            cudaMemcpyHostToDevice,
+            Common->gpuStream[gpuid][0]);
 
     if (cudaErr) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
@@ -1104,40 +1124,51 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
 
+      /* wait fo end of DTRSM */
+      cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][0], Common->cublasEventPotrf[gpuid][1], 0) ;
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
+      }
+
+
     /*
      * Perform DTRSM on GPU
      */
     if ((j+jb) < n) {
 
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][0]) ;
+
 #ifdef REAL
       alpha  = 1.0 ;
-      cublasStatus = cublasDtrsm (Common->cublasHandle[gpuid],
-                                  CUBLAS_SIDE_RIGHT,
-                                  CUBLAS_FILL_MODE_LOWER,
-                                  CUBLAS_OP_T,
-				  CUBLAS_DIAG_NON_UNIT,
-                                  (n-j-jb),
-				  jb,
-                                  &alpha,
-                                  devPtrA + (j + j*gpu_lda),
-				  gpu_lda,
-                                  devPtrA + (j+jb + j*gpu_lda),
-				  gpu_lda);
+      cublasStatus = cublasDtrsm (
+              Common->cublasHandle[gpuid],
+              CUBLAS_SIDE_RIGHT,
+              CUBLAS_FILL_MODE_LOWER,
+              CUBLAS_OP_T,
+              CUBLAS_DIAG_NON_UNIT,
+              (n-j-jb),
+              jb,
+              &alpha,
+              devPtrA + (j + j*gpu_lda),
+              gpu_lda,
+              devPtrA + (j+jb + j*gpu_lda),
+              gpu_lda);
 #else
       cuDoubleComplex calpha  = {1.0,0.0};
 
-      cublasStatus = cublasZtrsm (Common->cublasHandle[gpuid],
-		                  CUBLAS_SIDE_RIGHT,
-               			  CUBLAS_FILL_MODE_LOWER,
-		                  CUBLAS_OP_C,
-				  CUBLAS_DIAG_NON_UNIT,
-		                  (n-j-jb),
-				  jb,
-		                  &calpha,
-		                  (cuDoubleComplex *)devPtrA + (j + j*gpu_lda),
-		                  gpu_lda,
-		                  (cuDoubleComplex *)devPtrA + (j+jb + j*gpu_lda),
-		                  gpu_lda) ;
+      cublasStatus = cublasZtrsm (
+              Common->cublasHandle[gpuid],
+              CUBLAS_SIDE_RIGHT,
+              CUBLAS_FILL_MODE_LOWER,
+              CUBLAS_OP_C,
+              CUBLAS_DIAG_NON_UNIT,
+              (n-j-jb),
+              jb,
+              &calpha,
+              (cuDoubleComplex *)devPtrA + (j + j*gpu_lda),
+              gpu_lda,
+              (cuDoubleComplex *)devPtrA + (j+jb + j*gpu_lda),
+              gpu_lda) ;
 #endif
 
 
@@ -1153,23 +1184,17 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       }
 
 
-      /* wait fo end of DTRSM */
-      cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][1], Common->cublasEventPotrf[gpuid][2], 0) ;
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
-      }
-
-
       /* Copy factored column back to host. */
-      cudaErr = cudaMemcpy2DAsync (A + L_ENTRY*(j + jb + j * lda),
-                                   lda * L_ENTRY * sizeof (double),
-                                   devPtrA + L_ENTRY*
-                                   (j + jb + j * gpu_lda),
-                                   gpu_lda * L_ENTRY * sizeof (double),
-                                   L_ENTRY * sizeof (double)*
-                                   (n - j - jb), jb,
-                                   cudaMemcpyDeviceToHost,
-                                   Common->gpuStream[gpuid][1]) ;
+      cudaErr = cudaMemcpy2DAsync (
+              A + L_ENTRY*(j + jb + j * lda),
+              lda * L_ENTRY * sizeof (double),
+              devPtrA + L_ENTRY*
+              (j + jb + j * gpu_lda),
+              gpu_lda * L_ENTRY * sizeof (double),
+              L_ENTRY * sizeof (double)*
+              (n - j - jb), jb,
+              cudaMemcpyDeviceToHost,
+              Common->gpuStream[gpuid][0]) ;
 
       if (cudaErr) {
         ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
@@ -1255,7 +1280,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
   /* make sure the copy of B has completed */
-  cudaStreamSynchronize( Common->gpuStream[gpuid][0] );
+  cudaStreamSynchronize( Common->gpuStream[gpuid][2] );
 
 
 
@@ -1287,31 +1312,33 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
      * Perform DTRSM on GPU
      */
 #ifdef REAL
-    cublasStatus = cublasDtrsm (Common->cublasHandle[gpuid],
-                                CUBLAS_SIDE_RIGHT,
-                                CUBLAS_FILL_MODE_LOWER,
-                                CUBLAS_OP_T,
-                                CUBLAS_DIAG_NON_UNIT,
-                                gpu_row_chunk,
-                                nscol2,
-                                &alpha,
-                                devPtrA,
-                                gpu_lda,
-                                devPtrB + gpu_row_start,
-                                gpu_ldb) ;
+    cublasStatus = cublasDtrsm (
+            Common->cublasHandle[gpuid],
+            CUBLAS_SIDE_RIGHT,
+            CUBLAS_FILL_MODE_LOWER,
+            CUBLAS_OP_T,
+            CUBLAS_DIAG_NON_UNIT,
+            gpu_row_chunk,
+            nscol2,
+            &alpha,
+            devPtrA,
+            gpu_lda,
+            devPtrB + gpu_row_start,
+            gpu_ldb) ;
 #else
-    cublasStatus = cublasZtrsm (Common->cublasHandle[gpuid],
-                                CUBLAS_SIDE_RIGHT,
-                                CUBLAS_FILL_MODE_LOWER,
-                                CUBLAS_OP_C,
-                                CUBLAS_DIAG_NON_UNIT,
-                                gpu_row_chunk,
-                                nscol2,
-                                &calpha,
-                                (const cuDoubleComplex *) devPtrA,
-                                gpu_lda,
-                                (cuDoubleComplex *)devPtrB + gpu_row_start ,
-                                gpu_ldb) ;
+    cublasStatus = cublasZtrsm (
+            Common->cublasHandle[gpuid],
+            CUBLAS_SIDE_RIGHT,
+            CUBLAS_FILL_MODE_LOWER,
+            CUBLAS_OP_C,
+            CUBLAS_DIAG_NON_UNIT,
+            gpu_row_chunk,
+            nscol2,
+            &calpha,
+            (const cuDoubleComplex *) devPtrA,
+            gpu_lda,
+            (cuDoubleComplex *)devPtrB + gpu_row_start ,
+            gpu_ldb) ;
 #endif
 
 
