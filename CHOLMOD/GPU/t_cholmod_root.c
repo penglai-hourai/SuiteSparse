@@ -181,6 +181,9 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
   (
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
+   Int k1,
+   Int k2,
+   Int *Ls,
    Int *Lpi,
    Int *Lpos,
    Int *Super,
@@ -195,7 +198,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
    )
 {
   /* local variables */
-  Int d, k, p, kd1, kd2, ndcol, ndrow2, pdi, pdend, pdi1, nextd, dnext, n_descendant = 0;
+  Int d, k, p, kd1, kd2, ndcol, ndrow1, ndrow2, pdi, pdend, pdi1, pdi2, nextd, dnext, n_descendant = 0;
   int previousd, nreverse = 1, numThreads;
   double score;
 
@@ -223,15 +226,18 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       pdend = Lpi [d+1] ;     /* pointer just past last row of d in Ls */
       p = Lpos [d] ;          /* offset of 1st row of d affecting s */
       pdi1 = pdi + p ;        /* ptr to 1st row of d affecting s in Ls */
-      ndrow2 = pdend - pdi1;
+      for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
+      ndrow1 = pdi2 - pdi1 ;
+      ndrow2 = pdend - pdi1 ;
 
       nextd = Next[d];
 
       /* compute the descendant's rough flops 'score' */
-      score = ndrow2 * ndcol;
-      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) ) {
-        score += Common->devBuffSize;
-      }
+      score = ndcol * ndrow1 * ndrow2;
+      //if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
+      //{
+      //  score += Common->devBuffSize;
+      //}
 
       /* store descendant in list */
       scores[n_descendant].score = score;
@@ -291,14 +297,16 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nreverse++;
 
       /* place descendant at the front of the list */
-      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) ) {
+      //if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
+      {
         Next[previousd] = Next[d];
         Next[d] = Head[locals];
         Head[locals] = d;
       }
-      else {
-        previousd = d;
-      }
+      //else 
+      //{
+      //  previousd = d;
+      //}
 
       d = nextd;
     } /* end while loop */

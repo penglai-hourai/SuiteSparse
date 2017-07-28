@@ -274,7 +274,7 @@
 //#pragma omp critical
                 {
                     /* reorder descendants in supernode by descreasing size */
-                    TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
+                    TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, k1, k2, Ls, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
 
                     for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
                         Next_local[d] = Next[d];
