@@ -758,7 +758,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       }
 
     /* need both H2D and D2H copies to be complete */
-    cudaStreamSynchronize(Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS-1]);
+    cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
 
 
       /*

@@ -109,7 +109,7 @@
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
 
-    int CPUavailable = 1;
+    int CPUavailable = 0;
 
     /*
      * Set variables & pointers
