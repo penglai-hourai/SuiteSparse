@@ -123,7 +123,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls;
   gpu_p->d_RelativeMap_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls + sizeof(Int) * n;
 
-  printf ("devBuffSize = %lx, size = %lx\n", Common->devBuffSize, sizeof(Int) * (nls + 2 * n));
 
 
 
@@ -147,7 +146,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
     gpu_p->h_Lx_root[gpuid][k]
         = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
-        + (gpuid % Common->numGPU_parallel * (CHOLMOD_HOST_SUPERNODE_BUFFERS)) * Common->devBuffSize + k * Common->devBuffSize;
+        + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k * Common->devBuffSize;
   }
 
 
@@ -535,6 +534,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff]);
 
+  /* make the current stream wait for kernels in previous streams */
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
+
 
   /* set cuBlas stream  */
   cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
@@ -542,13 +544,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     return(0);
   }
-
-
-
-
-
-  /* make the current stream wait for kernels in previous streams */
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
 
 
   /*

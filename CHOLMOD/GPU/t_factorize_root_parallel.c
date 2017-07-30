@@ -480,7 +480,6 @@
 
                         if ( cuErrHost == cudaSuccess && cuErrDev == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
-                            printf ("buffers set iHostBuff = %d, iDevBuff = %d\n", iHostBuff, iDevBuff);
 
                             if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
 
