@@ -282,6 +282,7 @@
 #endif
 
 
+#undef USE_CPU
 #define NMATRICES 256
 
 /* global GPU parameters*/

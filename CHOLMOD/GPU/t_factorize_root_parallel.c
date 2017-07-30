@@ -109,7 +109,11 @@
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
 
+#ifdef USE_CPU
+    int CPUavailable = 1;
+#else
     int CPUavailable = 0;
+#endif
 
     /*
      * Set variables & pointers
@@ -476,6 +480,7 @@
 
                         if ( cuErrHost == cudaSuccess && cuErrDev == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
+                            printf ("buffers set iHostBuff = %d, iDevBuff = %d\n", iHostBuff, iDevBuff);
 
                             if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
 
