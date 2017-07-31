@@ -220,7 +220,7 @@
                 int i, j, k;
                 Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
                     kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, dsmall, tail, info = 0,
+                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, tail, info = 0,
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
                 cudaError_t cuErrHost, cuErrDev;
@@ -452,9 +452,10 @@
 
                     iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                     iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
+                    iDevCBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_C_BUFFERS;
 
                     Common->ibuffer[gpuid]++;
-                    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+                    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                     //if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 2 ) )
                     {
@@ -471,9 +472,10 @@
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
+                            iDevCBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_C_BUFFERS;
 
                             Common->ibuffer[gpuid]++;
-                            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+                            Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                             cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                             cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
@@ -552,7 +554,7 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, gpuid);
+                        TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }

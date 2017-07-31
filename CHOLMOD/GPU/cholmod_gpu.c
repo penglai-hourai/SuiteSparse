@@ -465,7 +465,7 @@ void CHOLMOD(gpu_end)
 
 
       /* updateCDevCBuffersFree event */
-      for(j = 0; j < CHOLMOD_DEVICE_LX_BUFFERS; j++)
+      for(j = 0; j < CHOLMOD_DEVICE_C_BUFFERS; j++)
       {
 
         if (Common->updateCDevCBuffersFree[k][j])
@@ -772,7 +772,7 @@ int CHOLMOD(gpu_allocate)
         }
       }
 
-      for (i = 0 ; i < CHOLMOD_DEVICE_LX_BUFFERS ; i++) {
+      for (i = 0 ; i < CHOLMOD_DEVICE_C_BUFFERS ; i++) {
         cudaErr = cudaEventCreateWithFlags(&(Common->updateCDevCBuffersFree[k][i]), cudaEventDisableTiming) ;
         if (cudaErr != cudaSuccess) {
           ERROR (CHOLMOD_GPU_PROBLEM, "CUDA updateCDevCBuffersFree event") ;

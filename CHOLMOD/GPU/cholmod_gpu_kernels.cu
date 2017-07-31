@@ -600,7 +600,8 @@ void createRelativeMapOnDevice ( Int *d_Map,
 void createMapOnDevice ( Int *d_Map,
                          Int *d_Ls,
                          Int psi,
-                         Int nsrow )
+                         Int nsrow,
+                         cudaStream_t stream )
 {
   /* set blocks & grids */
   dim3 grids;
@@ -609,7 +610,7 @@ void createMapOnDevice ( Int *d_Map,
   grids.x = (nsrow + blocks.x - 1)/blocks.x;
 
   /* call kernel */
-  kernelCreateMap <<<grids, blocks>>> ( d_Map, d_Ls, psi, nsrow );
+  kernelCreateMap <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, psi, nsrow );
 
 }
 

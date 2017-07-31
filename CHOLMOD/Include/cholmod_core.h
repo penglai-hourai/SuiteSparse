@@ -282,7 +282,7 @@
 #endif
 
 
-#define USE_CPU
+#undef USE_CPU
 #define NMATRICES 256
 
 /* global GPU parameters*/
@@ -291,7 +291,8 @@
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 64	/* max # GPUs */
   #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */ /* can not be less than CHOLMOD_DEVICE_SUPERNODE_BUFFERS */
   #define CHOLMOD_DEVICE_LX_BUFFERS 2
-  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3 + 2 * CHOLMOD_DEVICE_LX_BUFFERS)		/* # device buffers for root alg. */
+  #define CHOLMOD_DEVICE_C_BUFFERS 1
+  #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3 + CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS)		/* # device buffers for root alg. */
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 5		/* # host buffers for root alg. */
   #define CHOLMOD_LS_RATIO 0
 #else
@@ -299,8 +300,10 @@
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */
   #define CHOLMOD_DEVICE_STREAMS 1
   #define CHOLMOD_DEVICE_LX_BUFFERS 1
+  #define CHOLMOD_DEVICE_C_BUFFERS 1
   #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS 1
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 1
+  #define CHOLMOD_LS_RATIO 0
 #endif
   #define CHOLMOD_MAX_NUM_GPUS (CHOLMOD_MAX_NUM_PGPUS * CHOLMOD_MAX_NUM_GPU_PARALLEL)
 
@@ -1020,7 +1023,7 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CHOLMOD_MAX_NUM_GPUS][3] ;
     CHOLMOD_CUDAEVENT     updateCKernelsComplete[CHOLMOD_MAX_NUM_GPUS];
     CHOLMOD_CUDAEVENT     updateCDevBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
-    CHOLMOD_CUDAEVENT     updateCDevCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
+    CHOLMOD_CUDAEVENT     updateCDevCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_C_BUFFERS];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
     /* device memory buffer & size */

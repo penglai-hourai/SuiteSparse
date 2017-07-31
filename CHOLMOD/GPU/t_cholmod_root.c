@@ -86,7 +86,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* make buffer size is large enough */
-  if ( (nls + n * (1 + CHOLMOD_DEVICE_LX_BUFFERS)) * sizeof(Int) > Common->devBuffSize ) {
+  if ( (nls + n * (1 + CHOLMOD_DEVICE_C_BUFFERS)) * sizeof(Int) > Common->devBuffSize ) {
     ERROR (CHOLMOD_GPU_PROBLEM,"\n\n"
            "GPU Memory allocation error.  Ls, Map and RelativeMap exceed\n"
            "devBuffSize.  It is not clear if this is due to insufficient\n"
@@ -107,17 +107,16 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   /* type double */
   base_root = Common->dev_mempool[gpuid / Common->numGPU_parallel] + (gpuid % Common->numGPU_parallel * CHOLMOD_DEVICE_SUPERNODE_BUFFERS) * Common->devBuffSize;
   for (k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++)
-  {
       gpu_p->d_Lx_root[gpuid][k] = base_root + k * Common->devBuffSize;
+  for (k = 0; k < CHOLMOD_DEVICE_C_BUFFERS; k++)
       gpu_p->d_C_root[gpuid][k]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + k) * Common->devBuffSize;
-  }
-  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS * 2 + 0) * Common->devBuffSize;
-  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS * 2 + 1) * Common->devBuffSize;
-  gpu_p->d_Ls_root[gpuid]    = base_root + (CHOLMOD_DEVICE_LX_BUFFERS * 2 + 2) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 0) * Common->devBuffSize;
+  gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 1) * Common->devBuffSize;
+  gpu_p->d_Ls_root[gpuid]    = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 2) * Common->devBuffSize;
 
   /* type Int */
   gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls;
-  for (k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++)
+  for (k = 0; k < CHOLMOD_DEVICE_C_BUFFERS; k++)
       gpu_p->d_RelativeMap_root[gpuid][k] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls + sizeof(Int) * n * (1 + k);
 
 
@@ -387,7 +386,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
 
 
   /* create the map for supernode on the device */
-  createMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]), (Int *)(gpu_p->d_Ls_root[gpuid]), psi, nsrow );
+  createMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]), (Int *)(gpu_p->d_Ls_root[gpuid]), psi, nsrow, Common->gpuStream[gpuid][0] );
   cudaErr = cudaGetLastError();
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createMapOnDevice error");
 
@@ -454,6 +453,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    Int pdi1,
    int iHostBuff,
    int iDevBuff,
+   int iDevCBuff,
    int gpuid
    )
 {
@@ -489,7 +489,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* initialize poitners */
   devPtrLx = (double *)(gpu_p->d_Lx_root[gpuid][iDevBuff]);
-  devPtrC = (double *)(gpu_p->d_C_root[gpuid][iDevBuff]);
+  devPtrC = (double *)(gpu_p->d_C_root[gpuid][iDevCBuff]);
 
 
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCBuffersFree[gpuid][iHostBuff], 0 ) ;
@@ -533,7 +533,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   /* make the current stream wait for kernels in previous streams */
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevBuff], 0 ) ;
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
 
   /* set cuBlas stream  */
@@ -552,29 +552,31 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
 #ifdef REAL
-  cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid][iDevBuff],
-                              CUBLAS_FILL_MODE_LOWER,
-                              CUBLAS_OP_N,
-                              (int) ndrow1,
-                              (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
-                              &alpha,         				/* ALPHA:  1 */
-                              devPtrLx,
-                              ndrow2,         				/* A, LDA: L1, ndrow2 */
-                              &beta,          				/* BETA:   0 */
-                              devPtrC,
-                              ndrow2) ;       				/* C, LDC: C1 */
+  cublasStatus = cublasDsyrk (
+          Common->cublasHandle[gpuid][iDevBuff],
+          CUBLAS_FILL_MODE_LOWER,
+          CUBLAS_OP_N,
+          (int) ndrow1,
+          (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol */
+          &alpha,         				/* ALPHA:  1 */
+          devPtrLx,
+          ndrow2,         				/* A, LDA: L1, ndrow2 */
+          &beta,          				/* BETA:   0 */
+          devPtrC,
+          ndrow2) ;       				/* C, LDC: C1 */
 #else
-  cublasStatus = cublasZherk (Common->cublasHandle[gpuid][iDevBuff],
-        		      CUBLAS_FILL_MODE_LOWER,
-  		              CUBLAS_OP_N,
-		              (int) ndrow1,
-	                      (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
-		              &alpha,         				/* ALPHA:  1 */
-		              (const cuDoubleComplex *) devPtrLx,
-		              ndrow2,         				/* A, LDA: L1, ndrow2 */
-		              &beta,          				/* BETA:   0 */
-		              (cuDoubleComplex *) devPtrC,
-		              ndrow2) ;       				/* C, LDC: C1 */
+  cublasStatus = cublasZherk (
+          Common->cublasHandle[gpuid][iDevBuff],
+          CUBLAS_FILL_MODE_LOWER,
+          CUBLAS_OP_N,
+          (int) ndrow1,
+          (int) ndcol,    				/* N, K: L1 is ndrow1-by-ndcol*/
+          &alpha,         				/* ALPHA:  1 */
+          (const cuDoubleComplex *) devPtrLx,
+          ndrow2,         				/* A, LDA: L1, ndrow2 */
+          &beta,          				/* BETA:   0 */
+          (cuDoubleComplex *) devPtrC,
+          ndrow2) ;       				/* C, LDC: C1 */
 #endif
 
 
@@ -637,14 +639,12 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   }
 
-  cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
-
 
 
   /* create relative map for the descendant */
   createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
                               (Int *)(gpu_p->d_Ls_root[gpuid]),
-                              (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevBuff]),
+                              (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevCBuff]),
                                pdi1,
                                ndrow2,
                                &(Common->gpuStream[gpuid][iDevBuff]) );
@@ -653,6 +653,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   if (cudaErr) {
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
+
+  cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
 
@@ -663,7 +665,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   addUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
           devPtrC,
-          gpu_p->d_RelativeMap_root[gpuid][iDevBuff],
+          gpu_p->d_RelativeMap_root[gpuid][iDevCBuff],
           ndrow1,
           ndrow2,
           nsrow,
@@ -672,7 +674,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   addComplexUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
           devPtrC,
-          gpu_p->d_RelativeMap_root[gpuid][iDevBuff],
+          gpu_p->d_RelativeMap_root[gpuid][iDevCBuff],
           ndrow1,
           ndrow2,
           nsrow,
@@ -690,7 +692,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* record event indicating that kernels for descendant are complete */
-  cudaEventRecord ( Common->updateCDevCBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
+  cudaEventRecord ( Common->updateCDevCBuffersFree[gpuid][iDevCBuff], Common->gpuStream[gpuid][iDevBuff]);
   cudaEventRecord ( Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
 
 
@@ -748,7 +750,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* update buffer counters */
     Common->ibuffer[gpuid]++;
-    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
+    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
     iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
 
 
