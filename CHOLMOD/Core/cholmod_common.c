@@ -192,6 +192,7 @@ int CHOLMOD(start)
       Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {
         Common->updateCDevBuffersFree[gpuid][k] = NULL ;
+        Common->updateCDevCBuffersFree[gpuid][k] = NULL ;
       }
       for(k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
         Common->updateCBuffersFree[gpuid][k] = NULL ;

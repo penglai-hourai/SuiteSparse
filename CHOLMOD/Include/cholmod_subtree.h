@@ -322,11 +322,11 @@ typedef struct cholmod_gpu_pointers
     /* root buffers */
     double *h_Lx_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS*2];
     double *d_Lx_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS]; 
-    double *d_C_root[CHOLMOD_MAX_NUM_GPUS];
+    double *d_C_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
     double *d_A_root[CHOLMOD_MAX_NUM_GPUS][2];
     Int *d_Ls_root[CHOLMOD_MAX_NUM_GPUS];
     Int *d_Map_root[CHOLMOD_MAX_NUM_GPUS];
-    Int *d_RelativeMap_root[CHOLMOD_MAX_NUM_GPUS];
+    Int *d_RelativeMap_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
 
    
 } cholmod_gpu_pointers ;

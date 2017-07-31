@@ -1029,7 +1029,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
    * Copies a batch of supernodes from
    * device to pinned memory.
    */
-#if 0
+#if 1
   copyLx_small ( gpu_p->h_pLx[gpuid],
                  gpu_p->d_Lx[gpuid],
                  d_super->psx,
