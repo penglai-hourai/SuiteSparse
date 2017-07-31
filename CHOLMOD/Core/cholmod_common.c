@@ -184,8 +184,10 @@ int CHOLMOD(start)
 
     int gpuid;
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
-      for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
+      for(k = 0; k <= CHOLMOD_DEVICE_STREAMS; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
+      }
+      for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
         Common->cublasHandle[gpuid][k] = NULL ;
         Common->cusolverHandle[gpuid][k] = NULL ;
       }

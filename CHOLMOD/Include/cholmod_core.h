@@ -1016,7 +1016,7 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
 
     /* a set of streams for general use */
-    CHOLMOD_CUDASTREAM    gpuStream[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
+    CHOLMOD_CUDASTREAM    gpuStream[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS+1];
 
     /* events for root code */
     CHOLMOD_CUDAEVENT     cublasEventPotrf[CHOLMOD_MAX_NUM_GPUS][3] ;

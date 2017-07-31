@@ -854,12 +854,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
 
-      TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))( Common,
-						gb_p,
-                        gpu_p,
-						super_count,
-						(int)(maxnsrownscol),
-						gpuid);
+        TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))(
+                Common,
+                gb_p,
+                gpu_p,
+                super_count,
+                (int)(maxnsrownscol),
+                gpuid);
 
 
 
@@ -873,7 +874,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
     /* synchronize all streams - need this? or just redundancy? */
-    for(i=0; i<CHOLMOD_DEVICE_STREAMS; i++) {
+    for(i=CHOLMOD_DEVICE_STREAMS; i<=CHOLMOD_DEVICE_STREAMS; i++) {
         for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
     }
@@ -925,19 +926,22 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
    *  Ony for last level.
    *
    */
-  TEMPLATE2 (CHOLMOD(gpu_copy_supernode))( Common,
-					   gpu_p,
-					   cpu_p,
-					   tree_p,
-					   subtree,
-					   level,
-					   gpuid,
-					   2,
-					   numSuper,
-					   start,
-					   end,					                                              
-                                           LpxSub,
-                                           L->px);
+#if 1
+  TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
+          Common,
+          gpu_p,
+          cpu_p,
+          tree_p,
+          subtree,
+          level,
+          gpuid,
+          1,
+          numSuper,
+          start,
+          end,					                                              
+          LpxSub,
+          L->px);
+#endif
 
 
   //cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
