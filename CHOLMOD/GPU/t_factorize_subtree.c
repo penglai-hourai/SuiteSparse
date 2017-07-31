@@ -935,7 +935,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           subtree,
           level,
           gpuid,
-          1,
+          2,
           numSuper,
           start,
           end,					                                              
