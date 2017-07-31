@@ -126,7 +126,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   /* copy Ls and Lpi to device */
   //if (gpuid % Common->numGPU_parallel == 0)
   {
-  cudaErr = cudaMemcpy ( gpu_p->d_Ls_root[gpuid], L->s, nls*sizeof(Int), cudaMemcpyHostToDevice );
+  cudaErr = cudaMemcpyAsync ( gpu_p->d_Ls_root[gpuid], L->s, nls*sizeof(Int), cudaMemcpyHostToDevice, Common->gpuStream[gpuid][0] );
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls_root)");
   }
 
@@ -382,7 +382,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   numThreads = Common->ompNumThreads;
 
   /* initialize the device supernode assemby memory to zero */
-  cudaErr = cudaMemset ( gpu_p->d_A_root[gpuid][0], 0, nscol*nsrow*L_ENTRY*sizeof(double) );
+  cudaErr = cudaMemsetAsync ( gpu_p->d_A_root[gpuid][0], 0, nscol*nsrow*L_ENTRY*sizeof(double), Common->gpuStream[gpuid][0] );
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemset(d_A_root)");
 
 

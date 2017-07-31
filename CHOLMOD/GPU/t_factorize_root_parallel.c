@@ -456,7 +456,8 @@
                     Common->ibuffer[gpuid]++;
                     Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
-                    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 2 ) ) {
+                    //if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 2 ) )
+                    {
                         nthreads = 1;
                     }
 
@@ -656,6 +657,7 @@
 
 #pragma omp atomic
                             CPUavailable--;
+#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -801,6 +803,7 @@
 
 
 
+#pragma omp taskwait
 
 
                 /*
