@@ -539,7 +539,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* set cuBlas stream  */
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][iDevBuff]) ;
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]) ;
   if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
     return(0);
@@ -554,7 +554,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
 #ifdef REAL
-  cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid],
+  cublasStatus = cublasDsyrk (Common->cublasHandle[gpuid][iDevBuff],
                               CUBLAS_FILL_MODE_LOWER,
                               CUBLAS_OP_N,
                               (int) ndrow1,
@@ -566,7 +566,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
                               devPtrC,
                               ndrow2) ;       				/* C, LDC: C1 */
 #else
-  cublasStatus = cublasZherk (Common->cublasHandle[gpuid],
+  cublasStatus = cublasZherk (Common->cublasHandle[gpuid][iDevBuff],
         		      CUBLAS_FILL_MODE_LOWER,
   		              CUBLAS_OP_N,
 		              (int) ndrow1,
@@ -603,7 +603,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     alpha  = 1.0 ;
     beta   = 0.0 ;
 
-    cublasStatus = cublasDgemm (Common->cublasHandle[gpuid],
+    cublasStatus = cublasDgemm (Common->cublasHandle[gpuid][iDevBuff],
                                 CUBLAS_OP_N, CUBLAS_OP_T,
                                 ndrow3, ndrow1, ndcol,          	/* M, N, K */
                                 &alpha,                         	/* ALPHA:  1 */
@@ -615,7 +615,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
                                 devPtrC + L_ENTRY*ndrow1,       	/* C, LDC: C2 */
                                 ndrow2) ;
 #else
-    cublasStatus = cublasZgemm (Common->cublasHandle[gpuid],
+    cublasStatus = cublasZgemm (Common->cublasHandle[gpuid][iDevBuff],
     	 		        CUBLAS_OP_N, CUBLAS_OP_C,
 		                ndrow3, ndrow1, ndcol,          	/* M, N, K */
 		                &calpha,                        	/* ALPHA:  1 */
@@ -987,7 +987,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   for (j = 0 ; j < n ; j += nb) {
 
   /* define the dpotrf stream */
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][0]) ;
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid][0], Common->gpuStream[gpuid][0]) ;
   if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream") ;
   }
@@ -1003,7 +1003,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 #ifdef REAL
     cublasStatus = cublasDsyrk (
-            Common->cublasHandle[gpuid],
+            Common->cublasHandle[gpuid][0],
             CUBLAS_FILL_MODE_LOWER,
             CUBLAS_OP_N,
             jb,
@@ -1014,7 +1014,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
             gpu_lda);
 #else
     cublasStatus = cublasZherk (
-            Common->cublasHandle[gpuid],
+            Common->cublasHandle[gpuid][0],
             CUBLAS_FILL_MODE_LOWER,
             CUBLAS_OP_N,
             jb,
@@ -1044,13 +1044,13 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
      */
     if ((j+jb) < n) {
 
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][1]) ;
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid][1], Common->gpuStream[gpuid][1]) ;
 
 #ifdef REAL
       alpha = -1.0 ;
       beta  = 1.0 ;
       cublasStatus = cublasDgemm (
-              Common->cublasHandle[gpuid],
+              Common->cublasHandle[gpuid][1],
               CUBLAS_OP_N,
               CUBLAS_OP_T,
               (n-j-jb),
@@ -1069,7 +1069,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       cuDoubleComplex cbeta  = { 1.0,0.0} ;
 
       cublasStatus = cublasZgemm (
-              Common->cublasHandle[gpuid],
+              Common->cublasHandle[gpuid][1],
               CUBLAS_OP_N,
               CUBLAS_OP_C,
               (n-j-jb),
@@ -1177,7 +1177,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 #ifdef REAL
       alpha  = 1.0 ;
       cublasStatus = cublasDtrsm (
-              Common->cublasHandle[gpuid],
+              Common->cublasHandle[gpuid][0],
               CUBLAS_SIDE_RIGHT,
               CUBLAS_FILL_MODE_LOWER,
               CUBLAS_OP_T,
@@ -1193,7 +1193,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       cuDoubleComplex calpha  = {1.0,0.0};
 
       cublasStatus = cublasZtrsm (
-              Common->cublasHandle[gpuid],
+              Common->cublasHandle[gpuid][0],
               CUBLAS_SIDE_RIGHT,
               CUBLAS_FILL_MODE_LOWER,
               CUBLAS_OP_C,
@@ -1337,7 +1337,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
     }
 
 
-    cublasStatus = cublasSetStream ( Common->cublasHandle[gpuid], Common->gpuStream[gpuid][ibuf] );
+    cublasStatus = cublasSetStream ( Common->cublasHandle[gpuid][ibuf], Common->gpuStream[gpuid][ibuf] );
 
     if ( cublasStatus != CUBLAS_STATUS_SUCCESS ) {
       ERROR ( CHOLMOD_GPU_PROBLEM, "GPU CUBLAS stream");
@@ -1349,7 +1349,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
      */
 #ifdef REAL
     cublasStatus = cublasDtrsm (
-            Common->cublasHandle[gpuid],
+            Common->cublasHandle[gpuid][ibuf],
             CUBLAS_SIDE_RIGHT,
             CUBLAS_FILL_MODE_LOWER,
             CUBLAS_OP_T,
@@ -1363,7 +1363,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
             gpu_ldb) ;
 #else
     cublasStatus = cublasZtrsm (
-            Common->cublasHandle[gpuid],
+            Common->cublasHandle[gpuid][ibuf],
             CUBLAS_SIDE_RIGHT,
             CUBLAS_FILL_MODE_LOWER,
             CUBLAS_OP_C,

@@ -392,19 +392,22 @@ void CHOLMOD(gpu_end)
     for(k = 0; k < Common->numGPU; k++) 
     {
 
-      /* cuBlas handle */
-      if (Common->cublasHandle[k])
+      for(j = 0; j < CHOLMOD_DEVICE_STREAMS; j++) 
       {
-          cublasDestroy (Common->cublasHandle[k]) ;
-          Common->cublasHandle[k] = NULL ;
+      /* cuBlas handle */
+      if (Common->cublasHandle[k][j])
+      {
+          cublasDestroy (Common->cublasHandle[k][j]) ;
+          Common->cublasHandle[k][j] = NULL ;
       }
 
 
       /* cuSolver handle */
-      if (Common->cusolverHandle[k])
+      if (Common->cusolverHandle[k][j])
       {
-          cusolverDnDestroy (Common->cusolverHandle[k]) ;
-          Common->cusolverHandle[k] = NULL ;
+          cusolverDnDestroy (Common->cusolverHandle[k][j]) ;
+          Common->cusolverHandle[k][j] = NULL ;
+      }
       }
 
     }
@@ -707,18 +710,20 @@ int CHOLMOD(gpu_allocate)
     for(k = 0; k < Common->numGPU; k++) {
 
       cudaSetDevice(k / Common->numGPU_parallel);
+      for (i = 0; i < CHOLMOD_DEVICE_STREAMS; i++ ) {
       /* create cuBlas handle */
-      cublasErr = cublasCreate (&(Common->cublasHandle[k])) ;
+      cublasErr = cublasCreate (&(Common->cublasHandle[k][i])) ;
       if (cublasErr != CUBLAS_STATUS_SUCCESS) {
         ERROR (CHOLMOD_GPU_PROBLEM, "CUBLAS initialization") ;
         return 1;
       }
 
       /* create cuSolver handle */
-      cusolverErr = cusolverDnCreate( &(Common->cusolverHandle[k]) );
+      cusolverErr = cusolverDnCreate( &(Common->cusolverHandle[k][i]) );
       if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
         ERROR (CHOLMOD_GPU_PROBLEM, "CUSOLVER initialization") ;
         return 1;
+      }
       }
 
     }

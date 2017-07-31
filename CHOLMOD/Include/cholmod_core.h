@@ -1010,8 +1010,8 @@ typedef struct cholmod_common_struct
 #endif
 
     /* cuBlas & cuSolver handles */
-    CHOLMOD_CUBLAS_HANDLE cublasHandle[CHOLMOD_MAX_NUM_GPUS] ;
-    CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CHOLMOD_MAX_NUM_GPUS] ;
+    CHOLMOD_CUBLAS_HANDLE cublasHandle[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
+    CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
 
     /* a set of streams for general use */
     CHOLMOD_CUDASTREAM    gpuStream[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];

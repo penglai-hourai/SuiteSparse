@@ -176,8 +176,6 @@ int CHOLMOD(start)
     /* these are destroyed by cholmod_gpu_deallocate and cholmod_gpu_end */
     for (k = 0; k < CHOLMOD_MAX_NUM_GPUS; k++)
     {
-      Common->cublasHandle[k] = NULL ;
-      Common->cusolverHandle[k] = NULL ;
       Common->cublasEventPotrf[k][0] = NULL ;
       Common->cublasEventPotrf[k][1] = NULL ;
       Common->cublasEventPotrf[k][2] = NULL ;
@@ -188,6 +186,8 @@ int CHOLMOD(start)
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
       for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
+        Common->cublasHandle[gpuid][k] = NULL ;
+        Common->cusolverHandle[gpuid][k] = NULL ;
       }
       Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {

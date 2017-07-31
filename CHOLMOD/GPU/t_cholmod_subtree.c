@@ -42,11 +42,11 @@
 
 
 /*
- * Function: 
+ * Function:
  *   gpu_init
  *
  * Description:
- *   Performs required initialization for GPU computing. 
+ *   Performs required initialization for GPU computing.
  *   Returns 0 if there is an error, disabling GPU computing (useGPU = 0)
  *
  */
@@ -83,31 +83,31 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->gpuPtr[gpuid]		 = Common->dev_mempool[gpuid];
 
     /* type (double *) */
-    
+
     /* pointers to supernode matrices */
     gpu_p->d_ptrSuper[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 3*gb_p->ptrSuperSize;
-    
+
     /* pointers to descendant matrices */
     gpu_p->d_ptrDesc[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 6*gb_p->ptrDescSize;
-    
+
     /* type (double) */
 
     /* Lx */
-    gpu_p->d_Lx[gpuid] 		 = gpu_p->gpuPtr[gpuid];		
+    gpu_p->d_Lx[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->LxSize;
-    
+
     /* C */
     gpu_p->d_C[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->CSize;
-    
-    /* Ax */ 
+
+    /* Ax */
     gpu_p->d_Ax[gpuid] 		 = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] 		+= gb_p->AxSize;  
-    
+    gpu_p->gpuPtr[gpuid] 		+= gb_p->AxSize;
+
     /* type (Int) */
-    
+
     /* Ap */
     gpu_p->d_Ap[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->ApSize;
@@ -115,22 +115,22 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     /* Ai */
     gpu_p->d_Ai[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->AiSize;
-    
+
     /* Ls */
     gpu_p->d_Ls[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->LsSize;
-    
+
     /* Map */
     gpu_p->d_Map[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->MapSize;
 
     /* type (int) */
-    
+
     /* dimensions of supernode matrices */
     gpu_p->d_dimSuper[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 13*gb_p->dimSuperSize;
-    
-    /* dimensions of descendant matrices */ 
+
+    /* dimensions of descendant matrices */
     gpu_p->d_dimDesc[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 14*gb_p->dimDescSize;
 
@@ -139,11 +139,11 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->gpuPtr[gpuid] 		+= sizeof(int);
 
     /* devSync memory for custom cusolverDnDpotrf */
-    gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid]; 
-    gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch; 
-  
+    gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
+
     /* cuSolver Cholesky initialization (get workspace size) */
-    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid * Common->numGPU_parallel], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
+    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid * Common->numGPU_parallel][0], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnDpotrf_bufferSize failure");
     }
@@ -153,26 +153,26 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     Ap = A->p;
     Ai = A->i;
     Ax = A->x;
-    
+
     LsDim = gb_p->LsSize / sizeof(Int);
     ApDim = gb_p->ApSize / sizeof(Int);
     AiDim = gb_p->AiSize / sizeof(Int);
     AxDim = gb_p->AxSize / sizeof(double);
-    
+
     /* Set pinned memory pointers */
     gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid];
 
     /* Ax */
     h_Ax 				 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= gb_p->AxSize;
-    
+
     /* Ls */
     h_Ls 				 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= gb_p->LsSize;
 
     /* Ap */
     h_Ap 				 = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] 	+= gb_p->ApSize;   
+    gpu_p->hostPtr[gpuid] 	+= gb_p->ApSize;
 
     /* Ai */
     h_Ai 				 = gpu_p->hostPtr[gpuid];
@@ -183,8 +183,8 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaStreamCreate(copystream)");
     cudaErr = cudaStreamCreate (&memsetstream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaStreamCreate(memsetstream)");
-    
-    /* Copy arrays to pinned memory from regular memory */  
+
+    /* Copy arrays to pinned memory from regular memory */
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < AxDim; i++) {
       h_Ax[i] = Ax[i];
@@ -197,22 +197,22 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
       h_Ls[i] = Ls[i];
     }
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ls[gpuid], h_Ls, gb_p->LsSize, cudaMemcpyHostToDevice, copystream);
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");	        
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
 
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < ApDim; i++){
       h_Ap[i] = Ap[i];
     }
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ap[gpuid], h_Ap, gb_p->ApSize, cudaMemcpyHostToDevice, copystream);
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ap)");                
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ap)");
 
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < AiDim; i++){
-      h_Ai[i] = Ai[i]; 
+      h_Ai[i] = Ai[i];
     }
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ai[gpuid], h_Ai, gb_p->AiSize, cudaMemcpyHostToDevice, copystream);
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ai)");                
-    
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ai)");
+
     /* Copy arrays to device from pinned memory */
     cudaErr = cudaMemsetAsync ( gpu_p->d_Lx[gpuid], 0, gb_p->LxSize, memsetstream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemset(d_Lx)");
@@ -227,34 +227,34 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     gpu_p->h_ptrDesc[gpuid] 	 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= 6*gb_p->ptrDescSize;
-  
+
     /* type (double) */
 
     gpu_p->h_Lx[gpuid] 		 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= gb_p->LxSize;
-    
+
     /* type (int) */
-    
+
     gpu_p->h_dimSuper[gpuid] 	 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= 13*gb_p->dimSuperSize;
-    
+
     gpu_p->h_dimDesc[gpuid] 	 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= 14*gb_p->dimDescSize;
-    
+
     /* get device pointer to pinted buffer */
     cudaErr = cudaHostGetDevicePointer ( (void**)&gpu_p->h_pLx[gpuid], gpu_p->h_Lx[gpuid], 0);
     if (cudaErr) {
       printf("HostGetDevicePointer - cudaError:%s\n",cudaGetErrorString(cudaErr));
       ERROR ( CHOLMOD_GPU_PROBLEM, "GPU cudaHostGetDevicePointer");
     }
-    
+
 #ifdef USE_NVTX
     nvtxRangeEnd(range1);
 #endif
   }
 
   return (1);  /* initialization successfull, useGPU = 1 */
-  
+
 }
 
 
@@ -275,7 +275,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
  *    Performs three tasks:
  *      1. sets device pointers
  *      2. creates map on device
- *      3. initializes Lx (factor) on device 
+ *      3. initializes Lx (factor) on device
  *
  */
 void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
@@ -300,10 +300,10 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
 
   maxbatch = gb_p->maxbatch;
-    
-  /* 
-   * Set pointers for batching arrays:    
-   * sets pointers for storing dimensions and matrix addresses of 
+
+  /*
+   * Set pointers for batching arrays:
+   * sets pointers for storing dimensions and matrix addresses of
    * supernodes and descendants, in the order they are batched.
    */
 
@@ -408,7 +408,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
   if(cudaStat) {
     ERROR (CHOLMOD_GPU_PROBLEM, "GPU gpu_initialize_supernode_batch\n") ;
   }
- 
+
 }
 
 
@@ -426,7 +426,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
  *
  *  Description:
  *    Computes the schur compliment (DSYRK & DGEMM) of a batch of supernodes and maps
- *    it back (addUpdate). 
+ *    it back (addUpdate).
  *    Performs three tasks:
  *      1. DSYRK
  *        a. cuBlas calls (n > D_N || k > D_K)
@@ -436,7 +436,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
  *        a. cuBlas calls (m > D_M || n > D_N || k > D_K)
  *        b. batched call (otherwise)
  *
- *      3. addUpdate (map schur comp. to supernode)  
+ *      3. addUpdate (map schur comp. to supernode)
  *        a. update one supernode (ndrow1 > D_ROW1 || ndrow2 > D_ROW2)
  *        b. batched call (otherwise)
  *
@@ -449,7 +449,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    cholmod_cpu_pointers *cpu_p,
    cholmod_tree_pointers *tree_p,
    cholmod_profile_pointers *prof_p,
-   int n,   
+   int n,
    int subtree,
    int level,
    int nbatch,			/* size of batch (# descendants) */
@@ -479,7 +479,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   cudaError_t cudaStat;
 
   int vgpuid;
-  
+
   alpha  = -1.0 ;
   beta   = 0.0 ;
 
@@ -496,9 +496,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
 
-  /* 
-   * Perform DSYRK  
-   * Compute dsyrk for all descendants 
+  /*
+   * Perform DSYRK
+   * Compute dsyrk for all descendants
    * of a batch of supernodes.
    */
   TIMER_START1(tstart1);
@@ -512,13 +512,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dsyrk on cuBlas */
-    cublasDsyrk ( Common->cublasHandle[vgpuid],
+    cublasDsyrk ( Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS],
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_N,
                   h_syrk->n[i],
@@ -536,7 +536,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   if( (nbatch - syrk_count) > 0 ) {
       vgpuid = gpuid * Common->numGPU_parallel;
 
-    /* dsyrk on batched kernels */   
+    /* dsyrk on batched kernels */
     dsyrk_custom_simple_1block_batch( Common->gpuStream[vgpuid][0],
                                       CUBLAS_FILL_MODE_LOWER,
                                       CUBLAS_OP_N,
@@ -557,9 +557,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
     cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) { 
+    if (cudaStat) {
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dsyrk_custom_simple_1block_batch") ; 
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dsyrk_custom_simple_1block_batch") ;
     }
       }
   }
@@ -568,9 +568,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
 
-  /* 
-   * Perform DGEMM 
-   * Compute dgemm for all descendants 
+  /*
+   * Perform DGEMM
+   * Compute dgemm for all descendants
    * of a batch of supernodes.
    */
   TIMER_START1(tstart1);
@@ -585,13 +585,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dgemm on cuBlas */
-    cublasDgemm ( Common->cublasHandle[vgpuid],
+    cublasDgemm ( Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS],
                   CUBLAS_OP_N, CUBLAS_OP_T,
                   h_gemm->m[i],
                   h_gemm->n[i],
@@ -606,9 +606,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   h_gemm->ldc[i]);
   }
 
-  
+
   /* check if any gemm's left for batching */
-  if( (nbatch - gemm_count) > 0 ) {   
+  if( (nbatch - gemm_count) > 0 ) {
       vgpuid = gpuid * Common->numGPU_parallel;
 
     /* dgemm on batched kernels */
@@ -626,7 +626,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                                       &d_gemm->C[gemm_count],
                                       &d_gemm->ldc[gemm_count],
                                       nbatch-gemm_count);
-  } 
+  }
 
 
   /* copy supernode from pinned to regular memory - only at last level */
@@ -654,9 +654,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
     cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) { 
+    if (cudaStat) {
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dgemm_custom_simple_1block_batch") ; 
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dgemm_custom_simple_1block_batch") ;
     }
       }
   }
@@ -667,10 +667,10 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
 
-  /* 
-   * Perform addUpdate 
+  /*
+   * Perform addUpdate
    * Add schur compliment for all descendants
-   * of a batch of supernodes.  
+   * of a batch of supernodes.
    */
   TIMER_START1(tstart1);
 
@@ -752,7 +752,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
  *    gpu_lower_potrf_batch
  *
  *  Description:
- *    computes cholesky factoriation for a batch of supernodes. 
+ *    computes cholesky factoriation for a batch of supernodes.
  *    Performs one task:
  *      1. DPOTRF
  *        a. cuSolver calls (n < S_N)
@@ -778,10 +778,10 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
   struct cholmod_potrf_ptrs_t *h_potrf, *d_potrf;
   cudaError_t cudaStat;
   cusolverStatus_t cusolverErr;
-    
+
   int vgpuid;
 
-    
+
 
   /* set profile pointers */
   tend          = prof_p->f_end[gpuid];
@@ -790,13 +790,13 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
 
 
 
-  /* 
-   * Perform batched DPOTRF 
+  /*
+   * Perform batched DPOTRF
    * Compute potrf for all supernodes
-   * in a batch  
+   * in a batch
    */
   TIMER_START1(tstart1);
-   
+
   /* set dimensions */
   h_potrf  = &gpu_p->h_potrf[gpuid];
   d_potrf  = &gpu_p->d_potrf[gpuid];
@@ -806,19 +806,19 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
 
     /* set cuSolver stream */
-    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[vgpuid], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[vgpuid][0], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnSetStream failure");
     }
-  
+
     /* potrf on cuSolver */
-    cusolverDnDpotrf( Common->cusolverHandle[vgpuid], 
-		      CUBLAS_FILL_MODE_LOWER, 
+    cusolverDnDpotrf( Common->cusolverHandle[vgpuid][0],
+		      CUBLAS_FILL_MODE_LOWER,
 		      h_potrf->n[i],
 		      h_potrf->A[i],
 		      h_potrf->lda[i],
-		      &gpu_p->d_devSync[gpuid][2*i], 
-		      gb_p->work_size, 
+		      &gpu_p->d_devSync[gpuid][2*i],
+		      gb_p->work_size,
 		      gpu_p->d_info[gpuid]);
 
   }
@@ -827,7 +827,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
   /* check if any potrf's left for batching */
   if( (nbatch - potrf_count) > 0 ) {
       vgpuid = gpuid * Common->numGPU_parallel;
-  
+
     /* potrf on custom batched kernels */
     dpotrf_custom_simple_1block_batch ( Common->gpuStream[vgpuid][0],
                                         CUBLAS_FILL_MODE_LOWER,
@@ -837,7 +837,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
                                         &info,
                                         nbatch-potrf_count) ;
 
-  } 
+  }
 
 
   /* synchronize streams */
@@ -845,9 +845,9 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
     cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) { 
+    if (cudaStat) {
       printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dpotrf_custom_simple_1block_batch") ; 
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dpotrf_custom_simple_1block_batch") ;
     }
       }
   }
@@ -896,7 +896,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
   struct cholmod_trsm_ptrs_t *h_trsm, *d_trsm;
   cublasStatus_t cublasStatus ;
   cudaError_t cudaStat ;
-   
+
   alpha  = 1.0 ;
 
   int vgpuid;
@@ -910,8 +910,8 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
 
 
 
-  /* 
-   * Perform batched DTRSM 
+  /*
+   * Perform batched DTRSM
    * Compute trsm for all supernodes
    * in a batch
    */
@@ -927,13 +927,13 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS], Common->gpuStream[vgpuid][i%CHOLMOD_DEVICE_STREAMS]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* trsm on cuBlas */
-    cublasDtrsm ( Common->cublasHandle[vgpuid],
+    cublasDtrsm ( Common->cublasHandle[vgpuid][i%CHOLMOD_DEVICE_STREAMS],
                   CUBLAS_SIDE_RIGHT,
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_T,
@@ -966,7 +966,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
                                        &d_trsm->B[i],
                                        &d_trsm->ldb[i],
                                        nbatch-trsm_count);
-  } 
+  }
 
 
   /* synchronize streams */
@@ -975,8 +975,8 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
       {
     cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
     if (cudaStat) {
-      printf("error: %s\n",cudaGetErrorString(cudaGetLastError())); 
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dtrsm_custom_simple_1block_batch") ; 
+      printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dtrsm_custom_simple_1block_batch") ;
     }
       }
   }
@@ -995,7 +995,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
 
 
 /*
- *  Function: 
+ *  Function:
  *    gpu_copy_supernode2
  *
  *  Description:
@@ -1068,16 +1068,16 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
  *    gpu_copy_supernode
  *
  *  Description:
- *    copies batch of supernodes from pinned to regular memory 
+ *    copies batch of supernodes from pinned to regular memory
  *    Performs two tasks:
  *      1. copy supernodes up to last level (flag=1)
  *      2. copy supernodes in last level (flag=2)
  *
- *  Note: 
+ *  Note:
  *    in second case (flag=2) better to set omp threads across
  *    work over single supernode, as there are few (generally
- *    only one) supernodes in the final level. 
- *        
+ *    only one) supernodes in the final level.
+ *
  */
 void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   (
@@ -1093,7 +1093,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
    Int start,				/* first supernode in level  */
    Int end,				/* last supernode in level */
    Int *LpxSub,				/* sub-factor in pinned memory */
-   Int *Lpx				
+   Int *Lpx
    )
 {
   /* local variables */
@@ -1118,7 +1118,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
       nsrow = cpu_p->Lpi[s+1] - cpu_p->Lpi[s] ;
       const int ssize = nscol*nsrow;
- 
+
       offset1 = ((Int*)Lpx)[s];
       offset2 = LpxSub[s];
       double* pLx = &(cpu_p->Lx[offset1]);
@@ -1159,7 +1159,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
 
     } /* end loop over supernodes */
   }
-   
+
 }
 
 
