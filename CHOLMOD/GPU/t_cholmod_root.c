@@ -112,9 +112,9 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
       gpu_p->d_C_root[gpuid][k]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + k) * Common->devBuffSize;
   gpu_p->d_A_root[gpuid][0]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 0) * Common->devBuffSize;
   gpu_p->d_A_root[gpuid][1]  = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 1) * Common->devBuffSize;
-  gpu_p->d_Ls_root[gpuid]    = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 2) * Common->devBuffSize;
 
   /* type Int */
+  gpu_p->d_Ls_root[gpuid]    = base_root + (CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS + 2) * Common->devBuffSize;
   gpu_p->d_Map_root[gpuid] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls;
   for (k = 0; k < CHOLMOD_DEVICE_C_BUFFERS; k++)
       gpu_p->d_RelativeMap_root[gpuid][k] = (void*) gpu_p->d_Ls_root[gpuid] + sizeof(Int) * nls + sizeof(Int) * n * (1 + k);
@@ -389,33 +389,6 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   createMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]), (Int *)(gpu_p->d_Ls_root[gpuid]), psi, nsrow, Common->gpuStream[gpuid][0] );
   cudaErr = cudaGetLastError();
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createMapOnDevice error");
-
-#ifndef USE_CPU
-      /* copy update assembled on CPU to a pinned buffer */
-#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
-
-      for ( j=0; j<nscol; j++ ) {
-        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
-          iidx = j*nsrow*L_ENTRY+i;
-          gpu_p->h_Lx_root[gpuid][0][iidx] = Lx[psx*L_ENTRY+iidx];
-        }
-      }
-
-      /* H2D transfer of update assembled on CPU */
-      cudaMemcpyAsync ( gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][0],
-                        nscol*nsrow*L_ENTRY*sizeof(double),
-                        cudaMemcpyHostToDevice,
-                        Common->gpuStream[gpuid][0] );
-
-      cudaErr = cudaGetLastError();
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
-        return;
-      }
-
-  cudaEventRecord ( Common->updateCBuffersFree[gpuid][0], Common->gpuStream[gpuid][0]);
-  cudaEventRecord ( Common->updateCDevBuffersFree[gpuid][0], Common->gpuStream[gpuid][0]);
-#endif
 }
 
 
@@ -642,12 +615,13 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* create relative map for the descendant */
-  createRelativeMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]),
-                              (Int *)(gpu_p->d_Ls_root[gpuid]),
-                              (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevCBuff]),
-                               pdi1,
-                               ndrow2,
-                               &(Common->gpuStream[gpuid][iDevBuff]) );
+  createRelativeMapOnDevice (
+          (Int *)(gpu_p->d_Map_root[gpuid]),
+          (Int *)(gpu_p->d_Ls_root[gpuid]),
+          (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevCBuff]),
+          pdi1,
+          ndrow2,
+          &(Common->gpuStream[gpuid][iDevBuff]));
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
@@ -765,7 +739,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         return;
       }
 
-#ifdef USE_CPU
       /* copy update assembled on CPU to a pinned buffer */
 #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
 
@@ -778,7 +751,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
 
     /* wait for all kernels to complete */
-    //cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] ); // no longer needed now that Ls, Map, RelativeMap are separate
+    //cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 ); // not needed if Ls, Map, RelativeMap are separate from other mem spaces
 
       /* H2D transfer of update assembled on CPU */
       cudaMemcpyAsync (
@@ -792,11 +765,10 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
         return;
       }
-#endif
+
     /* need both H2D and D2H copies to be complete */
     //cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
-
-    cudaEventSynchronize( Common->updateCKernelsComplete[gpuid] );
+    cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 ); // needed if Ls, Map, RelativeMap are separate from other mem spaces
 
       /*
        * sum updates from cpu and device on device

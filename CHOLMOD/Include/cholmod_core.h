@@ -282,7 +282,6 @@
 #endif
 
 
-#undef USE_CPU
 #define NMATRICES 256
 
 /* global GPU parameters*/
@@ -290,7 +289,7 @@
   #define CHOLMOD_MAX_NUM_PGPUS 64			/* max # GPUs */
   #define CHOLMOD_MAX_NUM_GPU_PARALLEL 64	/* max # GPUs */
   #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */ /* can not be less than CHOLMOD_DEVICE_SUPERNODE_BUFFERS */
-  #define CHOLMOD_DEVICE_LX_BUFFERS 2
+  #define CHOLMOD_DEVICE_LX_BUFFERS 3
   #define CHOLMOD_DEVICE_C_BUFFERS 1
   #define CHOLMOD_DEVICE_SUPERNODE_BUFFERS (3 + CHOLMOD_DEVICE_LX_BUFFERS + CHOLMOD_DEVICE_C_BUFFERS)		/* # device buffers for root alg. */
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 5		/* # host buffers for root alg. */

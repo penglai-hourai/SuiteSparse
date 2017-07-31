@@ -109,11 +109,7 @@
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
 
-#ifdef USE_CPU
-    int CPUavailable = 1;
-#else
     int CPUavailable = 0;
-#endif
 
     /*
      * Set variables & pointers

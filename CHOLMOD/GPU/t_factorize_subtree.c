@@ -940,7 +940,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                                            L->px);
 
 
-  cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+  //cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
 
 
  /* print overall benchmarks */
