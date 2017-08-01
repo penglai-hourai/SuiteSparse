@@ -733,6 +733,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
   /* synchronize streams */
+#if 1
   for(i = 0; i <= CHOLMOD_DEVICE_STREAMS; i++){
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
@@ -743,6 +744,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
     }
       }
   }
+#endif
   TIMER_END1(tstart1,tend,4);
 
 }
@@ -852,6 +854,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
 
 
   /* synchronize streams */
+#if 1
   for(i = 0; i <= CHOLMOD_DEVICE_STREAMS; i++){
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
@@ -862,6 +865,7 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
     }
       }
   }
+#endif
   TIMER_END1(tstart1,potrf_time,0);
   TIMER_END1(tstart1,potrf_time,1);
 
@@ -981,6 +985,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
 
 
   /* synchronize streams */
+#if 1
   for(i = 0; i <= CHOLMOD_DEVICE_STREAMS; i++){
       for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
       {
@@ -991,6 +996,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
     }
       }
   }
+#endif
   TIMER_END1(tstart1,trsm_time,0);
   TIMER_END1(tstart1,trsm_time,1);
 
