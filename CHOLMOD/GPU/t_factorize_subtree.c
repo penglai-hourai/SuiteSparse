@@ -355,7 +355,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         SUM(potrf_flops,1,(double)(n*n*n/3.0));
         SUM(trsm_flops,1,(double)(m*n*n));
 
-	super_count++;
+        super_count++;
 
       } /* end loop over supernodes */
 
@@ -407,7 +407,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       j = 0;
       for(i = 0; i < super_count; i++)
       {
-	int m = trsm[i].m;
+        int m = trsm[i].m;
         int n = trsm[i].n;
 
         if(m < 64 && n < 64) continue;
@@ -764,7 +764,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
       TIMER_START(tstart,3);      
-      TEMPLATE2 (CHOLMOD(gpu_initialize_supernode_batch))( Common,
+      TEMPLATE2 (CHOLMOD(gpu_initialize_supernode_batch))(
+              Common,
               gb_p,
               gpu_p,
               n,
@@ -874,10 +875,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
     /* synchronize all streams - need this? or just redundancy? */
-    for(i=CHOLMOD_DEVICE_STREAMS; i<=CHOLMOD_DEVICE_STREAMS; i++) {
-        for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
-      cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    }
+    for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
+      cudaStreamSynchronize (Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]) ;
 
 
     #ifdef USE_NVTX
