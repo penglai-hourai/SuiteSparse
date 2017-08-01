@@ -109,7 +109,7 @@
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
 
-    int CPUavailable = 0;
+    int CPUavailable = 1;
 
     /*
      * Set variables & pointers
@@ -655,7 +655,6 @@
 
 #pragma omp atomic
                             CPUavailable--;
-#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -801,7 +800,6 @@
 
 
 
-#pragma omp taskwait
 
 
                 /*
