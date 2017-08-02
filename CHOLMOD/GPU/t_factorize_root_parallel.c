@@ -111,6 +111,8 @@
 
     int CPUavailable = 1;
 
+    omp_set_nested(1);
+
     /*
      * Set variables & pointers
      */
@@ -220,9 +222,6 @@
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
                 cudaError_t cuErrHost, cuErrDev;
-                struct cholmod_desc_t desc[Common->ompNumThreads];
-                struct cholmod_syrk_t syrk[Common->ompNumThreads];
-                struct cholmod_gemm_t gemm[Common->ompNumThreads];
 
                 /* set device id, pointers */
                 gpuid  		= omp_get_thread_num();			/* get gpuid */
@@ -442,6 +441,10 @@
 
 
 
+#pragma omp parallel
+                {
+#pragma omp single
+                    {
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
                 {
@@ -557,12 +560,15 @@
                     else
                     {
 
-
                         int tid = 0;
                         int desc_count = 0;
                         int syrk_count = 0;
                         int gemm_count = 0;
                         Int counter = 0;
+
+                        struct cholmod_desc_t desc[Common->ompNumThreads];
+                        struct cholmod_syrk_t syrk[Common->ompNumThreads];
+                        struct cholmod_gemm_t gemm[Common->ompNumThreads];
 
 
                         nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
@@ -652,9 +658,10 @@
                             }
                         } /* end loop over parallel descendants (threads) */
 
-
 #pragma omp atomic
                             CPUavailable--;
+
+//#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -786,16 +793,18 @@
                                     }
                                 }
                             } /* end loop over descendants */
-#pragma omp atomic
-                            CPUavailable++;
                         }
 
                         nvtxRangeEnd(id2);
 
+#pragma omp atomic
+                            CPUavailable++;
 
                     }
 
                 } /* end loop over descendants */
+                    }
+                }
 
 
 
