@@ -598,7 +598,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
           TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, numSuper, subtree, LpxSub);
 #ifdef TDEBUG
-        printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
+        //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
 #endif
     	  TIMER_END(bstart,bend,deviceid);
 
@@ -653,7 +653,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
           check = TEMPLATE2 (CHOLMOD(gpu_factorize_cpu_parallel))( Common, L, gb_p, cpu_p, tree_p, prof_p, deviceid, subtree);
 #ifdef TDEBUG
-        printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
+        //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
 #endif
           TIMER_END(bstart,bend,deviceid);
 
