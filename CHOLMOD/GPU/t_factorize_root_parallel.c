@@ -228,7 +228,7 @@
                 Int *Map  	= &h_Map[gpuid*n];			/* set map */
                 double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
 
-                int nthreads = numThreads1;
+                const int nthreads = 1;
 
                 cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
@@ -455,11 +455,6 @@
 
                     Common->ibuffer[gpuid]++;
                     Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
-
-                    //if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 2 ) )
-                    {
-                        nthreads = 1;
-                    }
 
 
                     /* get next descendant */
