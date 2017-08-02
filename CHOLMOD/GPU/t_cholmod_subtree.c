@@ -1037,20 +1037,12 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
                  &Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
 #else
   int k;
-  Int nscol[nbatch], nsrow[nbatch], psx[nbatch];
-#pragma omp parallel for
-  for (k = 0; k < nbatch; k++)
-  {
-      nscol[k] = h_super->nscol[k];
-      nsrow[k] = h_super->nsrow[k];
-      psx[k] = h_super->psx[k];
-  }
   for (k = 0; k < nbatch; k++)
   {
       cudaMemcpyAsync (
-              gpu_p->h_pLx[gpuid] + /*h_super->*/psx[k],
-              gpu_p->d_Lx[gpuid] + /*h_super->*/psx[k],
-              sizeof(double) * /*h_super->*/nscol[k] * /*h_super->*/nsrow[k],
+              gpu_p->h_pLx[gpuid] + h_super->psx[k],
+              gpu_p->d_Lx[gpuid] + h_super->psx[k],
+              sizeof(double) * h_super->nscol[k] * h_super->nsrow[k],
               cudaMemcpyDefault,
               Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
   }
