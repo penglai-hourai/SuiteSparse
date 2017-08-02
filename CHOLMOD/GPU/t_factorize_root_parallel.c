@@ -536,8 +536,6 @@
                     ndrow3 = ndrow2 - ndrow1 ;  	 	/* number of rows of C2 */
 
 
-
-
                     /*
                      *  Supernode Assembly
                      *
@@ -548,7 +546,7 @@
                      *  3. perform addUpdate
                      *
                      */
-                    if ( GPUavailable == 1 )
+                    if ( GPUavailable != 0 )
                     {
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
@@ -575,7 +573,7 @@
                         {
 
                             /* ensure there are remaining descendants to assemble */
-                            if(idescendant < ndescendants )
+                            if(idescendant < ndescendants)
                             {
 
                                 if(tid > 0) {
