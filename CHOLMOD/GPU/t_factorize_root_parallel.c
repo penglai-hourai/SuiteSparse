@@ -501,6 +501,8 @@
 
                         }
                         else {
+#pragma omp atomic
+                            CPUavailable--;
                             d = dsmall;
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
@@ -653,9 +655,8 @@
                             }
                         } /* end loop over parallel descendants (threads) */
 
-#pragma omp atomic
-                            CPUavailable--;
 
+//#pragma omp taskwait
 //#pragma omp task
                         {
                             /*
@@ -788,12 +789,12 @@
                                     }
                                 }
                             } /* end loop over descendants */
+#pragma omp atomic
+                            CPUavailable++;
                         }
 
                         nvtxRangeEnd(id2);
 
-#pragma omp atomic
-                            CPUavailable++;
 
                     }
 
