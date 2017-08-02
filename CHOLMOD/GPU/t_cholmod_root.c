@@ -228,11 +228,13 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nextd = Next[d];
 
       /* compute the descendant's rough flops 'score' */
-      score = ndcol * ndrow2;
+      score = ndcol * ndrow1 * ndrow2;
+      /*
       if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
       {
         score += Common->devBuffSize;
       }
+      */
 
       /* store descendant in list */
       scores[n_descendant].score = score;
@@ -292,16 +294,18 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nreverse++;
 
       /* place descendant at the front of the list */
-      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
+      //if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
       {
         Next[previousd] = Next[d];
         Next[d] = Head[locals];
         Head[locals] = d;
       }
+      /*
       else 
       {
         previousd = d;
       }
+      */
 
       d = nextd;
     } /* end while loop */
