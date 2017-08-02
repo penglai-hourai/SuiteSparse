@@ -228,7 +228,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nextd = Next[d];
 
       /* compute the descendant's rough flops 'score' */
-      score = ndcol * ndrow1 * ndrow2;
+      score = ndcol * ndrow2;
       if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
       {
         score += Common->devBuffSize;
