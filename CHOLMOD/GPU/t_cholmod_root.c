@@ -485,7 +485,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* make the current stream wait for kernels in previous streams */
-  //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
 
 
 

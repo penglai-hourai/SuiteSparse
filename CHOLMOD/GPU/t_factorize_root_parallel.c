@@ -461,7 +461,7 @@
                     if ( idescendant > 0 ) {
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
                         while ( (cuErrHost != cudaSuccess || cuErrDev != cudaSuccess) && CPUavailable <= 0 )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
@@ -472,10 +472,10 @@
                             Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                             cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                            cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                            //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
                         }
 
-                        if ( cuErrHost == cudaSuccess && cuErrDev == cudaSuccess && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
+                        if ( cuErrHost == cudaSuccess/* && cuErrDev == cudaSuccess*/ && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
 
                             if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
