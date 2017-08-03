@@ -389,30 +389,6 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   createMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]), (Int *)(gpu_p->d_Ls_root[gpuid]), psi, nsrow, Common->gpuStream[gpuid][0] );
   cudaErr = cudaGetLastError();
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createMapOnDevice error");
-
-      /* copy update assembled on CPU to a pinned buffer */
-#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
-
-      for ( j=0; j<nscol; j++ ) {
-        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
-          iidx = j*nsrow*L_ENTRY+i;
-          gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx] = Lx[psx*L_ENTRY+iidx];
-        }
-      }
-
-      /* H2D transfer of update assembled on CPU */
-      cudaMemcpyAsync (
-              gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS],
-              nscol*nsrow*L_ENTRY*sizeof(double),
-              cudaMemcpyHostToDevice,
-              Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS] );
-
-      cudaErr = cudaGetLastError();
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
-        return;
-      }
-  cudaEventRecord ( Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS]);
 }
 
 
@@ -719,7 +695,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
    double *Lx,
-   int *iHostBuff,
    Int psx,
    Int nscol,
    Int nsrow,
@@ -728,7 +703,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
    )
 {
   /* local variables */
-  Int iidx, i, j, iHostBuff2;
+  Int iidx, i, j;
   cudaError_t cudaErr ;
   int numThreads;
 
@@ -742,18 +717,31 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
   /* only if descendant was assembled on GPU */
   if ( supernodeUsedGPU ) {
 
-    /* set host/device buffer coutners */
-    *iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-
-
-    /* update buffer counters */
-    Common->ibuffer[gpuid]++;
-    Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
-    iHostBuff2 = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
-
-
     /* only if descendant is large enough for GPU */
     if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
+
+      /* copy update assembled on CPU to a pinned buffer */
+#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
+
+      for ( j=0; j<nscol; j++ ) {
+        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
+          iidx = j*nsrow*L_ENTRY+i;
+          gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx] = Lx[psx*L_ENTRY+iidx];
+        }
+      }
+
+      /* H2D transfer of update assembled on CPU */
+      cudaMemcpyAsync (
+              gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS],
+              nscol*nsrow*L_ENTRY*sizeof(double),
+              cudaMemcpyHostToDevice,
+              Common->gpuStream[gpuid][0] );
+
+      cudaErr = cudaGetLastError();
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
+        return;
+      }
 
     /* need both H2D and D2H copies to be complete */
     //cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
@@ -782,7 +770,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     {
 
     /* copy assembled Schur-complement updates computed on GPU */
-    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff2],
+    cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS],
 		      gpu_p->d_A_root[gpuid][0],
                       nscol*nsrow*L_ENTRY*sizeof(double),
                       cudaMemcpyDeviceToHost,
@@ -803,7 +791,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
       for ( j=0; j<nscol; j++ ) {
         for ( i=j*L_ENTRY; i<nsrow*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
-          Lx[psx*L_ENTRY+iidx] -= gpu_p->h_Lx_root[gpuid][iHostBuff2][iidx];
+          Lx[psx*L_ENTRY+iidx] -= gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx];
         }
       }
 
@@ -884,7 +872,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
   /* set device pointers */
-  A = gpu_p->h_Lx_root[gpuid][(Common->ibuffer[gpuid]+CHOLMOD_HOST_SUPERNODE_BUFFERS-1)%CHOLMOD_HOST_SUPERNODE_BUFFERS];
+  A = gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS];
   devPtrA = gpu_p->d_Lx_root[gpuid][0];
   devPtrB = gpu_p->d_Lx_root[gpuid][1];
 
@@ -1236,7 +1224,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
    )
 {
   /* local variables */
-  int i, j, iwrap, ibuf = 0, iblock = 0, iHostBuff, numThreads;
+  int i, j, iwrap, ibuf = 0, iblock = 0, numThreads;
   Int iidx, gpu_lda, gpu_ldb, gpu_rowstep, gpu_row_max_chunk, gpu_row_chunk, gpu_row_start = 0;
   double *devPtrA, *devPtrB;
   cudaError_t cudaErr;
@@ -1258,7 +1246,6 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
   /* initialize parameters */
-  iHostBuff = (Common->ibuffer[gpuid]+CHOLMOD_HOST_SUPERNODE_BUFFERS-1) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
   gpu_lda = ((nscol2+31)/32)*32 ;
   gpu_ldb = ((nsrow2+31)/32)*32 ;
 #ifdef REAL
@@ -1344,7 +1331,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
     /* copy result back to the CPU */
-    cudaErr = cudaMemcpy2DAsync ( gpu_p->h_Lx_root[gpuid][iHostBuff] +
+    cudaErr = cudaMemcpy2DAsync ( gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS] +
                                   L_ENTRY*(nscol2+gpu_row_start),
                                   nsrow * L_ENTRY * sizeof (Lx [0]),
                                   devPtrB + L_ENTRY*gpu_row_start,
@@ -1395,7 +1382,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
       for ( j=0; j<nscol2; j++ ) {
         for ( i=gpu_row_start2*L_ENTRY; i<gpu_row_end*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
-          Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][iHostBuff][iidx];
+          Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx];
         }
       }
 
@@ -1411,7 +1398,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
   for ( j=0; j<nscol2; j++ ) {
     for ( i=j*L_ENTRY; i<nscol2*L_ENTRY; i++ ) {
       iidx = j*nsrow*L_ENTRY + i;
-      Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][iHostBuff][iidx];
+      Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx];
     }
   }
 
@@ -1438,7 +1425,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
       for ( j=0; j<nscol2; j++ ) {
         for ( i=gpu_row_start2*L_ENTRY; i<gpu_row_end*L_ENTRY; i++ ) {
           iidx = j*nsrow*L_ENTRY+i;
-          Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][iHostBuff][iidx];
+          Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx];
         }
       }
     }
@@ -1478,7 +1465,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
    Int nscol2,
    Int nsrow,
    int supernodeUsedGPU,
-   int iHostBuff,
    int gpuid
    )
 {
@@ -1502,7 +1488,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
     for ( j=0; j<nscol; j++ ) {
       for ( i=j*L_ENTRY; i<nscol*L_ENTRY; i++ ) {
         iidx = j*nsrow*L_ENTRY+i;
-        Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][iHostBuff][iidx];
+        Lx[psx*L_ENTRY+iidx] = gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx];
       }
     }
 

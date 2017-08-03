@@ -813,7 +813,7 @@
                  */
                 iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
                 iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
-                TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, &iHostBuff, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
+                TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
 
 
 
@@ -1003,7 +1003,7 @@
                     /* copy supernode back to factor Lx anyways */
                     else
                     {
-                        TEMPLATE2 ( CHOLMOD (gpu_copy_supernode_root) )( Common, gpu_p, Lx, psx, nscol, nscol2, nsrow, supernodeUsedGPU, iHostBuff, gpuid);
+                        TEMPLATE2 ( CHOLMOD (gpu_copy_supernode_root) )( Common, gpu_p, Lx, psx, nscol, nscol2, nsrow, supernodeUsedGPU, gpuid);
                     }
 
                     Head [s] = EMPTY ; /* link list for supernode s no longer needed */
