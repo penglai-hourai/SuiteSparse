@@ -423,7 +423,7 @@
 
 
                 /* initialize the buffer counter */
-                Common->ibuffer[gpuid] = 0; // set it to 0
+                Common->ibuffer[gpuid] = 0;
                 supernodeUsedGPU = 0;
                 idescendant = 0;
                 d = Head[s];

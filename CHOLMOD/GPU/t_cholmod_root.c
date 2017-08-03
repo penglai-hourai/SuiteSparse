@@ -139,7 +139,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
       + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize;
   */
 
-  for (k = 0; k < CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
+  for (k = 0; k <= CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
     gpu_p->h_Lx_root[gpuid][k]
         = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
         + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k * Common->devBuffSize;
@@ -198,7 +198,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
   double score;
 
   /* store GPU-eligible descendants in h_Lx[0] */
-  struct cholmod_descendant_score_t* scores = (struct cholmod_descendant_score_t*) gpu_p->h_Lx_root[gpuid][0];
+  struct cholmod_descendant_score_t* scores = (struct cholmod_descendant_score_t*) gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
   cudaSetDevice(gpuid / Common->numGPU_parallel);
 
@@ -389,6 +389,30 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   createMapOnDevice ( (Int *)(gpu_p->d_Map_root[gpuid]), (Int *)(gpu_p->d_Ls_root[gpuid]), psi, nsrow, Common->gpuStream[gpuid][0] );
   cudaErr = cudaGetLastError();
   CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createMapOnDevice error");
+
+      /* copy update assembled on CPU to a pinned buffer */
+#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
+
+      for ( j=0; j<nscol; j++ ) {
+        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
+          iidx = j*nsrow*L_ENTRY+i;
+          gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS][iidx] = Lx[psx*L_ENTRY+iidx];
+        }
+      }
+
+      /* H2D transfer of update assembled on CPU */
+      cudaMemcpyAsync (
+              gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS],
+              nscol*nsrow*L_ENTRY*sizeof(double),
+              cudaMemcpyHostToDevice,
+              Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS] );
+
+      cudaErr = cudaGetLastError();
+      if (cudaErr) {
+        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
+        return;
+      }
+  cudaEventRecord ( Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS]);
 }
 
 
@@ -730,41 +754,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* only if descendant is large enough for GPU */
     if ( nscol * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
-
-      /* wait until a buffer is free */
-      cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][*iHostBuff] );
-      cudaErr = cudaGetLastError();
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nsynchronize error!\n");
-        return;
-      }
-
-      /* copy update assembled on CPU to a pinned buffer */
-#pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)
-
-      for ( j=0; j<nscol; j++ ) {
-        for ( i=j; i<nsrow*L_ENTRY; i++ ) {
-          iidx = j*nsrow*L_ENTRY+i;
-          gpu_p->h_Lx_root[gpuid][*iHostBuff][iidx] = Lx[psx*L_ENTRY+iidx];
-        }
-      }
-
-
-    /* wait for all kernels to complete */
-    //cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 ); // not needed if Ls, Map, RelativeMap are separate from other mem spaces
-
-      /* H2D transfer of update assembled on CPU */
-      cudaMemcpyAsync (
-              gpu_p->d_A_root[gpuid][1], gpu_p->h_Lx_root[gpuid][*iHostBuff],
-              nscol*nsrow*L_ENTRY*sizeof(double),
-              cudaMemcpyHostToDevice,
-              Common->gpuStream[gpuid][0] );
-
-      cudaErr = cudaGetLastError();
-      if (cudaErr) {
-        ERROR (CHOLMOD_GPU_PROBLEM,"\nmemcopy H-D error!\n");
-        return;
-      }
 
     /* need both H2D and D2H copies to be complete */
     //cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
