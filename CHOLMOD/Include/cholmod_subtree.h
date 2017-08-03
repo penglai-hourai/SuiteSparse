@@ -38,9 +38,9 @@
 #define BINARY_SEARCH 5                         	/* # binary search steps to find ideal subtree size */
 #define SUPERNODE_MIN 10                              	/* min. # supernodes in elimination tree to use subtrees alg. otherwise, everything sent to root tree */
 #define MAXBATCHSIZE 100                               	/* max. # supernodes batched in a level (inversely proportional to subtree size) */
-#define CHOLMOD_ND_COL_LIMIT 64   			/* required descendnat cols */
-#define CHOLMOD_ND_ROW_LIMIT 128  			/* required descendant rows */
-#define CHOLMOD_POTRF_LIMIT  256  			/* required cols for POTRF & TRSM on GPU */
+#define CHOLMOD_ND_COL_LIMIT 32   			/* required descendnat cols */
+#define CHOLMOD_ND_ROW_LIMIT 256  			/* required descendant rows */
+#define CHOLMOD_POTRF_LIMIT  512  			/* required cols for POTRF & TRSM on GPU */
 #define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */ 
 
 

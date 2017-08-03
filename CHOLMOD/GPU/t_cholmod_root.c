@@ -509,6 +509,22 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
 
+  /* create relative map for the descendant */
+  createRelativeMapOnDevice (
+          (Int *)(gpu_p->d_Map_root[gpuid]),
+          (Int *)(gpu_p->d_Ls_root[gpuid]),
+          (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevCBuff]),
+          pdi1,
+          ndrow2,
+          &(Common->gpuStream[gpuid][iDevBuff]));
+
+  cudaErr = cudaGetLastError();
+  if (cudaErr) {
+    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
+  }
+
+
+
   /* set cuBlas stream  */
   cublasStatus = cublasSetStream (Common->cublasHandle[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]) ;
   if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
@@ -613,22 +629,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
   cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
-
-
-  /* create relative map for the descendant */
-  createRelativeMapOnDevice (
-          (Int *)(gpu_p->d_Map_root[gpuid]),
-          (Int *)(gpu_p->d_Ls_root[gpuid]),
-          (Int *)(gpu_p->d_RelativeMap_root[gpuid][iDevCBuff]),
-          pdi1,
-          ndrow2,
-          &(Common->gpuStream[gpuid][iDevBuff]));
-
-  cudaErr = cudaGetLastError();
-  if (cudaErr) {
-    CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
-  }
-
 
 
 
@@ -889,9 +889,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
 
   /* heuristic to get the block size depending of the problem size */
-  nb = 32 ;
-  if (nscol2 > 64) nb = 64 ;
-  if (nscol2 > 128) nb = 128 ;
+  nb = 128 ;
   if (nscol2 > 4096) nb = 256 ;
   if (nscol2 > 8192) nb = 384 ;
 
@@ -1004,11 +1002,27 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
     }
 
 
+    /* copy back the jb columns on two different streams */
+    cudaErr = cudaMemcpy2DAsync (
+            A + L_ENTRY*(j + j*lda),
+            lda * L_ENTRY * sizeof (double),
+            devPtrA + L_ENTRY*(j + j*gpu_lda),
+            gpu_lda * L_ENTRY * sizeof (double),
+            L_ENTRY * sizeof (double)*jb,
+            jb,
+            cudaMemcpyDeviceToHost,
+            Common->gpuStream[gpuid][0]) ;
+
+
       /* wait fo end of DTRSM */
       cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][1], Common->cublasEventPotrf[gpuid][2], 0) ;
       if (cudaErr) {
         ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
       }
+
+    if (cudaErr) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
+    }
 
 
 
@@ -1073,22 +1087,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       }
 
 
-    /* copy back the jb columns on two different streams */
-    cudaErr = cudaMemcpy2DAsync (
-            A + L_ENTRY*(j + j*lda),
-            lda * L_ENTRY * sizeof (double),
-            devPtrA + L_ENTRY*(j + j*gpu_lda),
-            gpu_lda * L_ENTRY * sizeof (double),
-            L_ENTRY * sizeof (double)*jb,
-            jb,
-            cudaMemcpyDeviceToHost,
-            Common->gpuStream[gpuid][0]) ;
-
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
-    }
-
-
     /* synchronize stream */
     cudaErr = cudaStreamSynchronize (Common->gpuStream[gpuid][0]) ;
     if (cudaErr) {
@@ -1145,7 +1143,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
      */
     if ((j+jb) < n) {
 
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid][0]) ;
+  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid][0], Common->gpuStream[gpuid][0]) ;
 
 #ifdef REAL
       alpha  = 1.0 ;
