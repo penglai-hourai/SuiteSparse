@@ -612,6 +612,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   }
 
+  cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
   /* create relative map for the descendant */
@@ -628,7 +629,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
-  cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
 
