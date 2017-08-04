@@ -441,10 +441,6 @@
 
 
 
-#pragma omp parallel
-                {
-#pragma omp single
-                    {
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
                 {
@@ -654,8 +650,6 @@
                         } /* end loop over parallel descendants (threads) */
 
 
-//#pragma omp taskwait
-//#pragma omp task
                         {
                             /*
                              *  DSYRK
@@ -797,8 +791,6 @@
                     }
 
                 } /* end loop over descendants */
-                    }
-                }
 
 
 

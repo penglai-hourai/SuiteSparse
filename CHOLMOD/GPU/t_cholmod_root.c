@@ -763,7 +763,6 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
         return;
       }
 
-    cudaErr = cudaEventRecord (Common->cublasEventPotrf[gpuid][0], Common->gpuStream[gpuid][0]) ;
     } /* end if descendant large enough */
     /* if descendant too small assemble on CPU */
     else
@@ -877,10 +876,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   devPtrB = gpu_p->d_Lx_root[gpuid][1];
 
 
-    //cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
-    cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS], Common->cublasEventPotrf[gpuid][0], 0) ;
-
-
   /* copy B in advance, for gpu_triangular_solve */
   if (nsrow2 > 0) {
       cudaErr = cudaMemcpy2DAsync (
@@ -891,7 +886,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
               nsrow2 * L_ENTRY * sizeof (devPtrB [0]),
               nscol2,
               cudaMemcpyDeviceToDevice,
-              Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS]) ;
+              Common->gpuStream[gpuid][0]) ;
     if (cudaErr) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy to device") ;
     }
@@ -996,10 +991,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
       if (cudaErr) {
         ERROR (CHOLMOD_GPU_PROBLEM, "CUDA event failure") ;
       }
-
-    if (cudaErr) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU memcopy from device") ;
-    }
 
 
 
@@ -1263,7 +1254,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
 
 
   /* make sure the copy of B has completed */
-  cudaStreamSynchronize( Common->gpuStream[gpuid][CHOLMOD_DEVICE_STREAMS] );
+  cudaStreamSynchronize( Common->gpuStream[gpuid][0] );
 
 
 
