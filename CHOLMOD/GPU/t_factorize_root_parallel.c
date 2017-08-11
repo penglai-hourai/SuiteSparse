@@ -458,7 +458,7 @@
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        while ( (cuErrHost != cudaSuccess || cuErrDev != cudaSuccess) && CPUavailable <= 0 )
+                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && CPUavailable <= 0 )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
