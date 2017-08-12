@@ -613,7 +613,6 @@
                                         Int ldc = ndrow2;
 
                                         /* store descendant dimensions */
-                                        desc[desc_count].s      = i;
                                         desc[desc_count].pdi1   = pdi1;
                                         desc[desc_count].ndrow1 = ndrow1;
                                         desc[desc_count].ndrow2 = ndrow2;
@@ -651,6 +650,7 @@
 
 
                         {
+                            int i;
                             /*
                              *  DSYRK
                              *
@@ -759,7 +759,7 @@
                             for(i = 0; i < desc_count; i++)
                             {
 
-                                Int ii, j, q, px, ix;
+                                Int ii, j, q, px;
 
 
                                 /* get descendant dimensions */
