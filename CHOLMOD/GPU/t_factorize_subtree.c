@@ -876,7 +876,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
     /* synchronize all streams - need this? or just redundancy? */
     for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
-      cudaStreamSynchronize (Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]) ;
+      cudaStreamSynchronize (Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]);
 
 
     #ifdef USE_NVTX
@@ -915,7 +915,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
   /* clear factor on GPU */
-  cudaMemsetAsync ( d_Lx, 0, factor_size[subtree]*sizeof(double),Common->gpuStream[gpuid * Common->numGPU_parallel][0]);
+  cudaMemsetAsync ( d_Lx, 0, factor_size[subtree]*sizeof(double),Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
 
 
   /*
@@ -925,7 +925,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
    *  Ony for last level.
    *
    */
-#if 1
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
           Common,
           gpu_p,
@@ -940,7 +939,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           end,					                                              
           LpxSub,
           L->px);
-#endif
 
 
   //cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][0]);

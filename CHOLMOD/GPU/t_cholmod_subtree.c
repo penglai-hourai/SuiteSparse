@@ -143,7 +143,8 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
 
     /* cuSolver Cholesky initialization (get workspace size) */
-    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid * Common->numGPU_parallel][0], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
+    for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
+    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid * Common->numGPU_parallel][k], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnDpotrf_bufferSize failure");
     }
@@ -509,6 +510,26 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   h_syrk    = &gpu_p->h_syrk[gpuid];
   d_syrk    = &gpu_p->d_syrk[gpuid];
 
+
+  /* check if any syrk's left for batching */
+  if( (nbatch - syrk_count) > 0 ) {
+      vgpuid = gpuid * Common->numGPU_parallel;
+
+    /* dsyrk on batched kernels */
+    dsyrk_custom_simple_1block_batch( Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
+                                      CUBLAS_FILL_MODE_LOWER,
+                                      CUBLAS_OP_N,
+                                      &d_syrk->n[syrk_count],
+                                      &d_syrk->k[syrk_count],
+                                      &alpha,
+                                      &d_syrk->A[syrk_count],
+                                      &d_syrk->lda[syrk_count],
+                                      &beta,
+                                      &d_syrk->C[syrk_count],
+                                      &d_syrk->ldc[syrk_count],
+                                      nbatch-syrk_count);
+  }
+
   /* loop over 'large' syrk's */
   for(i = 0; i < syrk_count; i++) {
       j = i%CHOLMOD_DEVICE_STREAMS;
@@ -535,26 +556,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   }
 
 
-  /* check if any syrk's left for batching */
-  if( (nbatch - syrk_count) > 0 ) {
-      vgpuid = gpuid * Common->numGPU_parallel;
-
-    /* dsyrk on batched kernels */
-    dsyrk_custom_simple_1block_batch( Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
-                                      CUBLAS_FILL_MODE_LOWER,
-                                      CUBLAS_OP_N,
-                                      &d_syrk->n[syrk_count],
-                                      &d_syrk->k[syrk_count],
-                                      &alpha,
-                                      &d_syrk->A[syrk_count],
-                                      &d_syrk->lda[syrk_count],
-                                      &beta,
-                                      &d_syrk->C[syrk_count],
-                                      &d_syrk->ldc[syrk_count],
-                                      nbatch-syrk_count);
-  }
-
-
   TIMER_END1(tstart1,syrk_time,0);
   TIMER_END1(tstart1,syrk_time,1);
 
@@ -570,6 +571,29 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   /* set dimensions */
   h_gemm  = &gpu_p->h_gemm[gpuid];
   d_gemm  = &gpu_p->d_gemm[gpuid];
+
+
+  /* check if any gemm's left for batching */
+  if( (nbatch - gemm_count) > 0 ) {
+      vgpuid = gpuid * Common->numGPU_parallel;
+
+    /* dgemm on batched kernels */
+    dgemm_custom_simple_1block_batch(
+            Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
+            CUBLAS_OP_N, CUBLAS_OP_T,
+            &d_gemm->m[gemm_count],
+            &d_gemm->n[gemm_count],
+            &d_gemm->k[gemm_count],
+            &alpha,
+            &d_gemm->A[gemm_count],
+            &d_gemm->lda[gemm_count],
+            &d_gemm->B[gemm_count],
+            &d_gemm->ldb[gemm_count],
+            &beta,
+            &d_gemm->C[gemm_count],
+            &d_gemm->ldc[gemm_count],
+            nbatch-gemm_count);
+  }
 
 
   /* loop over 'large' gemm's */
@@ -600,31 +624,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   }
 
 
-  /* check if any gemm's left for batching */
-  if( (nbatch - gemm_count) > 0 ) {
-      vgpuid = gpuid * Common->numGPU_parallel;
-
-    /* dgemm on batched kernels */
-    dgemm_custom_simple_1block_batch(
-            Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
-            CUBLAS_OP_N, CUBLAS_OP_T,
-            &d_gemm->m[gemm_count],
-            &d_gemm->n[gemm_count],
-            &d_gemm->k[gemm_count],
-            &alpha,
-            &d_gemm->A[gemm_count],
-            &d_gemm->lda[gemm_count],
-            &d_gemm->B[gemm_count],
-            &d_gemm->ldb[gemm_count],
-            &beta,
-            &d_gemm->C[gemm_count],
-            &d_gemm->ldc[gemm_count],
-            nbatch-gemm_count);
-  }
-
-
   /* copy supernode from pinned to regular memory - only at last level */
-#if 1
   if ( level == tree_p->supernode_num_levels[subtree]-1 )
   {
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
@@ -642,7 +642,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           LpxSub,
           Lpx);
   }
-#endif
 
 
   /* synchronize streams */
@@ -676,28 +675,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   h_super  = &gpu_p->h_super[gpuid];
   d_super  = &gpu_p->d_super[gpuid];
 
-
-
-  /* loop over 'large' addUpdate's */
-  for(i = 0; i < update_count; i++) {
-      j = i%CHOLMOD_DEVICE_STREAMS;
-      vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
-
-    /* mapping (to factor Lx) for each descendants */
-    addUpdateOnDevice_large(
-            gpu_p->d_Lx[gpuid],
-            &d_desc->C[i],
-            gpu_p->d_Map[gpuid],
-            gpu_p->d_Ls[gpuid],
-            h_desc->pdi1[i],
-            h_desc->ndrow1[i],
-            h_desc->ndrow2[i],
-            h_super->psx[h_desc->s[i]],
-            h_super->nsrow[h_desc->s[i]],
-            (int)((n+1)*h_desc->s[i]),
-            &(Common->gpuStream[vgpuid][j]));
-  }
-
   /* check if any addUpdate's left for batching */
   if( (nbatch - update_count) > 0 ) {
       vgpuid = gpuid * Common->numGPU_parallel;
@@ -719,6 +696,28 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             nbatch-update_count,
             &(Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]));
 
+  }
+
+
+
+  /* loop over 'large' addUpdate's */
+  for(i = 0; i < update_count; i++) {
+      j = i%CHOLMOD_DEVICE_STREAMS;
+      vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
+
+    /* mapping (to factor Lx) for each descendants */
+    addUpdateOnDevice_large(
+            gpu_p->d_Lx[gpuid],
+            &d_desc->C[i],
+            gpu_p->d_Map[gpuid],
+            gpu_p->d_Ls[gpuid],
+            h_desc->pdi1[i],
+            h_desc->ndrow1[i],
+            h_desc->ndrow2[i],
+            h_super->psx[h_desc->s[i]],
+            h_super->nsrow[h_desc->s[i]],
+            (int)((n+1)*h_desc->s[i]),
+            &(Common->gpuStream[vgpuid][j]));
   }
 
 
@@ -800,30 +799,6 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
   h_potrf  = &gpu_p->h_potrf[gpuid];
   d_potrf  = &gpu_p->d_potrf[gpuid];
 
-  /* loop over 'large' potrf's */
-  for(i=0; i<potrf_count; i++) {
-      j = i%CHOLMOD_DEVICE_STREAMS;
-      vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
-
-    /* set cuSolver stream */
-    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[vgpuid][0], Common->gpuStream[vgpuid][j]) ;
-    if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnSetStream failure");
-    }
-
-    /* potrf on cuSolver */
-    cusolverDnDpotrf(
-            Common->cusolverHandle[vgpuid][0],
-            CUBLAS_FILL_MODE_LOWER,
-            h_potrf->n[i],
-            h_potrf->A[i],
-            h_potrf->lda[i],
-            &gpu_p->d_devSync[gpuid][2*i],
-            gb_p->work_size,
-            gpu_p->d_info[gpuid]);
-
-  }
-
 
   /* check if any potrf's left for batching */
   if( (nbatch - potrf_count) > 0 ) {
@@ -833,11 +808,35 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
     dpotrf_custom_simple_1block_batch (
             Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
             CUBLAS_FILL_MODE_LOWER,
-            &d_potrf->n[i],
-            &d_potrf->A[i],
-            &d_potrf->lda[i],
+            &d_potrf->n[potrf_count],
+            &d_potrf->A[potrf_count],
+            &d_potrf->lda[potrf_count],
             &info,
             nbatch-potrf_count) ;
+
+  }
+
+  /* loop over 'large' potrf's */
+  for(i=0; i<potrf_count; i++) {
+      j = i%CHOLMOD_DEVICE_STREAMS;
+      vgpuid = gpuid * Common->numGPU_parallel + i % Common->numGPU_parallel;
+
+    /* set cuSolver stream */
+    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[vgpuid][j], Common->gpuStream[vgpuid][j]) ;
+    if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnSetStream failure");
+    }
+
+    /* potrf on cuSolver */
+    cusolverDnDpotrf(
+            Common->cusolverHandle[vgpuid][j],
+            CUBLAS_FILL_MODE_LOWER,
+            h_potrf->n[i],
+            h_potrf->A[i],
+            h_potrf->lda[i],
+            &gpu_p->d_devSync[gpuid][2*i],
+            gb_p->work_size,
+            gpu_p->d_info[gpuid]);
 
   }
 
@@ -924,6 +923,27 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
   d_trsm  = &gpu_p->d_trsm[gpuid];
 
 
+  /* check if any trsm's left for batching */
+  if( (nbatch - trsm_count) > 0 ) {
+      vgpuid = gpuid * Common->numGPU_parallel;
+
+    /* trsm on custom batched kernels */
+    dtrsm_custom_simple_1block_batch ( Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
+                                       CUBLAS_SIDE_RIGHT,
+                                       CUBLAS_FILL_MODE_LOWER,
+                                       CUBLAS_OP_T,
+                                       CUBLAS_DIAG_NON_UNIT,
+                                       &d_trsm->m[trsm_count],
+                                       &d_trsm->n[trsm_count],
+                                       &alpha,
+                                       &d_trsm->A[trsm_count],
+                                       &d_trsm->lda[trsm_count],
+                                       &d_trsm->B[trsm_count],
+                                       &d_trsm->ldb[trsm_count],
+                                       nbatch-trsm_count);
+  }
+
+
   /* loop over 'large' trsm's */
   for(i=0; i<trsm_count; i++) {
       j = i%CHOLMOD_DEVICE_STREAMS;
@@ -948,27 +968,6 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
                   h_trsm->lda[i],
                   h_trsm->B[i],
                   h_trsm->ldb[i]);
-  }
-
-
-  /* check if any trsm's left for batching */
-  if( (nbatch - trsm_count) > 0 ) {
-      vgpuid = gpuid * Common->numGPU_parallel;
-
-    /* trsm on custom batched kernels */
-    dtrsm_custom_simple_1block_batch ( Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS],
-                                       CUBLAS_SIDE_RIGHT,
-                                       CUBLAS_FILL_MODE_LOWER,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_DIAG_NON_UNIT,
-                                       &d_trsm->m[i],
-                                       &d_trsm->n[i],
-                                       &alpha,
-                                       &d_trsm->A[i],
-                                       &d_trsm->lda[i],
-                                       &d_trsm->B[i],
-                                       &d_trsm->ldb[i],
-                                       nbatch-trsm_count);
   }
 
 

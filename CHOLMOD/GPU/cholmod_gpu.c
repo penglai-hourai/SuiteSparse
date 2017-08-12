@@ -420,7 +420,7 @@ void CHOLMOD(gpu_end)
      */
     for(k = 0; k < Common->numGPU; k++) 
     {
-      for(j = 0; j <= CHOLMOD_DEVICE_STREAMS; j++) 
+      for(j = 0; j <= CHOLMOD_DEVICE_STREAMS+1; j++) 
       {
 
         /* CUDA streams */
@@ -703,7 +703,7 @@ int CHOLMOD(gpu_allocate)
 
       cudaSetDevice(k / Common->numGPU_parallel);
 
-      for (i = 0; i <= CHOLMOD_DEVICE_STREAMS; i++ ) {
+      for (i = 0; i <= CHOLMOD_DEVICE_STREAMS+1; i++ ) {
         cudaErr = cudaStreamCreate ( &(Common->gpuStream[k][i]) );
         /* commenting this in causes occasinal nan values for benchmarks: 2cubes_sphere.mtx, crankseg_1.mtx */
         /*cudaErr = cudaStreamCreateWithFlags ( &(Common->gpuStream[k][i]), cudaStreamNonBlocking);*/

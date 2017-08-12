@@ -230,11 +230,11 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       /* compute the descendant's rough flops 'score' */
       if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
       {
-          score = ndcol * ndrow1 * ndrow2 + Common->devBuffSize;
+          score = ndcol * ndrow1 * ndrow2 + CHOLMOD_ND_COL_LIMIT * CHOLMOD_ND_ROW_LIMIT * CHOLMOD_ND_ROW_LIMIT;
       }
       else
       {
-          score = ndcol * ndrow2;
+          score = ndcol * ndrow1 * ndrow2;
       }
 
       /* store descendant in list */
