@@ -875,7 +875,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
     /* synchronize all streams - need this? or just redundancy? */
-    cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
+    //cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
 
 
     #ifdef USE_NVTX
