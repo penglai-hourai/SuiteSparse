@@ -460,7 +460,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 {
   /* local variables */
   int i, j;
-  int *ndrow1, *ndrow2, *ndrow3, *ndrow, *ndcol, *pdi1, *list, *nsrow, *psx;
+  int *ndrow1, *ndrow2, *ndrow3, *ndrow, *ndcol, *pdi1, *list, *nsrow;
   double alpha, beta, tstart1;
   double **Aptr, **Bptr, **Cptr, **C2ptr, *tend, *gemm_time, *syrk_time;
   struct cholmod_syrk_ptrs_t *h_syrk, *d_syrk;
@@ -615,7 +615,10 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* copy supernode from pinned to regular memory - only at last level */
   if ( level == tree_p->supernode_num_levels[subtree]-1 )
+  //if ( level <= tree_p->supernode_num_levels[subtree]-1 && level > 0 )
   {
+      //const int start = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level-1];
+      //const int end = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level];
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
           Common,
           gpu_p,
@@ -883,7 +886,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
 {
   /* local variables */
   int i, j;
-  int *nsrow2, *nscol2, *nsrow, *psx;
+  int *nsrow2, *nscol2, *nsrow;
   double alpha, tstart1;
   double **Aptr, **Bptr, *tend, *trsm_time;
   struct cholmod_trsm_ptrs_t *h_trsm, *d_trsm;
@@ -1009,6 +1012,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
    )
 {
   /* local variables */
+  int k;
   struct cholmod_super_ptrs_t *h_super, *d_super;
   cudaError_t cudaStat ;
 
@@ -1023,17 +1027,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
    * Copies a batch of supernodes from
    * device to pinned memory.
    */
-#if 0
-  copyLx_small ( gpu_p->h_pLx[gpuid],
-                 gpu_p->d_Lx[gpuid],
-                 d_super->psx,
-                 d_super->nsrow,
-                 d_super->nscol,
-                 nbatch,
-                 maxnsrownscol,
-                 &Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-#else
-  int k;
   for (k = 0; k < nbatch; k++)
   {
       cudaMemcpyAsync (
@@ -1044,7 +1037,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
               Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
   }
   cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-#endif
 
 }
 
