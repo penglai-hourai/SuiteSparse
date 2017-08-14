@@ -615,10 +615,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* copy supernode from pinned to regular memory - only at last level */
   if ( level == tree_p->supernode_num_levels[subtree]-1 )
-  //if ( level <= tree_p->supernode_num_levels[subtree]-1 && level > 0 )
   {
-      //const int start = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level-1];
-      //const int end = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level];
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
           Common,
           gpu_p,
