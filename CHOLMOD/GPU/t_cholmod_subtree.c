@@ -444,6 +444,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    int n,
    int subtree,
    int level,
+   Int node,
    int nbatch,			/* size of batch (# descendants) */
    int syrk_count,		/* # syrk calls sent to cuBlas */
    int gemm_count,		/* # gemm calls sent to cuBlas */
@@ -614,17 +615,20 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
   /* copy supernode from pinned to regular memory - only at last level */
-  if ( level == tree_p->supernode_num_levels[subtree]-1 )
+  //if ( level == tree_p->supernode_num_levels[subtree]-1 )
+  if ( level <= tree_p->supernode_num_levels[subtree]-1 && level > 0 && node == 0 )
   {
+      const Int start = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level-1];
+      const Int end = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+level];
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
           Common,
           gpu_p,
           cpu_p,
           tree_p,
           subtree,
-          level,
+          level-1,
           gpuid,
-          1,
+          2,
           numSuper,
           start,
           end,
@@ -1096,7 +1100,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   if(flag==1) {
 
     /* split various supernodes amongst omp threads */
-    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2)
+    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2) if (numSuper >= numThreads)
     for(i = 0; i < numSuper; i++) {
       s = tree_p->supernode_subtree[tree_p->supernode_subtree_ptrs[subtree] + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
@@ -1109,7 +1113,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       const double* phLx = &(gpu_p->h_Lx[gpuid][offset2]);
 
       /* copy supernode */
-      //#pragma omp parallel for num_threads(numThreads) private(j)
+      #pragma omp parallel for num_threads(numThreads) private(j) if (numSuper < numThreads)
       for(j = 0; j < ssize; j++) {
         pLx[j] = phLx[j];
       }
@@ -1124,7 +1128,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   if(flag==2) {
 
     /* loop over supernodes in last level */
-    //#pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2)
+    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2) if (end - start >= numThreads)
     for(i = 0; i < (end - start); i++) {
       s = tree_p->supernode_levels[start + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
@@ -1137,7 +1141,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       const double* phLx = &(gpu_p->h_Lx[gpuid][offset2]);
 
       /* copy supernode - split single supernode amongst omp threads  */
-      #pragma omp parallel for num_threads(numThreads) private(j)
+      #pragma omp parallel for num_threads(numThreads) private(j) if (end - start < numThreads)
       for(j = 0; j < ssize; j++) {
         pLx[j] = phLx[j];
       }

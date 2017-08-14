@@ -801,6 +801,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         n,
                         subtree,
                         level,
+                        node,
                         desc_count,
                         syrk_count,
                         gemm_count,
