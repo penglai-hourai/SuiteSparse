@@ -228,14 +228,18 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nextd = Next[d];
 
       /* compute the descendant's rough flops 'score' */
-      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
-      {
-          score = ndcol * ndrow1 * ndrow2 + CHOLMOD_ND_COL_LIMIT * CHOLMOD_ND_ROW_LIMIT * CHOLMOD_ND_ROW_LIMIT;
-      }
-      else
+#if 1
+      if ( (L_ENTRY * ndcol >= CHOLMOD_ND_COL_LIMIT) && (L_ENTRY * ndrow2 >= CHOLMOD_ND_ROW_LIMIT) )
       {
           score = ndcol * ndrow1 * ndrow2;
       }
+      else
+      {
+          score = - ndcol * ndrow1 * ndrow2;
+      }
+#else
+          score = ndcol * ndrow1 * ndrow2;
+#endif
 
       /* store descendant in list */
       scores[n_descendant].score = score;
@@ -295,16 +299,22 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
       nreverse++;
 
       /* place descendant at the front of the list */
-      if ( (ndcol*L_ENTRY >= CHOLMOD_ND_COL_LIMIT) && (ndrow2*L_ENTRY >= CHOLMOD_ND_ROW_LIMIT) )
+#if 1
+      if ( (L_ENTRY * ndcol >= CHOLMOD_ND_COL_LIMIT) && (L_ENTRY * ndrow2 >= CHOLMOD_ND_ROW_LIMIT) )
       {
-        Next[previousd] = Next[d];
-        Next[d] = Head[locals];
-        Head[locals] = d;
+          Next[previousd] = Next[d];
+          Next[d] = Head[locals];
+          Head[locals] = d;
       }
       else 
       {
-        previousd = d;
+          previousd = d;
       }
+#else
+      Next[previousd] = Next[d];
+      Next[d] = Head[locals];
+      Head[locals] = d;
+#endif
 
       d = nextd;
     } /* end while loop */
@@ -367,7 +377,6 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   (
    cholmod_common *Common,
    cholmod_gpu_pointers *gpu_p,
-   double *Lx,
    Int nscol,
    Int nsrow,
    Int psi,

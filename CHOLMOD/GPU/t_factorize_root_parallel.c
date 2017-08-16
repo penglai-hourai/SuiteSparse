@@ -28,6 +28,7 @@
 #include "mkl.h"
 #endif
 #include "nvToolsExt.h"
+#include <pthread.h>
 
 
 /* undef macros */
@@ -75,7 +76,223 @@
 #endif
 #endif
 
+#undef USE_PTHREAD
 
+#ifdef USE_PTHREAD
+struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
+{
+    int nthreads;
+    int numThreads1;
+    int *CPUavailable_ptr;
+    Int *Ls;
+    Int *Map;
+    Int nsrow;
+    Int psx;
+    double *Lx;
+    int desc_count;
+    int syrk_count;
+    int gemm_count;
+    struct cholmod_desc_t *desc;
+    struct cholmod_syrk_t *syrk;
+    struct cholmod_gemm_t *gemm;
+    cholmod_common *Common;
+};
+
+    void *TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_wrapper)) (void *void_parameters)
+{
+    struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters)) *struct_parameters = void_parameters;
+
+    int nthreads = struct_parameters->nthreads;
+    int numThreads1 = struct_parameters->numThreads1;
+    int *CPUavailable_ptr = struct_parameters->CPUavailable_ptr;
+    Int *Ls = struct_parameters->Ls;
+    Int *Map = struct_parameters->Map;
+    Int nsrow = struct_parameters->nsrow;
+    Int psx = struct_parameters->psx;
+    double *Lx = struct_parameters->Lx;
+    int desc_count = struct_parameters->desc_count;
+    int syrk_count = struct_parameters->syrk_count;
+    int gemm_count = struct_parameters->gemm_count;
+    struct cholmod_desc_t *desc = struct_parameters->desc;
+    struct cholmod_syrk_t *syrk = struct_parameters->syrk;
+    struct cholmod_gemm_t *gemm = struct_parameters->gemm;
+    cholmod_common *Common = struct_parameters->Common;
+
+    TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread)) (
+            nthreads,
+            numThreads1,
+            CPUavailable_ptr,
+            Ls,
+            Map,
+            nsrow,
+            psx,
+            Lx,
+            desc_count,
+            syrk_count,
+            gemm_count,
+            desc,
+            syrk,
+            gemm,
+            Common);
+
+    return NULL;
+}
+
+    void TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread))
+(
+ int nthreads,
+ int numThreads1,
+ int *CPUavailable_ptr,
+ Int *Ls,
+ Int *Map,
+ Int nsrow,
+ Int psx,
+ double *Lx,
+ int desc_count,
+ int syrk_count,
+ int gemm_count,
+ struct cholmod_desc_t *desc,
+ struct cholmod_syrk_t *syrk,
+ struct cholmod_gemm_t *gemm,
+ cholmod_common *Common
+ )
+{
+    int i;
+    /*
+     *  DSYRK
+     *
+     *   Perform dsyrk on batch of descendants
+     *
+     */
+    /* loop over syrk's */
+#pragma omp parallel for num_threads(nthreads)
+    for(i = 0; i < syrk_count; i++)
+    {
+
+        /* get syrk dimensions */
+        Int n   = syrk[i].n;
+        Int k   = syrk[i].k;
+        Int lda = syrk[i].lda;
+        Int ldc = syrk[i].ldc;
+
+        double *A = (double *)syrk[i].A;
+        double *C = (double *)syrk[i].C;
+
+        double one[2]  = {1.0, 0.0};
+        double zero[2] = {0.0, 0.0};
+
+
+#ifdef REAL
+        BLAS_dsyrk ("L", "N",
+                n, k,
+                one,
+                A, lda,
+                zero,
+                C, ldc) ;
+#else
+        BLAS_zherk ("L", "N",
+                n, k,
+                one,
+                A, lda,
+                zero,
+                C, ldc) ;
+#endif
+    } /* end loop over syrk's */
+
+
+
+
+
+    /*
+     *  DGEMM
+     *
+     *  Perform dgemm on batch of descendants
+     *
+     */
+    /* loop over gemm's */
+#pragma omp parallel for num_threads(nthreads)
+    for(i = 0; i < gemm_count; i++)
+    {
+        /* get gemm dimensions */
+        Int m   = gemm[i].m;
+        Int n   = gemm[i].n;
+        Int k   = gemm[i].k;
+        Int lda = gemm[i].lda;
+        Int ldb = gemm[i].ldb;
+        Int ldc = gemm[i].ldc;
+
+        double *A = (double *)gemm[i].A;
+        double *B = (double *)gemm[i].B;
+        double *C = (double *)gemm[i].C;
+
+        double one[2] = {1.0, 0.0};
+        double zero[2] = {0.0, 0.0};
+
+
+        if (m > 0)
+        {
+#ifdef REAL
+            BLAS_dgemm ("N","T",
+                    m, n, k,
+                    one,
+                    A, lda,
+                    B, ldb,
+                    zero,
+                    C, ldc) ;
+#else
+            BLAS_zgemm ("N", "C",
+                    m, n, k,
+                    one,
+                    A, lda,
+                    B, ldb,
+                    zero,
+                    C, ldc) ;
+#endif
+
+        }
+    } /* end loop over gemm's */
+
+
+
+
+
+    /*
+     *  Assembly
+     *
+     *  Assemble schur complements of a batch of descendants
+     *
+     */
+    /* loop over descendants */
+    for(i = 0; i < desc_count; i++)
+    {
+
+        Int ii, j, q, px;
+
+
+        /* get descendant dimensions */
+        Int pdi1 = desc[i].pdi1;
+        Int ndrow1 = desc[i].ndrow1;
+        Int ndrow2 = desc[i].ndrow2;
+
+        double *C = (double *)desc[i].C;
+
+
+#pragma omp parallel for private ( j, ii, px, q ) num_threads(numThreads1) if (ndrow1 > 64 )
+        for (j = 0 ; j < ndrow1 ; j++)
+        {
+            px = psx + Map [Ls [pdi1 + j]]*nsrow ;
+            for (ii = j ; ii < ndrow2 ; ii++)
+            {
+                q = px + Map [Ls [pdi1 + ii]] ;
+//#pragma omp atomic
+                L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
+            }
+        }
+    } /* end loop over descendants */
+#pragma omp atomic
+    (*CPUavailable_ptr)++;
+}
+#endif
 
 
 /*
@@ -218,17 +435,31 @@
                 int i, j, k;
                 Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
                     kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, tail, info = 0,
+                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, dsmall_save, tail, info = 0,
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
                 cudaError_t cuErrHost, cuErrDev;
+
+                int desc_count;
+                int syrk_count;
+                int gemm_count;
+                Int counter;
+
+                struct cholmod_desc_t desc[Common->ompNumThreads];
+                struct cholmod_syrk_t syrk[Common->ompNumThreads];
+                struct cholmod_gemm_t gemm[Common->ompNumThreads];
+
+#ifdef USE_PTHREAD
+                pthread_t pid = 0;
+                struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters)) struct_parameters;
+#endif
 
                 /* set device id, pointers */
                 gpuid  		= omp_get_thread_num();			/* get gpuid */
                 Int *Map  	= &h_Map[gpuid*n];			/* set map */
                 double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
 
-                const int nthreads = 1;
+                int nthreads = numThreads1;
 
                 cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
@@ -248,6 +479,17 @@
                 pk = psx;
 
 
+
+                /*
+                 *  Initialize Supernode
+                 *
+                 *  Initializes the supernode with the following steps:
+                 *
+                 *  1. clear supernode (Lx) on device
+                 *  2. create Map for supernode
+                 *
+                 */
+                TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, psx, gpuid );
 
 
                 /* construct the scattered Map for supernode s */
@@ -321,7 +563,7 @@
                 /* Mark the descendant parsing complete */
                 {
                     int inode;
-                    for ( inode=start; inode<end; inode++ ) {
+                    for ( inode=start_global; inode<end; inode++ ) {
                         if ( s == event_nodes[inode-start_global] ) {
                             event_complete[inode-start_global] = -1;
                         }
@@ -392,17 +634,6 @@
                     }
                 }
 
-                /*
-                 *  Initialize Supernode
-                 *
-                 *  Initializes the supernode with the following steps:
-                 *
-                 *  1. clear supernode (Lx) on device
-                 *  2. create Map for supernode
-                 *
-                 */
-                TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, Lx, nscol, nsrow, psi, psx, gpuid );
-
                 /* save/restore the list of supernodes */
                 if (!repeat_supernode)
                 {
@@ -429,6 +660,7 @@
                 d = Head[s];
                 dlarge = Next_local[d];
                 dsmall = tail;
+                dsmall_save = tail;
                 GPUavailable = 1;
 
 
@@ -444,6 +676,16 @@
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
                 {
+                    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 4 ) )
+                    {
+                        nthreads = 1;
+
+#ifdef MKLROOT
+                        mkl_set_num_threads_local(numThreads1);
+#else
+                        openblas_set_num_threads(numThreads1);
+#endif
+                    }
 
                     iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                     iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
@@ -499,6 +741,7 @@
                         else {
 #pragma omp atomic
                             CPUavailable--;
+                            dsmall = dsmall_save;
                             d = dsmall;
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
@@ -542,27 +785,23 @@
                      *  3. perform addUpdate
                      *
                      */
-                    if ( GPUavailable != 0 )
+                    if ( GPUavailable == 1 )
                     {
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }
-                    else
+                    else if ( GPUavailable == 0 )
                     {
 
-                        int tid = 0;
-                        int desc_count = 0;
-                        int syrk_count = 0;
-                        int gemm_count = 0;
-                        Int counter = 0;
-
-                        struct cholmod_desc_t desc[Common->ompNumThreads];
-                        struct cholmod_syrk_t syrk[Common->ompNumThreads];
-                        struct cholmod_gemm_t gemm[Common->ompNumThreads];
-
+                        int tid;
 
                         nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
+
+                        desc_count = 0;
+                        syrk_count = 0;
+                        gemm_count = 0;
+                        counter = 0;
 
                         /* loop over descendants */
                         for(tid = 0; tid < nthreads; tid++)
@@ -581,8 +820,6 @@
                                 if ( node_complete[d] )
                                 {
 
-                                    idescendant++;
-
                                     /* get descendant dimensions */
                                     kd1 = Super [d] ;
                                     kd2 = Super [d+1] ;
@@ -596,7 +833,7 @@
                                     pdi1 = pdi + p ;
                                     pdx1 = pdx + p ;
 
-                                    for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
+                                    for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++);
                                     ndrow1 = pdi2 - pdi1 ;
                                     ndrow2 = pdend - pdi1 ;
                                     ndrow3 = ndrow2 - ndrow1 ;
@@ -604,6 +841,8 @@
                                     /* ensure there is sufficient C buffer space to hold Schur complement update */
                                     if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
                                     {
+
+                                        idescendant++;
 
                                         Int m   = ndrow2-ndrow1;
                                         Int n   = ndrow1;
@@ -616,7 +855,7 @@
                                         desc[desc_count].pdi1   = pdi1;
                                         desc[desc_count].ndrow1 = ndrow1;
                                         desc[desc_count].ndrow2 = ndrow2;
-                                        desc[desc_count].C      = (double *)&C1[L_ENTRY*counter];
+                                        desc[desc_count].C      = (double *)&C1[counter];
                                         desc_count++;
 
                                         /* store syrk dimensions & pointers */
@@ -625,7 +864,7 @@
                                         syrk[syrk_count].lda   = lda;
                                         syrk[syrk_count].ldc   = ldc;
                                         syrk[syrk_count].A     = (double *)(Lx + L_ENTRY*pdx1);
-                                        syrk[syrk_count].C     = (double *)&C1[L_ENTRY*counter];
+                                        syrk[syrk_count].C     = (double *)&C1[counter];
                                         syrk_count++;
 
                                         /* store gemm dimensions & pointers */
@@ -637,18 +876,48 @@
                                         gemm[gemm_count].ldc   = ldc;
                                         gemm[gemm_count].A     = (double *)(Lx + L_ENTRY*(pdx1 + n));
                                         gemm[gemm_count].B     = (double *)(Lx + L_ENTRY*pdx1);
-                                        gemm[gemm_count].C     = (double *)(&C1[L_ENTRY*counter] + L_ENTRY*n);
+                                        gemm[gemm_count].C     = (double *)(&C1[counter] + L_ENTRY*n);
                                         gemm_count++;
 
                                         /* increment pointer to C buff */
                                         counter += L_ENTRY*n*ldc;
 
+                                        if (d == dsmall_save)
+                                        {
+                                            dsmall_save = dsmall;
+                                        }
+                                        else
+                                        {
+                                            printf ("checkpoint 1\n");
+                                            if (dsmall != EMPTY) Next_local[dsmall] = Next_local[d];
+                                            Previous_local[Next_local[d]] = dsmall;
+                                        }
                                     }
                                 }
                             }
                         } /* end loop over parallel descendants (threads) */
 
+#ifdef USE_PTHREAD
+                        {
+                            struct_parameters.nthreads = nthreads;
+                            struct_parameters.numThreads1 = numThreads1;
+                            struct_parameters.CPUavailable_ptr = &CPUavailable;
+                            struct_parameters.Ls = Ls;
+                            struct_parameters.Map = Map;
+                            struct_parameters.nsrow = nsrow;
+                            struct_parameters.psx = psx;
+                            struct_parameters.Lx = Lx;
+                            struct_parameters.desc_count = desc_count;
+                            struct_parameters.syrk_count = syrk_count;
+                            struct_parameters.gemm_count = gemm_count;
+                            struct_parameters.desc = desc;
+                            struct_parameters.syrk = syrk;
+                            struct_parameters.gemm = gemm;
+                            struct_parameters.Common = Common;
 
+                            pthread_create (&pid, NULL, TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_wrapper)), &struct_parameters);
+                        }
+#else
                         {
                             int i;
                             /*
@@ -777,6 +1046,7 @@
                                     for (ii = j ; ii < ndrow2 ; ii++)
                                     {
                                         q = px + Map [Ls [pdi1 + ii]] ;
+//#pragma omp atomic
                                         L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
                                     }
                                 }
@@ -784,6 +1054,7 @@
 #pragma omp atomic
                             CPUavailable++;
                         }
+#endif
 
                         nvtxRangeEnd(id2);
 
@@ -791,6 +1062,14 @@
                     }
 
                 } /* end loop over descendants */
+
+#ifdef USE_PTHREAD
+                if (pid != 0)
+                {
+                    pthread_join (pid, NULL);
+                    pid = 0;
+                }
+#endif
 
 
 
