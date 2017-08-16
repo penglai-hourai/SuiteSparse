@@ -746,7 +746,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
 
     /* need both H2D and D2H copies to be complete */
     //cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
-    cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 ); // needed if Ls, Map, RelativeMap are separate from other mem spaces
+    cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 );
 
       /*
        * sum updates from cpu and device on device
@@ -770,7 +770,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
     {
 
     /* copy assembled Schur-complement updates computed on GPU */
-    cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 ); // needed if Ls, Map, RelativeMap are separate from other mem spaces
+    cudaStreamWaitEvent( Common->gpuStream[gpuid][0], Common->updateCKernelsComplete[gpuid], 0 );
     cudaMemcpyAsync ( gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS],
 		      gpu_p->d_A_root[gpuid][0],
                       nscol*nsrow*L_ENTRY*sizeof(double),
