@@ -459,7 +459,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 Int *Map  	= &h_Map[gpuid*n];			/* set map */
                 double *C1 	= &h_C[gpuid*devBuffSize];		/* set Cbuff */
 
-                int nthreads = numThreads1;
+                const int nthreads = 1;
 
                 cudaSetDevice(gpuid / Common->numGPU_parallel);					/* set device */
 
@@ -676,16 +676,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
                 {
-                    if ( (nthreads > 1) && ( (ndescendants - idescendant) < numThreads1 * 4 ) )
-                    {
-                        nthreads = 1;
-
-#ifdef MKLROOT
-                        mkl_set_num_threads_local(numThreads1);
-#else
-                        openblas_set_num_threads(numThreads1);
-#endif
-                    }
 
                     iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                     iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
