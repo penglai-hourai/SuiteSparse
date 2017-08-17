@@ -545,11 +545,8 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                                       nbatch-syrk_count);
   }
 
-
   TIMER_END1(tstart1,syrk_time,0);
   TIMER_END1(tstart1,syrk_time,1);
-
-
 
   /*
    * Perform DGEMM
@@ -613,6 +610,8 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             nbatch-gemm_count);
   }
 
+  TIMER_END1(tstart1,gemm_time,0);
+  TIMER_END1(tstart1,gemm_time,1);
 
   /* copy supernode from pinned to regular memory - only at last level */
   //if ( level == tree_p->supernode_num_levels[subtree]-1 )
@@ -649,8 +648,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       }
   }
   cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-  TIMER_END1(tstart1,gemm_time,0);
-  TIMER_END1(tstart1,gemm_time,1);
 
 
 
@@ -1035,9 +1032,9 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
               gpu_p->d_Lx[gpuid] + h_super->psx[k],
               sizeof(double) * h_super->nscol[k] * h_super->nsrow[k],
               cudaMemcpyDefault,
-              Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
+              Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
   }
-  cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
+  cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
 
 }
 
