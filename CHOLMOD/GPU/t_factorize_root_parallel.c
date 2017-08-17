@@ -690,7 +690,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && CPUavailable <= 0 )
+                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && (CPUavailable <= 0 || ndescendants - idescendant < CHOLMOD_HOST_SUPERNODE_BUFFERS) )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
