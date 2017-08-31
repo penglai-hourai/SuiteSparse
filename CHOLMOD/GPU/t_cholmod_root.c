@@ -78,7 +78,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
 
 
   /* set cuda device */
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
   /* compute nls */
@@ -200,7 +200,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
   /* store GPU-eligible descendants in h_Lx[0] */
   struct cholmod_descendant_score_t* scores = (struct cholmod_descendant_score_t*) gpu_p->h_Lx_root[gpuid][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
   /* initialize variables */
@@ -389,7 +389,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_root))
   int numThreads;
   cudaError_t cudaErr;
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
   numThreads = Common->ompNumThreads;
 
   /* initialize the device supernode assemby memory to zero */
@@ -450,7 +450,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cublasStatus_t cublasStatus;
   cudaError_t cudaErr;
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
   numThreads = Common->ompNumThreads;
 
@@ -708,7 +708,7 @@ void TEMPLATE2 (CHOLMOD (gpu_final_assembly_root))
   cudaError_t cudaErr ;
   int numThreads;
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
   numThreads = Common->ompNumThreads;
@@ -844,7 +844,7 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
 
   int worksize;
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
 
@@ -1224,7 +1224,7 @@ int TEMPLATE2 (CHOLMOD (gpu_triangular_solve_root))
   cublasStatus_t cublasStatus;
 
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
 
   numThreads = Common->ompNumThreads;
@@ -1465,7 +1465,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
   Int iidx, i, j;
   int numThreads;
 
-  cudaSetDevice(gpuid / Common->numGPU_parallel);
+  //cudaSetDevice(gpuid / Common->numGPU_parallel);
 
   numThreads = Common->ompNumThreads;
 
@@ -1474,7 +1474,8 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode_root))
   if ( supernodeUsedGPU && nscol2 * L_ENTRY >= CHOLMOD_POTRF_LIMIT ) {
 
     /* synchronize device */
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
+    cudaStreamSynchronize(Common->gpuStream[gpuid][0]);
 
     /* copy Lx from pinned to host memory */
     #pragma omp parallel for num_threads(numThreads) private(i, j, iidx) if (nscol>32)

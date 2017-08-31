@@ -76,7 +76,7 @@
 #endif
 #endif
 
-#undef USE_PTHREAD
+//#define USE_PTHREAD
 
 #ifdef USE_PTHREAD
 struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
@@ -320,7 +320,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
     /* local variables */
     size_t devBuffSize;
     int gpuid, numThreads, numThreads1;
-    Int start_global, end_global, start, end, node, level, Apacked, Fpacked, stype, n;
+    Int start_global, end_global, node, level, Apacked, Fpacked, stype, n;
     Int *Ls, *Lpi, *Lpx, *Lpos, *Fp, *Fi, *Fnz, *Ap, *Ai, *Anz, *Super, *h_Map, *SuperMap, *Head, *Next, *Next_save, *Previous, *Lpos_save,
         *supernode_levels, *supernode_levels_ptrs, *supernode_levels_subtree_ptrs, *supernode_num_levels;
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
@@ -404,10 +404,12 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         Int *Lpos_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
 
         /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
-        int *node_complete = (int *) malloc (end_global*sizeof(int));
-        int event_len = end_global - start_global;
-        int *event_nodes = (int *) malloc (event_len*sizeof(int));
-        volatile int *event_complete = (int *) malloc (event_len*sizeof(int));
+        volatile int *node_complete = (int *) malloc (end_global*sizeof(int));
+        Int event_len = end_global - start_global;
+        volatile Int *pending = (Int *) malloc (event_len*sizeof(Int));
+        volatile Int *leaves = (Int *) malloc (event_len*sizeof(Int));
+        Int nleaves;
+        volatile omp_lock_t *node_locks = (omp_lock_t *) malloc (event_len*sizeof(omp_lock_t));
 
         for ( node=0; node<end_global; node++ ) {
             node_complete[node] = 1;
@@ -415,19 +417,49 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
         for ( node = start_global; node < end_global; node++ ) {
             node_complete[supernode_levels[node]] = 0;
-            event_nodes[node-start_global] = supernode_levels[node];
-            event_complete[node-start_global] = 0;
+            pending[node-start_global] = 0;
+        }
+
+        for ( node = start_global; node < end_global; node++ ) {
+            Int s, psi, nscol, sparent;
+            Int inode;
+            s = supernode_levels[node];
+            psi = Lpi[s];
+            nscol = Super[s+1] - Super[s];
+            sparent = SuperMap [Ls [psi + nscol]];
+            if (node_complete[s] == 0 && sparent > s && sparent < L->nsuper)
+            {
+                for (inode = node; inode < end_global; inode++)
+                {
+                    if (sparent == supernode_levels[inode])
+                    {
+                        pending[inode-start_global]++;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        nleaves = 0;
+
+        for ( node = start_global; node < end_global; node++ ) {
+            Int s;
+            s = supernode_levels[node];
+            if (node_complete[s] == 0 && pending[node-start_global] == 0)
+            leaves[nleaves++] = s;
+        }
+
+        for ( node=0; node<event_len; node++ ) {
+            omp_init_lock(&node_locks[node]);
         }
 
         /* loop over supernodes */
         //for (level = 0; level < supernode_num_levels[subtree]; level++)
         {
-            //start = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level];
-            //end = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];
-            start = start_global;
-            end = end_global;
-#pragma omp parallel for schedule(dynamic,1) ordered private ( node, gpuid ) num_threads(Common->numGPU)
-            for(node = start; node < end; node++)
+            Int leaf_idx;
+            printf ("num_threads = %ld\n", Common->numGPU);
+#pragma omp parallel for schedule(dynamic) private ( leaf_idx, node, gpuid ) num_threads(Common->numGPU)
+            for(leaf_idx = 0; leaf_idx < nleaves; leaf_idx++)
             {
 
 
@@ -467,7 +499,14 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 nscol3 = 0;
 
                 /* get supernode dimensions */
-                s = supernode_levels[node];
+                s = leaves[leaf_idx];
+                node = start_global;
+label_node_parent:
+                while (node < end_global && supernode_levels[node] != s)
+                    node++;
+                if (node >= end_global || pending[node-start_global] > 0 || !omp_test_lock(&node_locks[node-start_global]))
+                    goto label_for_loop_end;
+label_node_repeat:
                 k1 = Super [s];            		/* s contains columns k1 to k2-1 of L */
                 k2 = Super [s+1];
                 nscol = k2 - k1;           		/* # of columns in all of s */
@@ -499,19 +538,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 }
 
 
-                /*
-                 * Synchronization - stop threads here until _previous_ supernodes have had their descendants processed.
-                 * This is required since a supernode doesn't know it dependent list is complete until all previous
-                 * supernodes (really levels) are complete.
-                 */
-                {
-                    int inode;
-                    for ( inode = start_global; inode < node; inode++ ) {
-                        while ( event_complete[inode-start_global] != 1 );
-                    }
-                }
-
-
 //#pragma omp critical
                 {
                     /* reorder descendants in supernode by descreasing size */
@@ -535,7 +561,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         if (Lpos [d] < ndrow) {
                             dancestor = SuperMap [Ls [pdi2]] ;
-//#pragma omp critical
+#pragma omp critical
                             {
                                 Next [d] = Head [dancestor] ;
                                 Head [dancestor] = d ;
@@ -550,7 +576,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         Lpos [s] = nscol ;
                         sparent = SuperMap [Ls [psi + nscol]] ;
                         /* place s in link list of its parent */
-                        //#pragma omp critical
+#pragma omp critical
                         {
                             Next [s] = Head [sparent] ;
                             Head [sparent] = s ;
@@ -558,17 +584,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
 
                 } /* end pragma omp critical */
-
-
-                /* Mark the descendant parsing complete */
-                {
-                    int inode;
-                    for ( inode=start_global; inode<end; inode++ ) {
-                        if ( s == event_nodes[inode-start_global] ) {
-                            event_complete[inode-start_global] = -1;
-                        }
-                    }
-                }
 
 
                 /* copy matrix into supernode s (lower triangular part only) */
@@ -878,7 +893,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                         }
                                         else
                                         {
-                                            printf ("checkpoint 1\n");
                                             if (dsmall != EMPTY) Next_local[dsmall] = Next_local[d];
                                             Previous_local[Next_local[d]] = dsmall;
                                         }
@@ -1195,6 +1209,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         /* finalize GPU */
                         CHOLMOD (gpu_end) (Common);
                         /*return Common->status;*/
+                        goto label_for_loop_end;
 
                     }
                     else
@@ -1203,8 +1218,9 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                          * including the column containing the problematic diagonal
                          * entry. */
                         repeat_supernode = TRUE ;
-                        s-- ;
+                        //s-- ;
                         nscol3 = info - 1 ;
+                        goto label_node_repeat;
                     }
 
                 } /* end if info */
@@ -1278,16 +1294,24 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
 
                     /* Mark the supernode complete */
+                    node_complete[s] = 1;
+                    sparent = SuperMap [Ls [psi + nscol]];
+                    if (sparent > s && sparent < L->nsuper)
                     {
-                        int inode;
-                        for ( inode=start; inode<end; inode++ ) {
-                            if ( s == event_nodes[inode-start_global] ) {
-                                event_complete[inode-start_global] = 1;
-                            }
+                        Int inode;
+                        inode = node;
+                        while (inode < end_global && supernode_levels[inode] != sparent)
+                            inode++;
+                        if (inode < end_global)
+                        {
+#pragma omp atomic
+                            pending[inode-start_global]--;
+                            s = sparent;
+                            goto label_node_parent;
                         }
                     }
-                    node_complete[s] = 1;
                 }
+label_for_loop_end:;
 
             } /* end loop over supenodes */
         }
@@ -1296,8 +1320,12 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         free ( Lpos_local );
 
         free ( node_complete );
-        free ( event_nodes );
-        free ( event_complete );
+        free ( pending );
+        free ( leaves );
+        for ( node=0; node<event_len; node++ ) {
+            omp_destroy_lock(&node_locks[node]);
+        }
+        free ( node_locks );
 
     } /* end loop over levels */
 
