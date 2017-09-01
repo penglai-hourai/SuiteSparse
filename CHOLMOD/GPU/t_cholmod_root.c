@@ -142,7 +142,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init_root))
   for (k = 0; k <= CHOLMOD_HOST_SUPERNODE_BUFFERS; k++) {
     gpu_p->h_Lx_root[gpuid][k]
         = ((void*) Common->host_pinned_mempool[gpuid / Common->numGPU_parallel])
-        + (gpuid % Common->numGPU_parallel * CHOLMOD_HOST_SUPERNODE_BUFFERS) * Common->devBuffSize + k * Common->devBuffSize;
+        + (gpuid % Common->numGPU_parallel * (CHOLMOD_HOST_SUPERNODE_BUFFERS+1)) * Common->devBuffSize + k * Common->devBuffSize;
   }
 
 

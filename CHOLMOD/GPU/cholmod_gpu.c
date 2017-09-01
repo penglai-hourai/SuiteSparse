@@ -619,7 +619,6 @@ int CHOLMOD(gpu_allocate)
 
     /* Set maximum size of buffers */
     Common->devBuffSize = (size_t) (requestedDeviceMemory / (CHOLMOD_DEVICE_SUPERNODE_BUFFERS * Common->numGPU_parallel));
-    //Common->devBuffSize -= Common->devBuffSize%0x20000;
     Common->devBuffSize -= Common->devBuffSize%0x20000;
 
 
