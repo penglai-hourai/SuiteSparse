@@ -284,7 +284,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
             for (ii = j ; ii < ndrow2 ; ii++)
             {
                 q = px + Map [Ls [pdi1 + ii]] ;
-//#pragma omp atomic
                 L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
             }
         }
@@ -325,8 +324,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         *supernode_levels, *supernode_levels_ptrs, *supernode_levels_subtree_ptrs, *supernode_num_levels;
     double *Lx, *Ax, *Az, *Fx, *Fz, *h_C, *beta;
     double one[2] = {1.0, 0.0}, zero[2] = {0.0, 0.0};
-
-    int CPUavailable = 1;
 
     omp_set_nested(1);
 
@@ -479,6 +476,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 struct cholmod_gemm_t gemm[Common->ompNumThreads];
 
 #ifdef USE_PTHREAD
+                int CPUavailable = 1;
                 pthread_t pid = 0;
                 struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters)) struct_parameters;
 #endif
@@ -558,7 +556,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         if (Lpos [d] < ndrow) {
                             dancestor = SuperMap [Ls [pdi2]] ;
-#pragma omp critical (head_next)
+//#pragma omp critical (head_next)
                             {
                                 Next [d] = Head [dancestor] ;
                                 Head [dancestor] = d ;
@@ -573,7 +571,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         Lpos [s] = nscol ;
                         sparent = SuperMap [Ls [psi + nscol]] ;
                         /* place s in link list of its parent */
-#pragma omp critical (head_next)
+//#pragma omp critical (head_next)
                         {
                             Next [s] = Head [sparent] ;
                             Head [sparent] = s ;
@@ -702,7 +700,11 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
                         //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && (CPUavailable <= 0 || ndescendants - idescendant < CHOLMOD_HOST_SUPERNODE_BUFFERS) )
+                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && (
+#ifdef USE_PTHREAD
+                                    CPUavailable <= 0 || 
+#endif
+                                    ndescendants - idescendant < CHOLMOD_HOST_SUPERNODE_BUFFERS) )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
@@ -741,8 +743,10 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         }
                         else {
+#ifdef USE_PTHREAD
 #pragma omp atomic
                             CPUavailable--;
+#endif
                             dsmall = dsmall_save;
                             d = dsmall;
                             dsmall = Previous_local[dsmall];
@@ -1047,13 +1051,10 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                     for (ii = j ; ii < ndrow2 ; ii++)
                                     {
                                         q = px + Map [Ls [pdi1 + ii]] ;
-//#pragma omp atomic
                                         L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
                                     }
                                 }
                             } /* end loop over descendants */
-#pragma omp atomic
-                            CPUavailable++;
                         }
 #endif
 
