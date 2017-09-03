@@ -181,8 +181,11 @@ __global__ void kernelAddUpdate ( double *d_A,
   /* loop over rows and columns */
   if ( idrow < ndrow2  && idcol < ndrow1 ) {
     Int idx = d_RelativeMap[idrow] + d_RelativeMap[idcol] * nsrow;
+#if defined(CHOLMOD_DEVICE_C_BUFFERS) && (CHOLMOD_DEVICE_C_BUFFERS > 1)
+    atomicAdd (&d_A[idx], devPtrC[idrow+ndrow2*idcol]);                            /* add schur complement to supernode */
+#else
     d_A[idx] += devPtrC[idrow+ndrow2*idcol];                            /* add schur complement to supernode */
-    //atomicAdd (&d_A[idx], devPtrC[idrow+ndrow2*idcol]);                            /* add schur complement to supernode */
+#endif
   }
 }
 
