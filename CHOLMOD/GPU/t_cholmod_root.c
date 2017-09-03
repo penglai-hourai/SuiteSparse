@@ -486,7 +486,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* make the current stream wait for kernels in previous streams */
+#ifndef QUERY_LX_EVENTS
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevBuffersFree[gpuid][iDevBuff], 0 ) ;
+#endif
 
 
 
@@ -636,6 +638,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   /*
    * Assemble the update C on the devicet
    */
+#if defined(CHOLMOD_DEVICE_C_BUFFERS) && (CHOLMOD_DEVICE_C_BUFFERS > 1)
+    cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][iDevBuff], Common->cublasEventPotrf[gpuid][0], 0) ;
+#endif
 #ifdef REAL
   addUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
@@ -654,6 +659,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           ndrow2,
           nsrow,
           &(Common->gpuStream[gpuid][iDevBuff]));
+#endif
+#if defined(CHOLMOD_DEVICE_C_BUFFERS) && (CHOLMOD_DEVICE_C_BUFFERS > 1)
+    cudaErr = cudaEventRecord (Common->cublasEventPotrf[gpuid][0], Common->gpuStream[gpuid][iDevBuff]) ;
 #endif
 
 

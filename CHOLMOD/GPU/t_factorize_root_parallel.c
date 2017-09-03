@@ -464,7 +464,10 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, dsmall_save, tail, info = 0,
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
-                cudaError_t cuErrHost, cuErrDev;
+                cudaError_t cuErrHost;
+#ifdef QUERY_LX_EVENTS
+                cudaError_t cuErrDev;
+#endif
 
                 int desc_count;
                 int syrk_count;
@@ -699,8 +702,14 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     if ( idescendant > 0 ) {
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        while ( (cuErrHost != cudaSuccess/* || cuErrDev != cudaSuccess*/) && (
+#ifdef QUERY_LX_EVENTS
+                        cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+#endif
+                        while ( (cuErrHost != cudaSuccess
+#ifdef QUERY_LX_EVENTS
+                                    || cuErrDev != cudaSuccess
+#endif
+                                    ) && (
 #ifdef USE_PTHREAD
                                     CPUavailable <= 0 || 
 #endif
@@ -714,10 +723,16 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                             Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
                             cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                            //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+#ifdef QUERY_LX_EVENTS
+                            cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+#endif
                         }
 
-                        if ( cuErrHost == cudaSuccess/* && cuErrDev == cudaSuccess*/ && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
+                        if ( cuErrHost == cudaSuccess
+#ifdef QUERY_LX_EVENTS
+                                && cuErrDev == cudaSuccess
+#endif
+                                && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
                         {
 
                             if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {

@@ -304,6 +304,8 @@
 #endif
   #define CHOLMOD_MAX_NUM_GPUS (CHOLMOD_MAX_NUM_PGPUS * CHOLMOD_MAX_NUM_GPU_PARALLEL)
 
+//#define QUERY_LX_EVENTS // query updateCDevBuffersFree
+
 /* additional information */
 /*#define CHOLMOD_VERBOSE*/                         /* comment this in for verbose */
 /*#define USE_NVTX*/                            /* comment this in for nvtx markers */
