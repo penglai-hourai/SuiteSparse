@@ -639,7 +639,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           cudaStat = cudaStreamWaitEvent (Common->gpuStream[vgpuid][i], Common->cublasEventPotrf[gpuid * Common->numGPU_parallel][0], 0);
       }
   }
-  cudaStat = cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS], Common->cublasEventPotrf[gpuid * Common->numGPU_parallel][0], 0);
 #endif
 
 
@@ -701,6 +700,17 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           Lpx);
   }
 
+  for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
+      for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
+      {
+    cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
+    if (cudaStat) {
+      printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
+      ERROR (CHOLMOD_GPU_PROBLEM, "GPU addUpdateOnDevice_batch") ;
+    }
+      }
+  }
+
   /* check if any addUpdate's left for batching */
   if( (nbatch - update_count) > 0 ) {
       vgpuid = gpuid * Common->numGPU_parallel;
@@ -728,16 +738,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   /* synchronize streams */
   cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]) ;
-  for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
-      for (vgpuid = gpuid * Common->numGPU_parallel; vgpuid < (gpuid+1) * Common->numGPU_parallel; vgpuid++)
-      {
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) {
-      printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU addUpdateOnDevice_batch") ;
-    }
-      }
-  }
   TIMER_END1(tstart1,tend,4);
 
 }
