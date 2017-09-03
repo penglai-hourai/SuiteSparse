@@ -503,7 +503,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     return (0);
   }
 
-  cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff]);
+  cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
   /* make the current stream wait for kernels in previous streams */
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
