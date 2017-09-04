@@ -399,19 +399,13 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         Int *Lpos_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
 
         /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
-        volatile int *node_complete = (int *) malloc (end_global*sizeof(int));
         Int event_len = end_global - start_global;
-        volatile Int *pending = (Int *) malloc (event_len*sizeof(Int));
-        volatile Int *leaves = (Int *) malloc (event_len*sizeof(Int));
+        Int *pending = (Int *) malloc (event_len*sizeof(Int));
+        Int *leaves = (Int *) malloc (event_len*sizeof(Int));
         Int nleaves;
-        volatile omp_lock_t *node_locks = (omp_lock_t *) malloc (event_len*sizeof(omp_lock_t));
-
-        for ( node=0; node<end_global; node++ ) {
-            node_complete[node] = 1;
-        }
+        omp_lock_t *node_locks = (omp_lock_t *) malloc (event_len*sizeof(omp_lock_t));
 
         for ( node = start_global; node < end_global; node++ ) {
-            node_complete[supernode_levels[node]] = 0;
             pending[node-start_global] = 0;
         }
 
@@ -732,29 +726,13 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 #ifdef QUERY_LX_EVENTS
                                 && cuErrDev == cudaSuccess
 #endif
-                                && ( node_complete[dlarge] || (ndescendants-idescendant <= 2) || ( node_complete[Next_local[dlarge]] && ((ndescendants-idescendant) > 2) ) ) )
+                           )
                         {
-
-                            if ( !node_complete[dlarge] && node_complete[Next_local[dlarge]] && (ndescendants-idescendant) > 2 ) {
-
-                                Int dlarge_old = dlarge;
-
-                                dlarge = Next_local[dlarge];
-                                Next_local[dlarge_old] = Next_local[dlarge];
-                                Next_local[dlarge] = dlarge_old;
-                                Previous_local[dlarge_old] = dlarge;
-                                Previous_local[Next_local[dlarge_old]] = dlarge_old;
-
-                            }
-
 
                             d = dlarge;
                             dlarge = Next_local[dlarge];
 
                             GPUavailable = 1;
-
-                            /* make sure d is complete */
-                            while ( ! node_complete[d] );
 
                         }
                         else {
@@ -768,10 +746,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                             GPUavailable = 0;
                         }
                     }
-
-
-                    /* make sure d is complete */
-                    while ( ! node_complete[d] );
 
 
                     /* get the size of supernode d */
@@ -837,8 +811,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                     dsmall = Previous_local[dsmall];
                                 }
 
-                                /* make sure d is complete */
-                                if ( node_complete[d] )
                                 {
 
                                     /* get descendant dimensions */
@@ -1305,7 +1277,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
 
                     /* Mark the supernode complete */
-                    node_complete[s] = 1;
                     sparent = SuperMap [Ls [psi + nscol]];
                     if (sparent > s && sparent < L->nsuper)
                     {
@@ -1336,7 +1307,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         free ( Next_local );
         free ( Lpos_local );
 
-        free ( node_complete );
         free ( pending );
         free ( leaves );
         for ( node=0; node<event_len; node++ ) {
