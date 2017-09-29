@@ -287,7 +287,8 @@
 /* global GPU parameters*/
 #ifdef SUITESPARSE_CUDA
   #define CHOLMOD_MAX_NUM_PGPUS 64			/* max # GPUs */
-  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 64	/* max # GPUs */
+  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 64
+  #define CHOLMOD_MAX_NUM_SUBTREE_PARALLEL 64
   #define CHOLMOD_DEVICE_STREAMS 8			/* # streams for cuBlas,cuSolver overlap */ /* can not be less than CHOLMOD_DEVICE_SUPERNODE_BUFFERS */
   #define CHOLMOD_DEVICE_LX_BUFFERS 2
   #define CHOLMOD_DEVICE_C_BUFFERS 1
@@ -295,7 +296,8 @@
   #define CHOLMOD_HOST_SUPERNODE_BUFFERS 8		/* # host buffers for root alg. */
 #else
   #define CHOLMOD_MAX_NUM_PGPUS 1			/* max # GPUs */
-  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1			/* max # GPUs */
+  #define CHOLMOD_MAX_NUM_GPU_PARALLEL 1
+  #define CHOLMOD_MAX_NUM_SUBTREE_PARALLEL 1
   #define CHOLMOD_DEVICE_STREAMS 1
   #define CHOLMOD_DEVICE_LX_BUFFERS 1
   #define CHOLMOD_DEVICE_C_BUFFERS 1
@@ -977,6 +979,7 @@ typedef struct cholmod_common_struct
     int numGPU;
     int numGPU_physical;
     int numGPU_parallel;
+    int numGPU_subtree_parallel;
     int useHybrid;    		/* useHybrid: hybrid computing (1 to enable, 0 to disable) */
     int ompNumThreads;
     int partialFactorization;
@@ -1012,8 +1015,8 @@ typedef struct cholmod_common_struct
 #endif
 
     /* cuBlas & cuSolver handles */
-    CHOLMOD_CUBLAS_HANDLE cublasHandle[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
-    CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS];
+    CHOLMOD_CUBLAS_HANDLE cublasHandle[CHOLMOD_MAX_NUM_PGPUS];
+    CHOLMOD_CUSOLVER_HANDLE cusolverHandle[CHOLMOD_MAX_NUM_PGPUS];
 
     /* a set of streams for general use */
     CHOLMOD_CUDASTREAM    gpuStream[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_STREAMS+2];

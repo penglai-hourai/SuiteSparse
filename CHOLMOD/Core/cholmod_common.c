@@ -183,13 +183,13 @@ int CHOLMOD(start)
 
 
     int gpuid;
+    for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_PGPUS; gpuid ++) {
+        Common->cublasHandle[gpuid] = NULL ;
+        Common->cusolverHandle[gpuid] = NULL ;
+      }
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
       for(k = 0; k <= CHOLMOD_DEVICE_STREAMS+1; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
-      }
-      for(k = 0; k < CHOLMOD_DEVICE_STREAMS; k++) {
-        Common->cublasHandle[gpuid][k] = NULL ;
-        Common->cusolverHandle[gpuid][k] = NULL ;
       }
       Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {
@@ -365,6 +365,7 @@ int CHOLMOD(defaults)
 #ifdef DLONG
     Common->useGPU 		= EMPTY ;
     Common->maxGpuMemBytes	= EMPTY ;
+    Common->numGPU_subtree_parallel	= EMPTY ;
     Common->numGPU_parallel	= EMPTY ;
     Common->numGPU_physical	= EMPTY ;
     Common->numGPU 		= EMPTY ;
@@ -375,6 +376,7 @@ int CHOLMOD(defaults)
     /* GPU acceleration is not supported for int version of CHOLMOD */
     Common->useGPU 		= 0 ;
     Common->maxGpuMemBytes      = 0 ;
+    Common->numGPU_subtree_parallel	= 1 ;
     Common->numGPU_parallel	= 1 ;
     Common->numGPU_physical	= 0 ;
     Common->numGPU 		= 0 ;

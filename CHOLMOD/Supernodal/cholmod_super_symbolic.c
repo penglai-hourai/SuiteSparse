@@ -181,7 +181,7 @@ int CHOLMOD(super_symbolic2)
 	merge, snext, esize, maxesize, nrelax0, nrelax1, nrelax2, Asorted ;
     size_t w ;
     int ok = TRUE, find_xsize ;
-    const char *env_use_gpu, *env_max_bytes, *env_num_gpu, *env_gpu_parallel, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
+    const char *env_use_gpu, *env_max_bytes, *env_num_gpu, *env_gpu_parallel, *env_subtree_parallel, *env_hybrid_gpu, *env_omp_num_threads, *env_partial_factorization;
     size_t max_bytes;
 
     /* ---------------------------------------------------------------------- */
@@ -312,6 +312,27 @@ int CHOLMOD(super_symbolic2)
                     Common->maxGpuMemBytes = max_bytes;
                 }
             }
+        }
+
+       
+        /* set numGPU_subtree_parallel parameter */ 
+        if ( Common->numGPU_subtree_parallel == EMPTY )
+        {
+            /* Query OS environment variables for request.*/
+            env_subtree_parallel  = getenv("CHOLMOD_GPU_PARALLEL");
+
+            /* CHOLMOD_NUM_GPUS environment variable is set */
+            if ( env_subtree_parallel )
+            {	    
+                Common->numGPU_subtree_parallel = atoi ( env_subtree_parallel );              	/* set # GPUs */	
+                if (Common->numGPU_subtree_parallel > CHOLMOD_MAX_NUM_SUBTREE_PARALLEL)
+                    Common->numGPU_subtree_parallel = CHOLMOD_MAX_NUM_SUBTREE_PARALLEL;
+            }
+            /* CHOLMOD_USE_GPU environment variable not set */
+	    else
+            {
+                Common->numGPU_subtree_parallel = 1;				    	/* default, #GPUs is not defined */
+            }	        	
         }
 
        

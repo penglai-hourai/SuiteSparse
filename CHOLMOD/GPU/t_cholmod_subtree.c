@@ -143,8 +143,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
 
     /* cuSolver Cholesky initialization (get workspace size) */
-    for (k = 0; k < CHOLMOD_DEVICE_STREAMS; k++)
-    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid * Common->numGPU_parallel][k], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
+    cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnDpotrf_bufferSize failure");
     }
@@ -507,13 +506,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][j], Common->gpuStream[vgpuid][j]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[vgpuid][j]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dsyrk on cuBlas */
-    cublasDsyrk ( Common->cublasHandle[vgpuid][j],
+    cublasDsyrk ( Common->cublasHandle[gpuid],
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_N,
                   h_syrk->n[i],
@@ -566,13 +565,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][j], Common->gpuStream[vgpuid][j]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[vgpuid][j]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* dgemm on cuBlas */
-    cublasDgemm ( Common->cublasHandle[vgpuid][j],
+    cublasDgemm ( Common->cublasHandle[gpuid],
                   CUBLAS_OP_N, CUBLAS_OP_T,
                   h_gemm->m[i],
                   h_gemm->n[i],
@@ -798,14 +797,14 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
 
     /* set cuSolver stream */
-    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[vgpuid][j], Common->gpuStream[vgpuid][j]) ;
+    cusolverErr = cusolverDnSetStream (Common->cusolverHandle[gpuid], Common->gpuStream[vgpuid][j]) ;
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnSetStream failure");
     }
 
     /* potrf on cuSolver */
     cusolverDnDpotrf(
-            Common->cusolverHandle[vgpuid][j],
+            Common->cusolverHandle[gpuid],
             CUBLAS_FILL_MODE_LOWER,
             h_potrf->n[i],
             h_potrf->A[i],
@@ -922,13 +921,13 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
       vgpuid = gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
 
     /* set cublas stream */
-    cublasStatus = cublasSetStream (Common->cublasHandle[vgpuid][j], Common->gpuStream[vgpuid][j]) ;
+    cublasStatus = cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[vgpuid][j]) ;
     if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
     /* trsm on cuBlas */
-    cublasDtrsm ( Common->cublasHandle[vgpuid][j],
+    cublasDtrsm ( Common->cublasHandle[gpuid],
                   CUBLAS_SIDE_RIGHT,
                   CUBLAS_FILL_MODE_LOWER,
                   CUBLAS_OP_T,
