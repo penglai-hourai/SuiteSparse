@@ -415,7 +415,7 @@ void CHOLMOD(gpu_end)
     /* 
      * destroy CUDA streams 
      */
-    for(k = 0; k < Common->numGPU; k++) 
+    for(k = 0; k < Common->numGPU * Common->numGPU_subtree_parallel; k++) 
     {
       for(j = 0; j <= CHOLMOD_DEVICE_STREAMS+1; j++) 
       {
@@ -695,9 +695,9 @@ int CHOLMOD(gpu_allocate)
 
 
     /* Create CUDA streams */
-    for(k = 0; k < Common->numGPU; k++) {
+    for(k = 0; k < Common->numGPU * Common->numGPU_subtree_parallel; k++) {
 
-      cudaSetDevice(k / Common->numGPU_parallel);
+      cudaSetDevice(k % Common->numGPU / Common->numGPU_parallel);
 
       for (i = 0; i <= CHOLMOD_DEVICE_STREAMS+1; i++ ) {
         cudaErr = cudaStreamCreate ( &(Common->gpuStream[k][i]) );

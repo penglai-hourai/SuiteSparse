@@ -319,7 +319,7 @@ int CHOLMOD(super_symbolic2)
         if ( Common->numGPU_subtree_parallel == EMPTY )
         {
             /* Query OS environment variables for request.*/
-            env_subtree_parallel  = getenv("CHOLMOD_GPU_PARALLEL");
+            env_subtree_parallel  = getenv("CHOLMOD_SUBTREE_PARALLEL");
 
             /* CHOLMOD_NUM_GPUS environment variable is set */
             if ( env_subtree_parallel )

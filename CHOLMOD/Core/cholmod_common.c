@@ -187,10 +187,12 @@ int CHOLMOD(start)
         Common->cublasHandle[gpuid] = NULL ;
         Common->cusolverHandle[gpuid] = NULL ;
       }
-    for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
+    for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS * CHOLMOD_MAX_NUM_SUBTREE_PARALLEL; gpuid ++) {
       for(k = 0; k <= CHOLMOD_DEVICE_STREAMS+1; k++) {
         Common->gpuStream[gpuid][k] = NULL ;
       }
+    }
+    for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
       Common->updateCKernelsComplete[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {
         Common->updateCDevBuffersFree[gpuid][k] = NULL ;
