@@ -356,6 +356,15 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         super_count++;
 
+        for (sparent = tree_p->supernode_parent[s]; sparent != EMPTY; sparent = tree_p->supernode_parent[sparent])
+            tree_p->supernode_size[sparent] -= tree_p->supernode_size[s];
+        tree_p->supernode_size[s] = 0;
+
+        if (nsrow > nscol)
+            tree_p->factorized[s] = 1;
+        else
+            tree_p->factorized[s] = -1;
+
       } /* end loop over supernodes */
 
 

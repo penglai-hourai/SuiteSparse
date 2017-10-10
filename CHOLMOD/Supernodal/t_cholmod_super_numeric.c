@@ -177,7 +177,7 @@ static int TEMPLATE (cholmod_super_numeric)
     else				 size = L->nsuper;
 
     /* allocate workspace */
-    gb_p->IworkSize                       = 25*(L->nsuper + 1) + (Common->numGPU_physical+4)*(size + 1);
+    gb_p->IworkSize                       = 26*(L->nsuper + 1) + (Common->numGPU_physical+4)*(size + 1);
     gb_p->XworkSize                       = 2*(L->nsuper + 1) + (size + 1);
     gb_p->BworkSize                       = L->nsuper;
 
@@ -225,16 +225,17 @@ static int TEMPLATE (cholmod_super_numeric)
     tree_p->level_num_desc_ptrs           = Iwork + 17*(size_t)(L->nsuper + 1);
     tree_p->supernode_size_desc           = Iwork + 18*(size_t)(L->nsuper + 1);
     tree_p->supernode_size                = Iwork + 19*(size_t)(L->nsuper + 1);
+    memset(tree_p->supernode_size, 0, L->nsuper*sizeof(Int));
     tree_p->supernode_root                = Iwork + 20*(size_t)(L->nsuper + 1);
     tree_p->factor_size                   = Iwork + 21*(size_t)(L->nsuper + 1);
     tree_p->ndescendants                  = Iwork + 22*(size_t)(L->nsuper + 1);
-    lb_p->numSubtreePerDevice             = Iwork + 23*(size_t)(L->nsuper + 1);
-    lb_p->listSubtreePerDevice            = Iwork + 23*(size_t)(L->nsuper + 1) + (size_t)(size + 1);
-    LpxSub                                = Iwork + 23*(size_t)(L->nsuper + 1) + (Common->numGPU_physical+4)*(size_t)(size + 1);;
-    tree_p->factorized                    = Iwork + 24*(size_t)(L->nsuper + 1);
+    tree_p->factorized                    = Iwork + 23*(size_t)(L->nsuper + 1);
     memset(tree_p->factorized, 0, L->nsuper*sizeof(Int));
-    tree_p->parent_subtree                = Iwork + 25*(size_t)(L->nsuper + 1);
+    tree_p->parent_subtree                = Iwork + 24*(size_t)(L->nsuper + 1);
     memset(tree_p->parent_subtree, 0, L->nsuper*sizeof(Int));
+    lb_p->numSubtreePerDevice             = Iwork + 25*(size_t)(L->nsuper + 1);
+    lb_p->listSubtreePerDevice            = Iwork + 25*(size_t)(L->nsuper + 1) + (size_t)(size + 1);
+    LpxSub                                = Iwork + 25*(size_t)(L->nsuper + 1) + (Common->numGPU_physical+4)*(size_t)(size + 1);;
 
     tree_p->supernode_flop                = Xwork;
     lb_p->subtreeSize                     = Xwork + (size_t)(L->nsuper + 1);

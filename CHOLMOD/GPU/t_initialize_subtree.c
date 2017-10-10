@@ -857,7 +857,6 @@ void TEMPLATE2 (CHOLMOD (build_tree))
   for(s = 0; s < L->nsuper; s++) {
 
     /* clear variables */
-    id=0;
     totdesc=0;
     idescendant=0;
     syrkflops = 0.0;
@@ -930,8 +929,6 @@ void TEMPLATE2 (CHOLMOD (build_tree))
       /* compute syrk & gemm flops in current descendant */
       syrkflops += (double)(ndrow1*ndrow1*ndcol);
       gemmflops += (double)(2.0*(ndrow2-ndrow1)*ndrow1*ndcol);
-
-      id++;
 
     } /* end loop over descendants */
 
@@ -1384,10 +1381,11 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
         processed_nodes++;                 		/* increment processed supernode coutner */
         nsupernodes++;                     		/* increment # supernodes in level */
 
-        if (tree_p->factorized[s] > 0)
-            tree_p->parent_subtree[s] = subtree;
-
       }
+
+      if (tree_p->factorized[s] > 0)
+          tree_p->parent_subtree[s] = subtree;
+
     } /* end loop over supernodes */
 
 
