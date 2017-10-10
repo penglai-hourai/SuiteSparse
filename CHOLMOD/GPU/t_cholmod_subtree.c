@@ -1107,7 +1107,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   cudaError_t cudaStat ;
   int numThreads;
 
-
+  Int start_local, end_local;
 
   numThreads = Common->ompNumThreads;
 
@@ -1117,27 +1117,8 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
 
   /* case 1: copy all supernodes up to last level */
   if(flag==1) {
-
-    /* split various supernodes amongst omp threads */
-    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2) if (numSuper >= numThreads)
-    for(i = 0; i < numSuper; i++) {
-      s = tree_p->supernode_subtree[tree_p->supernode_subtree_ptrs[subtree] + i];
-      nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
-      nsrow = cpu_p->Lpi[s+1] - cpu_p->Lpi[s] ;
-      const int ssize = nscol*nsrow;
-
-      offset1 = ((Int*)Lpx)[s];
-      offset2 = LpxSub[s];
-      double* pLx = &(cpu_p->Lx[offset1]);
-      const double* phLx = &(gpu_p->h_Lx[gpuid][offset2]);
-
-      /* copy supernode */
-      #pragma omp parallel for num_threads(numThreads) private(j) if (numSuper < numThreads)
-      for(j = 0; j < ssize; j++) {
-        pLx[j] = phLx[j];
-      }
-
-    } /* end loop over supernodes */
+      start_local = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]];
+      end_local   = tree_p->supernode_levels_ptrs[tree_p->supernode_levels_subtree_ptrs[subtree]+tree_p->supernode_num_levels[subtree]];
   } /* end case 1*/
 
 
@@ -1145,11 +1126,14 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
 
   /* case 2: copy all supernodes in last level */
   if(flag==2) {
+      start_local = start;
+      end_local = end;
+  }
 
     /* loop over supernodes in last level */
-    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2) if (end - start >= numThreads)
-    for(i = 0; i < (end - start); i++) {
-      s = tree_p->supernode_levels[start + i];
+    #pragma omp parallel for num_threads(numThreads) schedule(static,1) private (i, j, s, nscol, nsrow, offset1, offset2) if (end_local - start_local >= numThreads)
+    for(i = 0; i < (end_local - start_local); i++) {
+      s = tree_p->supernode_levels[start_local + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
       nsrow = cpu_p->Lpi[s+1] - cpu_p->Lpi[s] ;
       const int ssize = nscol*nsrow;
@@ -1160,13 +1144,12 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       const double* phLx = &(gpu_p->h_Lx[gpuid][offset2]);
 
       /* copy supernode - split single supernode amongst omp threads  */
-      #pragma omp parallel for num_threads(numThreads) private(j) if (end - start < numThreads)
+      #pragma omp parallel for num_threads(numThreads) private(j) if (end_local - start_local < numThreads)
       for(j = 0; j < ssize; j++) {
         pLx[j] = phLx[j];
       }
 
     } /* end loop over supernodes */
-  }
 
 }
 
