@@ -450,7 +450,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    int update_count,		/* # addUpdate calls to stream seperately */
    int gpuid,
    int flag,
-   Int numSuper,
    Int start,
    Int end,
    int *max_dim,            /* max m,n dimensions for batch */
@@ -631,7 +630,6 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           level-1,
           gpuid,
           2,
-          numSuper,
           start,
           end,
           LpxSub,
@@ -1095,7 +1093,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
    int level,				/* level */
    int gpuid,				/* gpu id */
    int flag,				/* flag (1: copy up to last level, 2: copy last level) */
-   Int numSuper,			/* # supernodes */
    Int start,				/* first supernode in level  */
    Int end,				/* last supernode in level */
    Int *LpxSub,				/* sub-factor in pinned memory */

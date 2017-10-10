@@ -45,7 +45,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     cholmod_profile_pointers *prof_p,
     cholmod_factor *L,
     int deviceid,
-    Int numSuper,
     Int subtree,
     Int *LpxSub
   )
@@ -808,7 +807,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         update_count,
                         gpuid,
                         1,
-                        numSuper,
                         start,
                         end,
                         maxDim1,
@@ -934,7 +932,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           level,
           gpuid,
           2,
-          numSuper,
           start,
           end,					                                              
           LpxSub,

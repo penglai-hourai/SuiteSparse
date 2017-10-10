@@ -587,7 +587,6 @@ static int TEMPLATE (cholmod_super_numeric)
         {
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
-          Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
 #ifdef TDEBUG
       double loop_time;
 #endif
@@ -600,7 +599,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         loop_time = SuiteSparse_time();
 #endif
-          TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, numSuper, subtree, LpxSub);
+          TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, subtree, LpxSub);
 #ifdef TDEBUG
         //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
 #endif
@@ -609,7 +608,6 @@ static int TEMPLATE (cholmod_super_numeric)
           PRINTF("\n\nGPU end -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
-          PRINTFV("nsuper:%d ",numSuper);
           PRINTFV("subtreeSize:%f ",lb_p->subtreeSize[subtree]);
           PRINTFV("time:%f\n",bend[deviceid]);
         } /* end loop over subtree */
@@ -642,7 +640,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
-          Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
 #ifdef TDEBUG
       double loop_time;
 #endif
@@ -664,7 +661,6 @@ static int TEMPLATE (cholmod_super_numeric)
           PRINTF("\n\nCPU end -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
-          PRINTFV("nsuper:%d ",numSuper);
           PRINTFV("subtreeSize:%f ",lb_p->subtreeSize[subtree]);
           PRINTFV("time:%f\n",bend[deviceid]);
 
@@ -717,7 +713,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
         /* get current subtree & # supernodes */
         Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
-        Int numSuper 	= tree_p->supernode_subtree_ptrs[subtree+1] - tree_p->supernode_subtree_ptrs[subtree];
 
         PRINTF("\n\nroot start -\t");
         PRINTFV("device:%d ",deviceid);
@@ -736,7 +731,6 @@ static int TEMPLATE (cholmod_super_numeric)
         PRINTF("\n\nroot end -\t");
         PRINTFV("device:%d ",deviceid);
         PRINTFV("subtree:%d ",subtree);
-        PRINTFV("nsuper:%d ",numSuper);
         PRINTFV("subtreeSize:%f ",lb_p->subtreeSize[subtree]);
         PRINTFV("time:%f\n",bend[deviceid]);
 
