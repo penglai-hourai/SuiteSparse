@@ -206,6 +206,8 @@ typedef struct cholmod_tree_pointers
   Int *factor_size;                             /* list of sub-factor size for each subtree */
   double *supernode_flop;			/* list of floating-point operations (flop) per supernode for syrk,gemm,potrf,trsm operations */
 
+  Int *factorized;
+  Int *parent_subtree;
 } cholmod_tree_pointers ;
 
 

@@ -231,6 +231,10 @@ static int TEMPLATE (cholmod_super_numeric)
     lb_p->numSubtreePerDevice             = Iwork + 23*(size_t)(L->nsuper + 1);
     lb_p->listSubtreePerDevice            = Iwork + 23*(size_t)(L->nsuper + 1) + (size_t)(size + 1);
     LpxSub                                = Iwork + 23*(size_t)(L->nsuper + 1) + (Common->numGPU_physical+4)*(size_t)(size + 1);;
+    tree_p->factorized                    = Iwork + 24*(size_t)(L->nsuper + 1);
+    memset(tree_p->factorized, 0, L->nsuper*sizeof(Int));
+    tree_p->parent_subtree                = Iwork + 25*(size_t)(L->nsuper + 1);
+    memset(tree_p->parent_subtree, 0, L->nsuper*sizeof(Int));
 
     tree_p->supernode_flop                = Xwork;
     lb_p->subtreeSize                     = Xwork + (size_t)(L->nsuper + 1);
