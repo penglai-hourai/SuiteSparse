@@ -291,15 +291,15 @@ typedef struct cholmod_gpu_pointers
 
 
     /* lists for batching supernodes */
-    int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */
-    int    *d_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in device */
+    Int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */
+    Int    *d_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in device */
     double **h_ptrSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode ptrs in pinned */
     double **d_ptrSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode ptrs in device */
 
 
     /* lists for batching descendants */
-    int    *h_dimDesc[CHOLMOD_MAX_NUM_PGPUS];   			/* ptr to descendant dim. in pinned */
-    int    *d_dimDesc[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to descendant dim. in device */
+    Int    *h_dimDesc[CHOLMOD_MAX_NUM_PGPUS];   			/* ptr to descendant dim. in pinned */
+    Int    *d_dimDesc[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to descendant dim. in device */
     double **h_ptrDesc[CHOLMOD_MAX_NUM_PGPUS];    		/* ptr to descendant ptrs in pinned */
     double **d_ptrDesc[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to descendant ptrs in device */
 

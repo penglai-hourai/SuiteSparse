@@ -321,6 +321,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
   gpu_p->d_super[gpuid].psx   	= gpu_p->d_dimSuper[gpuid] + 10*maxbatch;
   gpu_p->d_super[gpuid].nscol   = gpu_p->d_dimSuper[gpuid] + 11*maxbatch;
   gpu_p->d_super[gpuid].nsrow   = gpu_p->d_dimSuper[gpuid] + 12*maxbatch;
+  printf ("checkpoint 7.0.0.0.-1 psi = %ld nsrow = %ld\n", *(gpu_p->h_super[gpuid].psi), *(gpu_p->h_super[gpuid].nsrow));
 
   /* set pointers for storing pointers of matrices of batched supernodes */
   gpu_p->d_potrf[gpuid].A 	= gpu_p->d_ptrSuper[gpuid] + 0*maxbatch;
@@ -362,6 +363,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
 
   /* create map for batch of supernodes */
+  printf ("checkpoint 7.0.0.0.0 psi = %ld nsrow = %ld maxsnsrow = %ld n = %ld nbatch = %ld\n", *(h_super->psi), *(h_super->nsrow), maxsnsrow, n, nbatch);
   createMapOnDevice_batch ( gpu_p->d_Map[gpuid],
                 	        gpu_p->d_Ls[gpuid],
                       	    d_super->psi,
@@ -370,6 +372,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
                             n,
                       	    nbatch,
                       	    &(Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]));
+  printf ("checkpoint 7.0.0.0.1\n");
 
   if (cudaGetLastError()!=cudaSuccess) {
     printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
@@ -380,6 +383,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
 
   /* initialize Lx (factor) for batch of supernoeds */
+  printf ("checkpoint 7.0.0.0.2\n");
   initLxonDevice_batch( gpu_p->d_Lx[gpuid],
                         gpu_p->d_Ax[gpuid],
                         gpu_p->d_Ap[gpuid],
@@ -394,6 +398,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
                         n,
                         nbatch,
                         &(Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]));
+  printf ("checkpoint 7.0.0.0.3\n");
 
   if (cudaGetLastError()!=cudaSuccess) {
     printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
@@ -500,6 +505,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
 
   /* loop over 'large' syrk's */
+  printf ("checkpoint 7.0.0.2.0\n");
   for(i = 0; i < syrk_count; i++) {
       j = i % CHOLMOD_DEVICE_STREAMS;
       k = i / CHOLMOD_DEVICE_STREAMS / Common->numGPU % Common->numGPU_subtree_parallel;
@@ -525,6 +531,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   h_syrk->C[i],
                   h_syrk->ldc[i]);
   }
+  printf ("checkpoint 7.0.0.2.1\n");
 
   /* check if any syrk's left for batching */
   if( (nbatch - syrk_count) > 0 ) {
@@ -544,6 +551,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                                       &d_syrk->ldc[syrk_count],
                                       nbatch-syrk_count);
   }
+  printf ("checkpoint 7.0.0.2.2\n");
 
   TIMER_END1(tstart1,syrk_time,0);
   TIMER_END1(tstart1,syrk_time,1);
@@ -574,6 +582,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
     }
 
     /* dgemm on cuBlas */
+  printf ("checkpoint 7.0.0.2.2.0 m = %ld n = %ld k = %ld\n", h_gemm->m[i], h_gemm->n[i], h_gemm->k[i]);
     cublasDgemm ( Common->cublasHandle[gpuid],
                   CUBLAS_OP_N, CUBLAS_OP_T,
                   h_gemm->m[i],
@@ -587,7 +596,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   &beta,
                   h_gemm->C[i],
                   h_gemm->ldc[i]);
+  printf ("checkpoint 7.0.0.2.2.1\n");
   }
+  printf ("checkpoint 7.0.0.2.3\n");
 
 
   /* check if any gemm's left for batching */
@@ -611,6 +622,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             &d_gemm->ldc[gemm_count],
             nbatch-gemm_count);
   }
+  printf ("checkpoint 7.0.0.2.4\n");
 
   TIMER_END1(tstart1,gemm_time,0);
   TIMER_END1(tstart1,gemm_time,1);
@@ -944,6 +956,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
     }
 
     /* trsm on cuBlas */
+  printf ("checkpoint 7.0.0.6.0 m = %ld n = %ld A = %lx lda = %ld ldb = %ld\n", h_trsm->m[i], h_trsm->n[i], h_trsm->A[i], h_trsm->lda[i], h_trsm->ldb[i]);
     cublasDtrsm ( Common->cublasHandle[gpuid],
                   CUBLAS_SIDE_RIGHT,
                   CUBLAS_FILL_MODE_LOWER,
@@ -956,6 +969,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
                   h_trsm->lda[i],
                   h_trsm->B[i],
                   h_trsm->ldb[i]);
+  printf ("checkpoint 7.0.0.6.1\n");
   }
 
 

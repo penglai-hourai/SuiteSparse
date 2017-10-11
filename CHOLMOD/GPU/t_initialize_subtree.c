@@ -319,9 +319,9 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     gb_p->ApSize        = (A->ncol+1)*sizeof(Int);
     gb_p->AiSize        = A->nzmax*sizeof(Int);
     gb_p->AxSize        = A->nzmax*sizeof(double);
-    gb_p->dimDescSize   = (gb_p->maxndesc)*sizeof(int);               	/* size of dimension arrays for desc. */
+    gb_p->dimDescSize   = (gb_p->maxndesc)*sizeof(Int);               	/* size of dimension arrays for desc. */
     gb_p->ptrDescSize   = (gb_p->maxndesc)*sizeof(double *);          	/* size of pointer arrays for desc. */
-    gb_p->dimSuperSize  = sizeof(int)*(gb_p->maxbatch);       		/* size of dimension arrays for super. */
+    gb_p->dimSuperSize  = sizeof(Int)*(gb_p->maxbatch);       		/* size of dimension arrays for super. */
     gb_p->ptrSuperSize  = sizeof(double *)*(gb_p->maxbatch);     	/* size of pointer arrays for super. */
 
 
@@ -332,7 +332,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
     /* total amount of GPU memory needed */
     gpu_memtot = gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) +
-                 2*(gb_p->maxbatch)*sizeof(int) + sizeof(int);
+                 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
     cpu_memtot = gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
@@ -348,7 +348,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     PRINTFV("\tApSize:            %ld \n", gb_p->ApSize);
     PRINTFV("\tAiSize:            %ld \n", gb_p->AiSize);
     PRINTFV("\tAxSize:            %ld \n", gb_p->AxSize);
-    PRINTFV("\tbatch lists:       %ld \n", (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) + 2*(gb_p->maxbatch)*sizeof(int));
+    PRINTFV("\tbatch lists:       %ld \n", (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) + 2*(gb_p->maxbatch)*sizeof(Int));
     PRINTFV("\tcpu_mem_available: %ld \n",Common->dev_mempool_size);
     PRINTFV("\tcpu_mem_used:      %ld \n",cpu_memtot);
     PRINTFV("\tgpu_mem_available: %ld \n",Common->dev_mempool_size);
@@ -1691,13 +1691,15 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
 
     /* loop over supernodes */
     for(i=0; i < numSuper; i++) {
-
       /* get size of size of factor for each subtree */
       s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
+      if (!(tree_p->factorized[s]))
+      {
       nscol = Super [s+1] - Super [s] ;
       nsrow = Lpi[s+1] - Lpi[s] ;
       LpxSub [s] = p ;                                           /* store pointers to supernodes in sub-factor */
       p += nscol * nsrow ;                                       /* increment pointer to supernodes */
+      }
     } /* end loop over supernodes */
   } /* end case */
 
