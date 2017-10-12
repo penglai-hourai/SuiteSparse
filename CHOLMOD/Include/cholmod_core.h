@@ -1373,12 +1373,12 @@ typedef struct cholmod_trsm_ptrs_t {
 } trsmPtrsStruct;
 
 typedef struct cholmod_desc_ptrs_t {
-  int *s;
-  int *pdi1;
-  int *ndrow1;
-  int *ndrow2;
+  Int *s;
+  Int *pdi1;
+  Int *ndrow1;
+  Int *ndrow2;
   double **C;
-} descptrsStruct;
+} descPtrsStruct;
 
 typedef struct cholmod_super_ptrs_t {
   Int *s;
@@ -1386,8 +1386,8 @@ typedef struct cholmod_super_ptrs_t {
   Int *k2;
   Int *psi;
   Int *psx;
-  int *nscol;
-  int *nsrow;
+  Int *nscol;
+  Int *nsrow;
 } superPtrsStruct;
 
 

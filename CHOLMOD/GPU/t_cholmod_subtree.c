@@ -457,7 +457,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    int flag,
    Int start,
    Int end,
-   int *max_dim,            /* max m,n dimensions for batch */
+   Int *max_dim,            /* max m,n dimensions for batch */
    Int *LpxSub,
    Int *Lpx
    )
@@ -725,7 +725,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             h_desc->ndrow2[i],
             h_super->psx[h_desc->s[i]],
             h_super->nsrow[h_desc->s[i]],
-            (int)((n+1)*h_desc->s[i]),
+            (Int)((n+1)*h_desc->s[i]),
             &(Common->gpuStream[vgpuid][j]));
   }
 
@@ -1038,7 +1038,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
    cholmod_global_pointers *gb_p,
    cholmod_gpu_pointers *gpu_p,		/* device pointers */
    int nbatch,				/* batch size (# supernodes) */
-   int maxnsrownscol,			/* max nsrow*nscol in batch */
+   Int maxnsrownscol,			/* max nsrow*nscol in batch */
    int gpuid				/* gpu id */
    )
 {
