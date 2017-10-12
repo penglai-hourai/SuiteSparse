@@ -1336,47 +1336,47 @@ typedef struct cholmod_super_t {
 
 /* structures for holding pointers to syrk,gemm,potrf,trsm parameters in pinned memory */
 typedef struct cholmod_syrk_ptrs_t {
-  Int *d;
-  Int *n;
-  Int *k;
-  Int *lda;
-  Int *ldc;
+  int *d;
+  int *n;
+  int *k;
+  int *lda;
+  int *ldc;
   double **A;
   double **C;
 } syrkPtrsStruct;
 
 typedef struct cholmod_gemm_ptrs_t {
-  Int *m;
-  Int *n;
-  Int *k;
-  Int *lda;
-  Int *ldb;
-  Int *ldc;
+  int *m;
+  int *n;
+  int *k;
+  int *lda;
+  int *ldb;
+  int *ldc;
   double **A;
   double **B;
   double **C;
 } gemmPtrsStruct;
 
 typedef struct cholmod_potrf_ptrs_t {
-  Int *n;
-  Int *lda;
+  int *n;
+  int *lda;
   double **A;
 } potrfPtrsStruct;
 
 typedef struct cholmod_trsm_ptrs_t {
-  Int *m;
-  Int *n;
-  Int *lda;
-  Int *ldb;
+  int *m;
+  int *n;
+  int *lda;
+  int *ldb;
   double **A;
   double **B;
 } trsmPtrsStruct;
 
 typedef struct cholmod_desc_ptrs_t {
-  Int *s;
-  Int *pdi1;
-  Int *ndrow1;
-  Int *ndrow2;
+  int *s;
+  int *pdi1;
+  int *ndrow1;
+  int *ndrow2;
   double **C;
 } descptrsStruct;
 
@@ -1386,8 +1386,8 @@ typedef struct cholmod_super_ptrs_t {
   Int *k2;
   Int *psi;
   Int *psx;
-  Int *nscol;
-  Int *nsrow;
+  int *nscol;
+  int *nsrow;
 } superPtrsStruct;
 
 

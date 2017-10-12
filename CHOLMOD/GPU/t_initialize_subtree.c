@@ -109,7 +109,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       *supernode_levels_subtree_ptrs, *supernode_subtree_ptrs, *level_num_desc_ptrs,
       *level_descendants_ptrs, *Lpi;
   size_t gpu_memtot, cpu_memtot, size_A;
-  int search, binarySearch, counts[3];
+  int search, binarySearch;
+  Int counts[3];
 
 
 
@@ -813,7 +814,7 @@ void TEMPLATE2 (CHOLMOD (build_tree))
   Int *Super, *SuperMap, *Lpi, *Ls, *Head, *Next, *Lpos, *supernode_root, *supernode_children,
       *supernode_children_count, *supernode_children_num, *supernode_children_ptrs,
       *supernode_parent, *supernode_size, *supernode_size_desc, *ndescendants;
-  int childrenPtrs = 0, count;
+  Int childrenPtrs = 0, count;
   double syrkflops,gemmflops,potrfflops,trsmflops;
   double *supernode_flop;
 
@@ -1289,10 +1290,10 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
    Int numSuper,
    Int subtree,
    Int max_factor_size,
-   int *counts)
+   Int *counts)
 {
   /* local variables */
-  int batchdescflag, desc, count0, count1, count2, nsupernodes, stream, batch, Csize, ndesc,
+  Int batchdescflag, desc, count0, count1, count2, nsupernodes, stream, batch, Csize, ndesc,
       maxsubtreeCsize, maxsubtreendesc, maxsubtreebatch, maxnumdescendantsperlevel, nbatch,
       maxsubtreeCsize_prev, maxsubtreendesc_prev, maxsubtreebatch_prev, maxnumdescendantsperlevel_prev, nbatch_prev, runType;
   Int s, i, processed_nodes, node,  num_levels, sparent;
@@ -1464,9 +1465,9 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
       /* reset variables */
-      maxsubtreeCsize = (int)gb_p->maxCsize;
-      maxsubtreendesc = (int)gb_p->maxndesc;
-      maxsubtreebatch = (int)gb_p->maxbatch;
+      maxsubtreeCsize = gb_p->maxCsize;
+      maxsubtreendesc = gb_p->maxndesc;
+      maxsubtreebatch = gb_p->maxbatch;
       maxnumdescendantsperlevel = 0;
       gpu_memtot = 0;
       gpu_memtot_prev = gpu_memtot;
@@ -1518,16 +1519,16 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
         ApSize         = (A->ncol+1)*sizeof(Int);
         AiSize         = A->nzmax*sizeof(Int);
         AxSize         = A->nzmax*sizeof(double);
-        dimDescSize    = maxsubtreendesc*sizeof(int);            /* size of list of dimensions for descendants */
+        dimDescSize    = maxsubtreendesc*sizeof(Int);            /* size of list of dimensions for descendants */
         ptrDescSize    = maxsubtreendesc*sizeof(double *);       /* size of list of pointers for descendants */
-        dimSuperSize   = sizeof(int)*(maxsubtreebatch);          /* size of list of dimensions for supernodes */
+        dimSuperSize   = sizeof(Int)*(maxsubtreebatch);          /* size of list of dimensions for supernodes */
         ptrSuperSize   = sizeof(double *)*(maxsubtreebatch);     /* size of list of pointers for supernodes */
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
         gpu_memtot = LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize +
                      14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize +
-                     2*nbatch*sizeof(int) + sizeof(int);
+                     2*nbatch*sizeof(Int) + sizeof(Int);
 
 
         /* case if exceed GPU memory */

@@ -132,7 +132,7 @@ __global__ void kernelCreateMap ( Int *d_Map,
  */
 __global__ void kernelCreateMap_batch ( Int *d_Map,		/* map on device */
                                         Int *d_Ls,    		/* Ls on device */
-                                        int *d_psi,		/* list of psi (for each supernode) */
+                                        Int *d_psi,		/* list of psi (for each supernode) */
                                         int *d_nsrow,		/* list of nsrow */
 				        int n,
                                         int nbatch)		/* batch size */
@@ -252,7 +252,7 @@ __global__ void kernelAddUpdate_batch ( double *d_A,
 					int *d_pdi1, 	  /* list of pdi1 (for each descendant) */
 					int *d_ndrow1,    /* list of ndrow1 */
 				  	int *d_ndrow2,    /* list of ndrow2 */
-					int *d_psx,       /* list of psx (for each supernode) */
+					Int *d_psx,       /* list of psx (for each supernode) */
 					int *d_nsrow,     /* list of nsrow */
 					int *dlist,       /* list of supernode id's (for each descendant) */
                               	        int nbatch)       /* batch size (# descendants in batch pool) */
@@ -337,7 +337,7 @@ __global__ void kernelAddUpdate_large ( double *d_A,
                                         int d_pdi1,       /* pdi1 (for current descendant) */
                                   	int d_ndrow1,     /* ndrow1 */
                                   	int d_ndrow2,     /* ndrow2 */
-                                  	int d_psx,        /* psx (for supernode of current descendant) */
+                                  	Int d_psx,        /* psx (for supernode of current descendant) */
                                   	int d_nsrow,      /* nsrow */
 				  	int mapid)	    /* id for map */
 {
@@ -387,9 +387,9 @@ __global__ void kernelSetLx_batch ( double *Lx,     	/* Lx *factor) on device */
                              	    Int *Ai,		/* Ai on device */
                              	    Int *Map,       	/* map on device */
                              	    int *d_nsrow,   	/* list of nsrow (for current supernde) */
-                             	    int *d_psx,     	/* list of psx */
-                             	    int *d_k1,      	/* list of k1 */
-                             	    int *d_k2,      	/* list of k2 */
+                             	    Int *d_psx,     	/* list of psx */
+                             	    Int *d_k1,      	/* list of k1 */
+                             	    Int *d_k2,      	/* list of k2 */
 				    Int n,          
 				    int nbatch)     	/* batch size (# supernodes) */
 {     
@@ -524,7 +524,7 @@ __global__ void kernelSumComplexA ( double *a1,
  */
 __global__ void kernelCopyLx_small ( double *a1, 	/* pinned buffer (dst) */
 				     double *a2, 	/* device buffer (src) */
-				     int *d_psx,	/* list of psx (for each supernode) */
+				     Int *d_psx,	/* list of psx (for each supernode) */
                                      int *d_nsrow, 	/* list of nsrow */
 				     int *d_nscol, 	/* list of nscol */
 				     int nbatch ) 	/* batch size (# supernoeds) */
@@ -627,7 +627,7 @@ void createMapOnDevice ( Int *d_Map,
  */
 void createMapOnDevice_batch ( Int *d_Map,    	   	/* map on device */
                                Int *d_Ls,	   	/* Ls on device */
-                               int *d_psi,     	    	/* list of psi (for each supernode */
+                               Int *d_psi,     	    	/* list of psi (for each supernode */
                                int *d_nsrow,     	/* list of nsrow */
                                int maxsnsrow,      	/* maximum nsrow in batch of supernodes */
                                int n,
@@ -730,7 +730,7 @@ void addUpdateOnDevice_batch ( double *d_A,
                                int *pdi1, 		/* list of pdi1 (for each descendant) */
 			       int *ndrow1, 		/* list of ndrow1 */
 			       int *ndrow2, 		/* list of ndrow2 */
-			       int *psx, 		/* list of psx (for each supernode) */
+			       Int *psx, 		/* list of psx (for each supernode) */
 			       int *nsrow,		/* list of nsrow */
                                int *dlist,
 			       int *max_dim,		/* maximum ndrow1 & ndrow2 in batch of descendants */
@@ -765,7 +765,7 @@ void addUpdateOnDevice_large ( double *d_A,
                                int pdi1,                 
                                int ndrow1,               
                                int ndrow2,               
-                               int psx,                
+                               Int psx,                
                                int nsrow,                
 	 	 	       int mapid,		/* map id of supernode */
                                cudaStream_t* astream )/* cuda stream */
@@ -800,9 +800,9 @@ void initLxonDevice_batch ( double *d_Lx,		/* Lx (factor) on device */
                     	    Int *d_Ai,          	/* Ai on device */
                     	    Int *d_Map,         	/* map on device */
                     	    int *d_nsrow,       	/* list of snrow (for each supernode) */
-                    	    int *d_psx,      		/* list of psx */
-			    int *d_k1,			/* list of k1 */
-			    int *d_k2,			/* list of k2 */
+                    	    Int *d_psx,      		/* list of psx */
+			    Int *d_k1,			/* list of k1 */
+			    Int *d_k2,			/* list of k2 */
 			    Int nzmax,		
 			    Int maxkdif,
 			    Int n,
@@ -897,7 +897,7 @@ void sumComplexAOnDevice ( double *a1,
  */
 void copyLx_small ( double *d_A,		/* pinned buffer (dst) */
 		    double *d_B, 		/* device buffer (src) */
-		    int *psx, 			/* list of psx (for each supernode) */
+		    Int *psx, 			/* list of psx (for each supernode) */
 		    int *nsrow, 		/* list of nsrow */
 		    int *nscol, 		/* list of nscol */
 		    int batch,			/* batch size (# supernodes) */

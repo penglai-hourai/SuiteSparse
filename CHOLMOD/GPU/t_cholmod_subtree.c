@@ -136,11 +136,11 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* info */
     gpu_p->d_info[gpuid] 		 = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] 		+= sizeof(int);
+    gpu_p->gpuPtr[gpuid] 		+= sizeof(Int);
 
     /* devSync memory for custom cusolverDnDpotrf */
     gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
+    gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(Int)*gb_p->maxbatch;
 
     /* cuSolver Cholesky initialization (get workspace size) */
     cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);

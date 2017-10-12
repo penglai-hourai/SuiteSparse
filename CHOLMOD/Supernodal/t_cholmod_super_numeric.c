@@ -428,7 +428,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (loop = 0; loop < 2; loop++)
+    for (loop = 0; loop < 1; loop++)
     {
     /*
      * Binary search for optimal subtree size
