@@ -18,20 +18,20 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
+#include "cholmod_internal.h"
 
 #define  blk_m 16
 #define  blk_n 16 
 #define  blk_k 16
 
-
 /* function declarations */
 __global__ void dgemm_custom_simple_1block_batch_kernel( int transa, int transb, 
-		  				         int *mlist, int *nlist, int *klist,
+		  				         Int *mlist, Int *nlist, Int *klist,
 						         double alpha, 
-						         const double **Alist, int *ldalist,				 
-					   	         const double **Blist, int *ldblist,
+						         const double **Alist, Int *ldalist,				 
+					   	         const double **Blist, Int *ldblist,
 						         double beta,
-			  		                 double **Clist, int *ldclist);
+			  		                 double **Clist, Int *ldclist);
 			             
 
 
@@ -40,12 +40,12 @@ extern "C" {
 void dgemm_custom_simple_1block_batch (cudaStream_t stream, 
   		     	               cublasOperation_t transa, 
 				       cublasOperation_t transb, 
-				       int *mlist, int *nlist, int *klist, 
+				       Int *mlist, Int *nlist, Int *klist, 
 				       const double *alpha, 
-				       const double **Alist, int *ldalist, 
-				       const double **Blist, int *ldblist, 
+				       const double **Alist, Int *ldalist, 
+				       const double **Blist, Int *ldblist, 
 				       const double *beta, 
-				       double **Clist, int *ldclist, int nbatch)                                       
+				       double **Clist, Int *ldclist, int nbatch)                                       
   {
 
     /* set transpose */
@@ -67,12 +67,12 @@ void dgemm_custom_simple_1block_batch (cudaStream_t stream,
 
 /* batched DGEMM kernel */
 __global__ void dgemm_custom_simple_1block_batch_kernel( int transa, int transb,
-		                                         int *mlist, int *nlist, int *klist,
+		                                         Int *mlist, Int *nlist, Int *klist,
                     			                 double alpha,
-		                                         const double **Alist, int *ldalist,
-                    			                 const double **Blist, int *ldblist,
+		                                         const double **Alist, Int *ldalist,
+                    			                 const double **Blist, Int *ldblist,
 		                                         double beta,
-                    			                 double **Clist, int *ldclist)
+                    			                 double **Clist, Int *ldclist)
 {
 
     /* allocate shared memory */

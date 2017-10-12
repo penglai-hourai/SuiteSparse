@@ -537,7 +537,7 @@ __global__ void kernelCopyLx_small ( double *a1, 	/* pinned buffer (dst) */
   if(batchIdx < nbatch) {
     /* loop over nsrow*nscol */
     if(idx < d_nsrow[batchIdx]*d_nscol[batchIdx]) {
-      int id = d_psx[batchIdx] + idx;
+      Int id = d_psx[batchIdx] + idx;
       a1[id] = a2[id];
     } /* end loop over nsrow*nscol */
   } /* end loop over supernodes */

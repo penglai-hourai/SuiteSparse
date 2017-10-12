@@ -536,17 +536,17 @@ cholmod_l_super_solve.o: ../Supernodal/cholmod_super_solve.c \
 cholmod_gpu_kernels.o: ../GPU/cholmod_gpu_kernels.cu
 	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/cholmod_gpu_kernels.cu
 
-dgemm_custom_simple_1block_batch.o: ../GPU/dgemm_custom_simple_1block_batch.cu
-	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dgemm_custom_simple_1block_batch.cu
-
 dsyrk_custom_simple_1block_batch.o: ../GPU/dsyrk_custom_simple_1block_batch.cu
-	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dsyrk_custom_simple_1block_batch.cu
+	$(NVCC) -DDLONG $(I) $(NVCCFLAGS) -c ../GPU/dsyrk_custom_simple_1block_batch.cu
 
-dtrsm_custom_simple_1block_batch.o: ../GPU/dtrsm_custom_simple_1block_batch.cu
-	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dtrsm_custom_simple_1block_batch.cu
+dgemm_custom_simple_1block_batch.o: ../GPU/dgemm_custom_simple_1block_batch.cu
+	$(NVCC) -DDLONG $(I) $(NVCCFLAGS) -c ../GPU/dgemm_custom_simple_1block_batch.cu
 
 dpotrf_custom_simple_1block_batch.o: ../GPU/dpotrf_custom_simple_1block_batch.cu
-	$(NVCC) $(I) $(NVCCFLAGS) -c ../GPU/dpotrf_custom_simple_1block_batch.cu
+	$(NVCC) -DDLONG $(I) $(NVCCFLAGS) -c ../GPU/dpotrf_custom_simple_1block_batch.cu
+
+dtrsm_custom_simple_1block_batch.o: ../GPU/dtrsm_custom_simple_1block_batch.cu
+	$(NVCC) -DDLONG $(I) $(NVCCFLAGS) -c ../GPU/dtrsm_custom_simple_1block_batch.cu
 
 cholmod_gpu.o: ../GPU/cholmod_gpu.c 
 	$(C) -c $(I) $<

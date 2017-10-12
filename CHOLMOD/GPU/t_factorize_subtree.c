@@ -54,8 +54,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 #ifdef SUITESPARSE_CUDA
   /* local variables */
-  int    i, j, syrk_count, gemm_count, potrf_count, trsm_count, update_count, desc_count, super_count, count, count_prev, nbatch, strideSize, level, gpuid;
-  Int    maxDim1[3] = {0,0,0};
+  int    i, j, syrk_count, gemm_count, potrf_count, trsm_count, update_count, desc_count, super_count, count, count_prev, nbatch, level, gpuid;
+  Int    strideSize, maxDim1[3] = {0,0,0};
   Int	 *d_dimSuper, *d_dimDesc, *h_dimSuper, *h_dimDesc;
   Int    sparent, p, s, d, n, id, k1, k2, nscol, psi, psx, psend, nsrow, nsrow2, kd1, kd2, pdi, pdi1, pdi2, pdx, pdx1, pdend, ndcol, ndrow, ndrow1, ndrow2,
          ndrow3, spsend, dancestor, dnext, dlarge, idescendant, node_ptr, node, start, end, diff, maxbatch, maxnsrow, maxkdif, maxnz, maxnsrownscol;

@@ -287,7 +287,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
    Int maxsnsrow,			/* max nsrow for batch of supernodes */
    Int maxkdif,				/* max kdif for batch of supernodes */
    Int nzmax,				/* max nzmax for batch of supernodes */
-   int strideSize,			/* stride for descendant lists */
+   Int strideSize,			/* stride for descendant lists */
    int nbatch,				/* size of batch */
    int gpuid			        /* gpu id */
    )

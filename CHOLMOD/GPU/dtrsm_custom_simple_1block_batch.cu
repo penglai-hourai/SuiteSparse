@@ -18,6 +18,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
+#include "cholmod_internal.h"
 
 #define  blk_m 64	/* # threads in block */
 
@@ -26,16 +27,16 @@
 
 /* function declarations */
 __global__ void dtrsm_lower_right_1block_batch_kernel( int trans, 
-		  		    	               int *mlist, int *nlist,
+		  		    	               Int *mlist, Int *nlist,
 				                       double alpha, 
-				    	               const double **Alist, int *ldalist,				 
- 			    	                       double **Blist, int *ldblist);
+				    	               const double **Alist, Int *ldalist,				 
+ 			    	                       double **Blist, Int *ldblist);
 			  
 __global__ void dtrsm_lower_right_transpose_1block_batch_kernel( int trans,
-                                                                 int *mlist, int *nlist,
+                                                                 Int *mlist, Int *nlist,
                                                                  double alpha,
-                                                                 const double **Alist, int *ldalist,
-                                                                 double **Blist, int *ldblist);
+                                                                 const double **Alist, Int *ldalist,
+                                                                 double **Blist, Int *ldblist);
 
 
 
@@ -48,10 +49,10 @@ void dtrsm_custom_simple_1block_batch (cudaStream_t stream,
                                        cublasFillMode_t uplo, 
                                        cublasOperation_t trans, 
                                        cublasDiagType_t diag, 
-                                       int *mlist, int *nlist,
+                                       Int *mlist, Int *nlist,
 		    	               const double *alpha, 
-                                       const double **Alist, int *ldalist, 
-			               double **Blist, int *ldblist, int nbatch)                                       
+                                       const double **Alist, Int *ldalist, 
+			               double **Blist, Int *ldblist, int nbatch)                                       
   {
     /* set transpose */
     int ta = (trans == CUBLAS_OP_T);
@@ -80,10 +81,10 @@ void dtrsm_custom_simple_1block_batch (cudaStream_t stream,
 
 /* batched DTRSM kernel (non transpose)  */
 __global__ void  dtrsm_lower_right_1block_batch_kernel( int trans,
-		                                        int *mlist, int *nlist,
+		                                        Int *mlist, Int *nlist,
                     		                        double alpha,
-		                                        const double **Alist, int *ldalist,
-                    		                        double **Blist, int *ldblist)
+		                                        const double **Alist, Int *ldalist,
+                    		                        double **Blist, Int *ldblist)
 {
   /* set thread index */
   const int tx = threadIdx.x;
@@ -141,10 +142,10 @@ __global__ void  dtrsm_lower_right_1block_batch_kernel( int trans,
 
 /* batched DTRSM kernel (transpose) */
 __global__ void  dtrsm_lower_right_transpose_1block_batch_kernel( int trans,
-                                                                  int *mlist, int *nlist,
+                                                                  Int *mlist, Int *nlist,
                                                                   double alpha,
-                                                                  const double **Alist, int *ldalist,
-                                                                  double **Blist, int *ldblist)
+                                                                  const double **Alist, Int *ldalist,
+                                                                  double **Blist, Int *ldblist)
 {
   /* thread index */
   const int tx = threadIdx.x;

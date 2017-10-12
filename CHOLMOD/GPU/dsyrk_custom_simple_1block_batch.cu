@@ -18,17 +18,18 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
+#include "cholmod_internal.h"
+
 #define  blk_n 16 
 #define  blk_k 16
 
-
 /* function declarations */
 __global__ void dsyrk_custom_simple_1block_batch_kernel( int transa,
-                                                         int *nlist, int *klist,
+                                                         Int *nlist, Int *klist,
                                                          double alpha,
-                                                         const double **Alist, int *ldalist,
+                                                         const double **Alist, Int *ldalist,
                                                          double beta,
-                                                         double **Clist, int *ldclist);
+                                                         double **Clist, Int *ldclist);
 			             
 
 
@@ -37,11 +38,11 @@ extern "C" {
 void dsyrk_custom_simple_1block_batch(cudaStream_t stream,
 				      cublasFillMode_t uplo,
                                       cublasOperation_t transa,
-                                      int *nlist, int *klist,
+                                      Int *nlist, Int *klist,
                                       const double *alpha,
-                                      const double **Alist, int *ldalist,
+                                      const double **Alist, Int *ldalist,
                                       const double *beta,
-                                      double **Clist, int *ldclist, int nbatch)
+                                      double **Clist, Int *ldclist, int nbatch)
   {
     /* set transpsoe */
     int  ta = (transa == CUBLAS_OP_T);
@@ -69,11 +70,11 @@ void dsyrk_custom_simple_1block_batch(cudaStream_t stream,
 
 /* batched DSYRK kernel */
 __global__ void dsyrk_custom_simple_1block_batch_kernel( int transa,
-                                                         int *nlist, int *klist,
+                                                         Int *nlist, Int *klist,
                                                          double alpha,
-                                                         const double **Alist, int *ldalist,
+                                                         const double **Alist, Int *ldalist,
                                                          double beta,
-                                                         double **Clist, int *ldclist)
+                                                         double **Clist, Int *ldclist)
 {
 
     /* allocate shared memory */

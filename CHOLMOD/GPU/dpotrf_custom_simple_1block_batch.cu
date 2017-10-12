@@ -18,6 +18,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
+#include "cholmod_internal.h"
 
 #define  blk_n 32	/* # threads in block */
 
@@ -25,7 +26,7 @@
 #define B(I,J) B[(I) + ((J))* (ldb)]
 
 /* function declarations */
-__global__ void dpotf2_custom_simple_1block_batch_column_kernel( int *nlist, double **alist, int *ldalist);
+__global__ void dpotf2_custom_simple_1block_batch_column_kernel( Int *nlist, double **alist, Int *ldalist);
 
 			  
 
@@ -35,9 +36,9 @@ extern "C" {
 /* DPOTRF wrapper */
 void dpotrf_custom_simple_1block_batch(cudaStream_t stream,
 				       cublasFillMode_t uplo,
-                                       int *nlist, 
+                                       Int *nlist, 
                                        double **alist,
-	  		               int *ldalist, int *info, int nbatch)                                       
+	  		               Int *ldalist, int *info, int nbatch)                                       
   {
 
     /* check if supported */
@@ -65,7 +66,7 @@ void dpotrf_custom_simple_1block_batch(cudaStream_t stream,
  * each column using previous columns. (column-major order) */
 
 /* batched dpotrf kernel */
-__global__ void dpotf2_custom_simple_1block_batch_column_kernel( int *nlist, double **alist, int *ldalist)
+__global__ void dpotf2_custom_simple_1block_batch_column_kernel( Int *nlist, double **alist, Int *ldalist)
 {
   /* thread index */
   const int tx = threadIdx.x;
