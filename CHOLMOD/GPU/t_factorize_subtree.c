@@ -154,9 +154,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
+       printf ("checkpoint factorize supernode_num_levels[%d] = %ld\n", subtree, supernode_num_levels[subtree]);
 
 
-  printf ("checkpoint 7.0\n");
   /* loop over levels in subtree */
   for(level = 0; level < supernode_num_levels[subtree]; level++) {
 
@@ -182,7 +182,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     CLEAR1(trsm_flops,1);
 
 
-  printf ("checkpoint 7.0.0\n");
     /* loop over groups of batches */
     while(node < (end - start)) {
 
@@ -486,7 +485,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
        TIMER_START(tstart,2);
 
-  printf ("checkpoint 7.0.0.-9\n");
 //#pragma omp critical
 {
 
@@ -533,6 +531,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           pdi1 	= pdi + p ;
           pdx1 	= pdx + p ;
 
+          //printf ("checkpoint nsuper = %ld ndescentants[%ld] = %ld idescendant = %ld d = %ld p = %ld pdi = %ld pdi1 = %ld pdend = %ld pdx = %ld k2 = %ld\n", L->nsuper, s, ndescendants[s], idescendant, d, p, pdi, pdi1, pdend, pdx, k2);
           for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < k2; pdi2++) ;
           ndrow1 = pdi2 - pdi1 ;
           ndrow2 = pdend - pdi1 ;
@@ -617,7 +616,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       } /* end loop over supernodes */
 
 }/* end pragma omp critical */
-  printf ("checkpoint 7.0.0.-8\n");
 
 
 
@@ -639,7 +637,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        */
 
       /* store syrk dimensions & pointers */
-  printf ("checkpoint 7.0.0.-7\n");
       j = 0;
       for(i = 0; i < desc_count; i++)
       {
@@ -759,18 +756,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
       /* memcpy dimensions and pointers of a batch of supernodes from host to device */
-  printf ("checkpoint 7.0.0.-6\n");
       cudaMemcpyAsync(d_dimSuper, h_dimSuper,13*maxbatch*sizeof(Int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-  printf ("checkpoint 7.0.0.-5\n");
       cudaMemcpyAsync(d_ptrSuper, h_ptrSuper,3*maxbatch*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-  printf ("checkpoint 7.0.0.-4\n");
 
       /* memcpy dimensions and pointers of a batch of descendants from host to device */
-  printf ("checkpoint 7.0.0.-3\n");
       cudaMemcpyAsync(d_dimDesc, h_dimDesc,14*strideSize*sizeof(Int),cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-  printf ("checkpoint 7.0.0.-2\n");
       cudaMemcpyAsync(d_ptrDesc, h_ptrDesc,6*strideSize*sizeof(double *), cudaMemcpyHostToDevice,Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
-  printf ("checkpoint 7.0.0.-1\n");
 
 
       /*
@@ -783,7 +774,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
       TIMER_START(tstart,3);
-  printf ("checkpoint 7.0.0.0\n");
       TEMPLATE2 (CHOLMOD(gpu_initialize_supernode_batch))(
               Common,
               gb_p,
@@ -796,7 +786,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               super_count,
               gpuid);
      TIMER_END(tstart,tend,3);
-  printf ("checkpoint 7.0.0.1\n");
 
 
       /*
@@ -813,7 +802,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       /* check if descendants > 0 (which is when level > 0) */
       if(level_descendants[level_descendants_ptrs[subtree]+level]>0) {
 
-  printf ("checkpoint 7.0.0.2\n");
         TEMPLATE2 (CHOLMOD(gpu_updateC_batch))( Common,
 						gb_p,
  						gpu_p,
@@ -835,7 +823,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         maxDim1,
                         LpxSub,
                         L->px);
-  printf ("checkpoint 7.0.0.3\n");
 
       }
 
@@ -846,7 +833,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *  Perform batched dpotrf.
        *
        */
-  printf ("checkpoint 7.0.0.4\n");
       TEMPLATE2 (CHOLMOD(gpu_lower_potrf_batch))( Common,
 						  gb_p,
                           gpu_p,
@@ -854,7 +840,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                           super_count,
                           potrf_count,
                           gpuid);
-  printf ("checkpoint 7.0.0.5\n");
 
 
       /*
@@ -863,7 +848,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *  Perform batched dtrsm.
        *
        */
-  printf ("checkpoint 7.0.0.6\n");
       TEMPLATE2 (CHOLMOD(gpu_triangular_solve_batch))( Common,
 						       gb_p,
 						       gpu_p,
@@ -871,7 +855,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                                super_count,
                                trsm_count,
                                gpuid);
-  printf ("checkpoint 7.0.0.7\n");
 
 
 
@@ -882,7 +865,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
 
-  printf ("checkpoint 7.0.0.8\n");
         TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))(
                 Common,
                 gb_p,
@@ -890,7 +872,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                 super_count,
                 maxnsrownscol,
                 gpuid);
-  printf ("checkpoint 7.0.0.9\n");
 
 
 
@@ -900,7 +881,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       TIMER_END(tstart,tend,0);
 
     } /* end loop over group streams */
-  printf ("checkpoint 7.0.1\n");
 
 
 
@@ -941,7 +921,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     CLEAR1(trsm_time,1);
 
   } /* end loop  over levels */
-  printf ("checkpoint 7.1\n");
 
 
   /* clear factor on GPU */

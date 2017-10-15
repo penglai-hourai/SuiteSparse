@@ -181,8 +181,10 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
    *     2. factor fits GPU memory
    *     3. factor fits CPU (pinned) memory
    */
+  printf ("checkpoint -7.0\n");
   while(search <= binarySearch || gpu_memtot > Common->dev_mempool_size || cpu_memtot > Common->dev_mempool_size) {
 
+  printf ("checkpoint -7.0.0\n");
 
     /* case binary search could not find small enough subtree to fit in GPU, use root only.. */
     if ( subtreeSize == 1 ) {
@@ -207,6 +209,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     }
 
 
+  printf ("checkpoint -7.0.1\n");
 
     /* clear local variables */
     gb_p->numSubtree  = 0;          /* # subtrees in tree */
@@ -219,6 +222,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     counts[2]        = 0;
 
 
+  printf ("checkpoint -7.0.2\n");
 
 
     /*
@@ -238,6 +242,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     /* reset counters */
     memset(supernode_children_count2, 0, L->nsuper*sizeof(Int));
 
+  printf ("checkpoint -7.0.3\n");
     TEMPLATE2 (CHOLMOD (build_subtree))( L,
 					gb_p,
 					tree_p,
@@ -245,6 +250,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
 
 
+  printf ("checkpoint -7.0.4\n");
 
 
     /*
@@ -269,6 +275,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       level_descendants_ptrs[subtree]       = counts[1];
       supernode_levels_subtree_ptrs[subtree] = counts[2];
 
+  printf ("checkpoint -7.0.4.0\n");
       /* get # children in root supernode of root tree */
       TEMPLATE2 (CHOLMOD (get_children_root))( Common,
 					       gb_p,
@@ -277,6 +284,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					       subtree);
 
 
+  printf ("checkpoint -7.0.4.1\n");
       /* get size of factor (Lx) in current subtree */
       TEMPLATE2 (CHOLMOD (get_factor_size))( gb_p,
 					     cpu_p,
@@ -286,6 +294,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					     &max_factor_size,
                          LpxSub);
 
+  printf ("checkpoint -7.0.4.2\n");
 
       /* get current subtree size/info */
       TEMPLATE2 (CHOLMOD (process_subtree))( Common,
@@ -300,9 +309,11 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    max_factor_size,
                         counts);
 
+  printf ("checkpoint -7.0.4.3\n");
 
     } /* end loop over subtrees */
 
+  printf ("checkpoint -7.0.5\n");
 
 
     /*
@@ -356,6 +367,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     PRINTFV("\tgpu_mem_used:      %ld \n",gpu_memtot);
     PRINTF("\n\n");
 
+  printf ("checkpoint -7.0.6\n");
 
 
     /*
@@ -402,11 +414,14 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
            break;
          }
 
+  printf ("checkpoint -7.0.7\n");
 
     /* increment binary step */
     search++;
+  printf ("checkpoint -7.0.8\n");
 
   } /* end binary search loop*/
+  printf ("checkpoint -7.1\n");
 
 
 }
@@ -855,6 +870,8 @@ void TEMPLATE2 (CHOLMOD (build_tree))
    *
    */
   /* loop over supernodes */
+  memcpy (cpu_p->Lpos_save, cpu_p->Head, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Next_save, cpu_p->Next, sizeof(Int) * L->nsuper);
   for(s = 0; s < L->nsuper; s++) {
 
     /* clear variables */
@@ -1345,7 +1362,9 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
    */
 
   /* loop over levels in subtree (until all supernodes are processed) */
+  printf ("checkpoint -7.0.4.2.0\n");
   while(processed_nodes != numSuper) {
+      printf ("processed_nodes = %ld numSuper = %ld\n", processed_nodes, numSuper); if (processed_nodes > numSuper) exit(0);
 
     /* reset variables */
     nsupernodes = 0;
@@ -1376,16 +1395,21 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
 
       /* store supernodes that belong to current level */
-      if(supernode_children_num[s] == 0) { /* case supernode has no children (belongs to current level) */
+      if (supernode_children_num[s] == 0)
+      {
+      if (tree_p->factorized[s] == 0)
+      { /* case supernode has no children (belongs to current level) */
 
         supernode_levels[count2++] = s;    	/* store supernode in level */
-        processed_nodes++;                 		/* increment processed supernode coutner */
         nsupernodes++;                     		/* increment # supernodes in level */
 
       }
 
       if (tree_p->factorized[s] > 0)
           tree_p->parent_subtree[s] = subtree;
+
+        processed_nodes++;                 		/* increment processed supernode coutner */
+      }
 
     } /* end loop over supernodes */
 
@@ -1607,12 +1631,14 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     level_num_desc[count0++] = maxnumdescendantsperlevel;                     		/* total # descendants in current level */
 
     /* increment level */
+    if (supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels] < count2)
     num_levels++;
 
     /* store pointer to level */
     supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels] = count2;
 
   } /* end loop over levels */
+  printf ("checkpoint -7.0.4.2.1\n");
 
 
 
@@ -1620,6 +1646,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
   /* store number of levels per subtree */
   supernode_num_levels[subtree] = num_levels;
+  printf ("checkpoint initialize nsuper = %ld supernode_num_levels[%d] = %ld numSuper = %ld nsupernodes = %ld processed_node = %ld\n", L->nsuper, subtree, supernode_num_levels[subtree], numSuper, nsupernodes, processed_nodes);
 
   /* store counts */
   counts[0] = count0;
