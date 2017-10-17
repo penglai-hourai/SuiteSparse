@@ -154,7 +154,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
-       printf ("checkpoint factorize supernode_num_levels[%d] = %ld\n", subtree, supernode_num_levels[subtree]);
 
 
   /* loop over levels in subtree */
@@ -358,7 +357,10 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         super_count++;
 
         for (sparent = tree_p->supernode_parent[s]; sparent != EMPTY; sparent = tree_p->supernode_parent[sparent])
+        {
+#pragma omp atomic
             tree_p->supernode_size[sparent] -= tree_p->supernode_size[s];
+        }
         tree_p->supernode_size[s] = 0;
 
         if (nsrow > nscol)
@@ -531,7 +533,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           pdi1 	= pdi + p ;
           pdx1 	= pdx + p ;
 
-          //printf ("checkpoint nsuper = %ld ndescentants[%ld] = %ld idescendant = %ld d = %ld p = %ld pdi = %ld pdi1 = %ld pdend = %ld pdx = %ld k2 = %ld\n", L->nsuper, s, ndescendants[s], idescendant, d, p, pdi, pdi1, pdend, pdx, k2);
           for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < k2; pdi2++) ;
           ndrow1 = pdi2 - pdi1 ;
           ndrow2 = pdend - pdi1 ;

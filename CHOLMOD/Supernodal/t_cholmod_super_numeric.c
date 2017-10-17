@@ -430,6 +430,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     for (loop = 0; loop < 2; loop++)
     {
+        memset (lb_p->numSubtreePerDevice, 0, sizeof(Int) * size);
     /*
      * Binary search for optimal subtree size
      *
@@ -440,9 +441,7 @@ static int TEMPLATE (cholmod_super_numeric)
      */
     PRINTF("\n\n\nprocess subtree (binary search) ..\n");
     TIMER_START(tstart,2);
-    printf ("checkpoint -7\n");
     TEMPLATE2 (CHOLMOD(binarysearch_tree))( Common, A, L, gb_p, cpu_p, tree_p, LpxSub);
-    printf ("checkpoint -6\n");
     TIMER_END(tstart,tend,2);
 
 
@@ -464,9 +463,7 @@ static int TEMPLATE (cholmod_super_numeric)
     PRINTF("\n\n\nload-balance devices..\n");
 
     TIMER_START(tstart,3);
-    printf ("checkpoint -5\n");
     TEMPLATE2 (CHOLMOD(loadbalance_gpu))( Common,gb_p,tree_p,lb_p);
-    printf ("checkpoint -4\n");
     TIMER_END(tstart,tend,3);
 
 
@@ -487,11 +484,8 @@ static int TEMPLATE (cholmod_super_numeric)
      */
     PRINTF("\n\n\ninit GPU & CPU..\n");
     TIMER_START(tstart,4);
-    printf ("checkpoint -3\n");
     TEMPLATE2 (CHOLMOD(initialize_gpu))(Common,L,A,gb_p,gpu_p,cpu_p);	/* initialize GPU */
-    printf ("checkpoint -2\n");
     TEMPLATE2 (CHOLMOD(initialize_cpu))(Common,L,gb_p,cpu_p,tree_p);	/* initialize CPU */
-    printf ("checkpoint -1\n");
     TIMER_END(tstart,tend,4);
 
 
@@ -561,7 +555,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    printf ("checkpoint 0\n");
     /* loop over all devices (GPU,CPU) */
     #pragma omp parallel num_threads(gb_p->numDevice)
     {
@@ -611,9 +604,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         loop_time = SuiteSparse_time();
 #endif
-    printf ("checkpoint 0.0\n");
           TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, subtree, LpxSub);
-    printf ("checkpoint 0.1\n");
 #ifdef TDEBUG
         //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
 #endif
@@ -682,7 +673,6 @@ static int TEMPLATE (cholmod_super_numeric)
         } /* end loop over subtree */
       } /* end if CPU subtree */
     } /* end loop over devices (OMP threads) */
-    printf ("checkpoint 1\n");
     }
 #ifdef TDEBUG
         printf ("subtree time = %lf\n", SuiteSparse_time() - subtree_time);
@@ -718,7 +708,6 @@ static int TEMPLATE (cholmod_super_numeric)
     /* reset Cbuff for root algorithm */
     /*cpu_p->C      = Cwork->x ;*/
 
-    printf ("checkpoint 2\n");
     if(deviceid == Common->numGPU_physical+1)
     {
 
@@ -755,7 +744,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
       } /* end loop over subtree */
     } /* end if root subtree */
-    printf ("checkpoint 3\n");
 
 
 
