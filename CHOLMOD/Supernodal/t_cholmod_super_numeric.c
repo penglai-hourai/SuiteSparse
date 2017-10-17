@@ -75,7 +75,7 @@ static int TEMPLATE (cholmod_super_numeric)
   struct cholmod_loadbalance_pointers *lb_p, lb_pointer_struct;
   int loop;
 #ifdef TDEBUG
-      double subtree_time, root_time;
+      double subtree_process_time, subtree_factorize_time, root_time;
 #endif
 
 
@@ -396,9 +396,6 @@ static int TEMPLATE (cholmod_super_numeric)
   if(gb_p->runType != -1)
   {
 
-#ifdef TDEBUG
-        subtree_time = SuiteSparse_time();
-#endif
     PRINTF("\n\n\nPARALLEL FACTORIZATION selected..\n");
     /* start factorize timer.. */
     TIMER_START(tstart,0);
@@ -430,6 +427,9 @@ static int TEMPLATE (cholmod_super_numeric)
 
     for (loop = 0; loop < 2; loop++)
     {
+#ifdef TDEBUG
+        subtree_process_time = SuiteSparse_time();
+#endif
         memset (lb_p->numSubtreePerDevice, 0, sizeof(Int) * size);
     /*
      * Binary search for optimal subtree size
@@ -551,10 +551,16 @@ static int TEMPLATE (cholmod_super_numeric)
     else if(gb_p->runType == 2) gb_p->numDevice = Common->numGPU_physical;               /* GPU only */
     else              		gb_p->numDevice = Common->numGPU_physical + 1;		/* GPU + CPU (hybrid) */
 
+#ifdef TDEBUG
+        printf ("subtree process time = %lf\n", SuiteSparse_time() - subtree_process_time);
+#endif
 
 
 
 
+#ifdef TDEBUG
+        subtree_factorize_time = SuiteSparse_time();
+#endif
     /* loop over all devices (GPU,CPU) */
     #pragma omp parallel num_threads(gb_p->numDevice)
     {
@@ -673,10 +679,10 @@ static int TEMPLATE (cholmod_super_numeric)
         } /* end loop over subtree */
       } /* end if CPU subtree */
     } /* end loop over devices (OMP threads) */
-    }
 #ifdef TDEBUG
-        printf ("subtree time = %lf\n", SuiteSparse_time() - subtree_time);
+        printf ("subtree factorize time = %lf\n", SuiteSparse_time() - subtree_factorize_time);
 #endif
+    }
 
 
 
