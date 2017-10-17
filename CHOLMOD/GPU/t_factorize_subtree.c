@@ -550,6 +550,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                 Head [dancestor] = d ;
             }
           }
+          else
+              tree_p->factorized[d] = -1;
 
 
           Int m   = ndrow2-ndrow1;

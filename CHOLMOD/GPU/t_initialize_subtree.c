@@ -1352,7 +1352,12 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       if (tree_p->factorized[s] > 0)
           tree_p->parent_subtree[s] = subtree;
       if (tree_p->factorized[s])
-        processed_nodes++;                 		/* increment processed supernode coutner */
+      {
+          processed_nodes++;                 		/* increment processed supernode coutner */
+          supernode_children_num[s] = EMPTY;   									/* empty children of supernode */
+          sparent = supernode_parent[s];
+          supernode_children_num[sparent]--;
+      }
     }
 
   /* loop over levels in subtree (until all supernodes are processed) */
@@ -1399,6 +1404,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     } /* end loop over supernodes */
 
 
+  if (nsupernodes <= 0) continue;
 
 
 
