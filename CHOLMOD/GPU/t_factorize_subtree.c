@@ -519,6 +519,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           }
 
           idescendant++;
+          if (tree_p->factorized[d]) continue;
 
           /* get descendant dimensions */
           kd1 	= Super [d] ;
@@ -529,6 +530,34 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           pdend = Lpi [d+1] ;
           ndrow = pdend - pdi ;
 
+          if (tree_p->factorized[d] == 1)
+          {
+              for (dancestor = s; Lpos[d] < ndrow && dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
+              {
+                  ndescendants[dancestor]--;
+
+                  p 	= Lpos[d] ;
+                  pdi1 	= pdi + p ;
+                  pdx1 	= pdx + p ;
+
+                  for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Lpi[dancestor+1]; pdi2++) ;
+                  ndrow1 = pdi2 - pdi1 ;
+                  ndrow2 = pdend - pdi1 ;
+                  ndrow3 = ndrow2 - ndrow1 ;
+
+                  /* prepare for next descendant */
+                  dnext = Next [d] ;
+                  Lpos [d] = pdi2 - pdi ;
+              }
+              if (Lpos[d] < ndrow && dancestor != EMPTY)
+#pragma omp critical (head_next)
+              {
+                  Next [d] = Head [dancestor] ;
+                  Head [dancestor] = d ;
+              }
+          }
+          else if (tree_p->factorized[d] == 0)
+          {
           p 	= Lpos[d] ;
           pdi1 	= pdi + p ;
           pdx1 	= pdx + p ;
@@ -544,7 +573,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           if (Lpos [d] < ndrow) {
             dancestor = SuperMap [Ls [pdi2]] ;
-//#pragma omp critical
+#pragma omp critical (head_next)
             {
                 Next [d] = Head [dancestor] ;
                 Head [dancestor] = d ;
@@ -598,6 +627,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
           id++;
+          }
 
         } /* end loop over descendants */
 
@@ -606,7 +636,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         if(nsrow2 > 0) {
           Lpos [s] = nscol;
           sparent = SuperMap [Ls [psi + nscol]] ;
-//#pragma omp critical
+#pragma omp critical (head_next)
           {
               Next [s] = Head [sparent] ;
               Head [sparent] = s ;
@@ -614,6 +644,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         }
 
         Head [s] = EMPTY ;
+        tree_p->ndescendants[s] = 0;
 
 
       } /* end loop over supernodes */

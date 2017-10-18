@@ -1712,11 +1712,13 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
       s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
       if (!(tree_p->factorized[s]))
       {
-      nscol = Super [s+1] - Super [s] ;
-      nsrow = Lpi[s+1] - Lpi[s] ;
-      LpxSub [s] = p ;                                           /* store pointers to supernodes in sub-factor */
-      p += nscol * nsrow ;                                       /* increment pointer to supernodes */
+          nscol = Super [s+1] - Super [s] ;
+          nsrow = Lpi[s+1] - Lpi[s] ;
+          LpxSub [s] = p ;                                           /* store pointers to supernodes in sub-factor */
+          p += nscol * nsrow ;                                       /* increment pointer to supernodes */
       }
+      else
+          LpxSub[s] = -1;
     } /* end loop over supernodes */
   } /* end case */
 

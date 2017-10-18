@@ -553,7 +553,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 
                         if (Lpos [d] < ndrow) {
                             dancestor = SuperMap [Ls [pdi2]] ;
-//#pragma omp critical (head_next)
+#pragma omp critical (head_next)
                             {
                                 Next [d] = Head [dancestor] ;
                                 Head [dancestor] = d ;
@@ -568,7 +568,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         Lpos [s] = nscol ;
                         sparent = SuperMap [Ls [psi + nscol]] ;
                         /* place s in link list of its parent */
-//#pragma omp critical (head_next)
+#pragma omp critical (head_next)
                         {
                             Next [s] = Head [sparent] ;
                             Head [sparent] = s ;
