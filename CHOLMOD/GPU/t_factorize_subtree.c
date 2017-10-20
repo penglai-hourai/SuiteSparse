@@ -373,6 +373,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
       } /* end loop over supernodes */
 
+      super_count = nbatch; // not necessary, (super_count == nbatch) anyway
 
 
 
@@ -551,6 +552,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   /* prepare for next descendant */
                   dnext = Next [d] ;
                   Lpos [d] = pdi2 - pdi ;
+
+                  iBuff = Common->ibuffer[gpuid] % 2;
+                  Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
               }
               if (Lpos[d] < ndrow && dancestor != EMPTY)
 #pragma omp critical (head_next)
@@ -787,7 +791,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         j++;
       }
       TIMER_END(tstart,tend,2);
-      super_count = nbatch;
 
 
       /*
