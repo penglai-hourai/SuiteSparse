@@ -1377,6 +1377,11 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       }
       if (tree_p->factorized[s])
       {
+          if (tree_p->factorized[s] > 0)
+              tree_p->factorized[s] = 1;
+          if (tree_p->factorized[s] < 0)
+              tree_p->factorized[s] = -1;
+
           processed_nodes++;                 		/* increment processed supernode coutner */
           supernode_children_num[s] = EMPTY;   									/* empty children of supernode */
           sparent = supernode_parent[s];

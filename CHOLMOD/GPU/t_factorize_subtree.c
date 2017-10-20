@@ -57,8 +57,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
   int    i, j, syrk_count, gemm_count, potrf_count, trsm_count, update_count, desc_count, super_count, count, count_prev, nbatch, level, gpuid;
   Int    strideSize, maxDim1[3] = {0,0,0};
   Int	 *d_dimSuper, *d_dimDesc, *h_dimSuper, *h_dimDesc;
-  Int    sparent, p, s, d, n, id, k1, k2, nscol, psi, psx, psend, nsrow, nsrow2, kd1, kd2, pdi, pdi1, pdi2, pdx, pdx1, pdend, ndcol, ndrow, ndrow1, ndrow2,
-         ndrow3, spsend, dancestor, dnext, dlarge, idescendant, node_ptr, node, start, end, diff, maxbatch, maxnsrow, maxkdif, maxnz, maxnsrownscol;
+  Int    sparent, p, s, d, n, k1, k2, nscol, psi, psx, psend, nsrow, nsrow2, kd1, kd2, pdi, pdi1, pdi2, pdx, pdx1, pdend, ndcol, ndrow, ndrow1, ndrow2,
+         ndrow3, spsend, dancestor, dlarge, idescendant, node_ptr, node, start, end, diff, maxbatch, maxnsrow, maxkdif, maxnz, maxnsrownscol;
   Int    *Ls, *Lpi, *Lpx, *Lpos, *Ap, *Super, *SuperMap, *Head, *Next, *factor_size, *ndescendants, *supernode_batch, *supernode_levels, *supernode_levels_ptrs,
          *supernode_levels_subtree_ptrs, *supernode_num_levels, *level_num_desc, *level_num_desc_ptrs, *level_descendants, *level_descendants_ptrs;
   double *devPtrC, *d_C, *d_Lx, *tstart, *tend, *syrk_time, *gemm_time, *potrf_time, *trsm_time, *syrk_flops, *gemm_flops, *potrf_flops, *trsm_flops;
@@ -367,9 +367,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         tree_p->supernode_size[s] = 0;
 
         if (nsrow > nscol)
-            tree_p->factorized[s] = 1;
+            tree_p->factorized[s] = 2;
         else
-            tree_p->factorized[s] = -1;
+            tree_p->factorized[s] = -2;
 
       } /* end loop over supernodes */
 
@@ -509,21 +509,20 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         psi = h_super->psi[i];
 
         idescendant = 0;
-        d = Head[s];
-        dnext = d;
-        dlarge = Next[d];
-        id=0;
+        dlarge = Head[s];
 
         /* loop over descendants */
         while(idescendant < ndescendants[s]) {
 
-          if (idescendant > 0) {
             d = dlarge;
             dlarge = Next[dlarge];
-          }
 
-          idescendant++;
-          if (tree_p->factorized[d]) continue;
+          if (tree_p->factorized[d] == -1)
+          {
+              for (dancestor = s; Lpos[d] < ndrow && dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
+                  ndescendants[dancestor]--;
+              continue;
+          }
 
           /* get descendant dimensions */
           kd1 	= Super [d] ;
@@ -550,7 +549,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   ndrow3 = ndrow2 - ndrow1 ;
 
                   /* prepare for next descendant */
-                  dnext = Next [d] ;
                   Lpos [d] = pdi2 - pdi ;
 
                   iBuff = Common->ibuffer[gpuid] % 2;
@@ -563,10 +561,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   Head [dancestor] = d ;
               }
               else
-                  tree_p->factorized[d] = -1;
+                  tree_p->factorized[d] = -2;
           }
-          else if (tree_p->factorized[d] == 0)
+          else
           {
+          idescendant++;
+
           p 	= Lpos[d] ;
           pdi1 	= pdi + p ;
           pdx1 	= pdx + p ;
@@ -577,7 +577,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           ndrow3 = ndrow2 - ndrow1 ;
 
           /* prepare for next descendant */
-          dnext = Next [d] ;
           Lpos [d] = pdi2 - pdi ;
 
           if (Lpos [d] < ndrow) {
@@ -589,7 +588,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             }
           }
           else
-              tree_p->factorized[d] = -1;
+              tree_p->factorized[d] = -2;
 
 
           Int m   = ndrow2-ndrow1;
@@ -635,7 +634,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
-          id++;
           }
 
         } /* end loop over descendants */
