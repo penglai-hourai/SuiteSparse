@@ -80,6 +80,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
   int vgpuid;
 
+  int iBuff;
+
 
 
 
@@ -154,6 +156,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
+  Common->ibuffer[gpuid] = 0;
 
 
   /* loop over levels in subtree */
@@ -555,6 +558,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   Next [d] = Head [dancestor] ;
                   Head [dancestor] = d ;
               }
+              else
+                  tree_p->factorized[d] = -1;
           }
           else if (tree_p->factorized[d] == 0)
           {

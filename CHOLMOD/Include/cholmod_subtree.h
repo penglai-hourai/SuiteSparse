@@ -131,6 +131,8 @@ typedef struct cholmod_global_pointers
     size_t dimSuperSize;		/* size of dimensions array for super	(GPU) */
     size_t ptrSuperSize;		/* size of pointers array for super	(GPU) */
 
+    size_t LxSizeFactorized;
+
     /* workspace buffers */
     Int *Iwork;					/* integer workspace */
     double *Xwork;				/* floating workspace */

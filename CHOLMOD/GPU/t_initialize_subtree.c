@@ -1306,6 +1306,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
   size_t nls, LxSize, CSize, LsSize, MapSize, ApSize, AiSize, AxSize, dimDescSize, ptrDescSize, dimSuperSize, ptrSuperSize,
          gpu_memtot, gpu_memtot_prev;
 
+  size_t LxSizeFactorizedMax;
 
 
 
@@ -1347,10 +1348,31 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
    * memory needed for batching them.
    */
 
+    gb_p->LxSizeFactorized = 0;
+
     for(i=0; i < numSuper; i++) {
       s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];
       if (tree_p->factorized[s] > 0)
+      {
+          Int d, kd1, kd2, ndcol, pdi, pdend, pdi1, ndrow, ndrow2;
+
+          d = s;
+
+          kd1 = cpu_p->Super [d] ;
+          kd2 = cpu_p->Super [d+1] ;
+          ndcol = kd2 - kd1 ;
+          pdi = cpu_p->Lpi [d] ;
+          pdend = cpu_p->Lpi [d+1] ;
+          ndrow = pdend - pdi ;
+          pdi1 = pdi + cpu_p->Lpos[d];
+          ndrow2 = pdend - pdi1 ;
+
           tree_p->parent_subtree[s] = subtree;
+          LxSizeFactorizedMax = ndcol * ndrow2;
+
+          if (gb_p->LxSizeFactorized < LxSizeFactorizedMax)
+              gb_p->LxSizeFactorized = LxSizeFactorizedMax;
+      }
       if (tree_p->factorized[s])
       {
           processed_nodes++;                 		/* increment processed supernode coutner */
