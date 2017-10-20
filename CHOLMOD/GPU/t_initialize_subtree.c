@@ -332,11 +332,13 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
 
     /* total amount of GPU memory needed */
-    gpu_memtot = gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) +
+    gpu_memtot = 2 * gb_p->LxSizeFactorized +
+        gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) +
                  2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
+    cpu_memtot = 2 * gb_p->LxSizeFactorized +
+        gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */
     PRINTFV("binary step: %d\n",search);
@@ -1368,7 +1370,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           ndrow2 = pdend - pdi1 ;
 
           tree_p->parent_subtree[s] = subtree;
-          LxSizeFactorizedMax = ndcol * ndrow2;
+          LxSizeFactorizedMax = sizeof(double) * ndcol * ndrow2;
 
           if (gb_p->LxSizeFactorized < LxSizeFactorizedMax)
               gb_p->LxSizeFactorized = LxSizeFactorizedMax;
@@ -1506,7 +1508,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       maxsubtreendesc = gb_p->maxndesc;
       maxsubtreebatch = gb_p->maxbatch;
       maxnumdescendantsperlevel = 0;
-      gpu_memtot = 0;
+      gpu_memtot = 2 * gb_p->LxSizeFactorized;
       gpu_memtot_prev = gpu_memtot;
       nbatch = 1;
 
@@ -1563,9 +1565,10 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize +
-                     14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize +
-                     2*nbatch*sizeof(Int) + sizeof(Int);
+        gpu_memtot = 2 * gb_p->LxSizeFactorized +
+            LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize +
+            14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize +
+            2*nbatch*sizeof(Int) + sizeof(Int);
 
 
         /* case if exceed GPU memory */

@@ -291,6 +291,8 @@ typedef struct cholmod_gpu_pointers
     int    *d_info[CHOLMOD_MAX_NUM_PGPUS];			/* info in device (potrf) */
     int    *d_devSync[CHOLMOD_MAX_NUM_PGPUS]; 			/* devSync in device (potrf) */
 
+    double *h_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
+    double *d_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
 
     /* lists for batching supernodes */
     Int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */

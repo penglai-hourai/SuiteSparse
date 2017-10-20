@@ -84,6 +84,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* type (double *) */
 
+    gpu_p->d_LxFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
+
+    gpu_p->d_LxFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
+
     /* pointers to supernode matrices */
     gpu_p->d_ptrSuper[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 3*gb_p->ptrSuperSize;
@@ -161,6 +167,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* Set pinned memory pointers */
     gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid];
+
+    gpu_p->h_LxFactorized[gpuid][0] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
+
+    gpu_p->h_LxFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
 
     /* Ax */
     h_Ax 				 = gpu_p->hostPtr[gpuid];
