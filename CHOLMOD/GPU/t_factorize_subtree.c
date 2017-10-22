@@ -524,7 +524,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           if (tree_p->factorized[d] == -1)
           {
-              for (dancestor = s; Lpos[d] < ndrow && dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
+              for (dancestor = s; dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
                   ndescendants[dancestor]--;
               continue;
           }
@@ -542,7 +542,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           {
               Lpos_save[d] = Lpos[d];
 
-              for (dancestor = s; Lpos[d] < ndrow && dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
+              for (dancestor = s; dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
               {
                   ndescendants[dancestor]--;
 
@@ -557,9 +557,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
                   /* prepare for next descendant */
                   Lpos [d] = pdi2 - pdi ;
-
-                  iBuff = Common->ibuffer[gpuid] % 2;
-                  Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
               }
               if (Lpos[d] < ndrow && dancestor != EMPTY)
 #pragma omp critical (head_next)
@@ -838,6 +835,39 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               gpuid);
      TIMER_END(tstart,tend,3);
 
+    for (i = 0; i < update_count_factorized; i++)
+    {
+        iBuff = Common->ibuffer[gpuid] % 2;
+        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
+
+        d = update_factorized[i];
+
+        /* get descendant dimensions */
+        kd1 	= Super [d] ;
+        kd2 	= Super [d+1] ;
+        ndcol = kd2 - kd1 ;
+        pdi 	= Lpi [d] ;
+        pdx 	= Lpx [d] ;
+        pdend = Lpi [d+1] ;
+        ndrow = pdend - pdi ;
+
+        for (s = tree_p->supernode_parent[d]; s != EMPTY; s = tree_p->supernode_parent[s])
+        {
+            if (tree_p->factorized[s] || LpxSub[s] < 0) continue;
+
+            p 	= Lpos[d] ;
+            pdi1 	= pdi + p ;
+            pdx1 	= pdx + p ;
+
+            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Lpi[s+1]; pdi2++) ;
+            ndrow1 = pdi2 - pdi1 ;
+            ndrow2 = pdend - pdi1 ;
+            ndrow3 = ndrow2 - ndrow1 ;
+
+            /* prepare for next descendant */
+            Lpos [d] = pdi2 - pdi ;
+        }
+    }
 
       /*
        *  Supernode Assembly - BATCHED
