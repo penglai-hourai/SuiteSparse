@@ -159,7 +159,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
-  Common->ibuffer[gpuid] = 0;
 
 
   /* loop over levels in subtree */
@@ -540,25 +539,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           if (tree_p->factorized[d] == 1)
           {
-              Lpos_save[d] = Lpos[d];
-
               for (dancestor = s; dancestor != EMPTY && LpxSub[dancestor] >= 0; dancestor = tree_p->supernode_parent[dancestor])
               {
                   ndescendants[dancestor]--;
-
-                  p 	= Lpos[d] ;
-                  pdi1 	= pdi + p ;
-                  pdx1 	= pdx + p ;
-
-                  for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Lpi[dancestor+1]; pdi2++) ;
-                  ndrow1 = pdi2 - pdi1 ;
-                  ndrow2 = pdend - pdi1 ;
-                  ndrow3 = ndrow2 - ndrow1 ;
-
-                  /* prepare for next descendant */
-                  Lpos [d] = pdi2 - pdi ;
               }
-              if (Lpos[d] < ndrow && dancestor != EMPTY)
+              if (dancestor != EMPTY)
 #pragma omp critical (head_next)
               {
                   Next [d] = Head [dancestor] ;
@@ -566,8 +551,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               }
               else
                   tree_p->factorized[d] = -2;
-
-              Lpos[d] = Lpos_save[d];
 
               update_factorized[update_count_factorized++] = d;
           }
@@ -835,6 +818,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               gpuid);
      TIMER_END(tstart,tend,3);
 
+     Common->ibuffer[gpuid] = 0;
     for (i = 0; i < update_count_factorized; i++)
     {
         iBuff = Common->ibuffer[gpuid] % 2;
