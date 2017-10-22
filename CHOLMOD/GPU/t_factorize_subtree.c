@@ -80,9 +80,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
   int vgpuid;
 
+  Int d_itr;
   Int update_count_factorized;
   Int *update_factorized = cpu_p->Next_save;
-  int iBuff;
 
 
 
@@ -819,21 +819,61 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
      TIMER_END(tstart,tend,3);
 
      Common->ibuffer[gpuid] = 0;
-    for (i = 0; i < update_count_factorized; i++)
+    for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
+        int iBuff;
+
+        const stype = cpu_p->stype;
+
+        Int i, j, k, p, pend, imap;
+        Int *Map, *Ap, *Ai;
+        double *Ax, *Lx;
+
         iBuff = Common->ibuffer[gpuid] % 2;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
 
-        d = update_factorized[i];
+        Map = gpu_p->d_Map[gpuid];
+        Ap = gpu_p->d_Ap[gpuid];
+        Ai = gpu_p->d_Ai[gpuid];
+        Ax = gpu_p->d_Ax[gpuid];
+        Lx = gpu_p->d_LxFactorized[gpuid][iBuff];
+
+        d = update_factorized[d_itr];
 
         /* get descendant dimensions */
         kd1 	= Super [d] ;
         kd2 	= Super [d+1] ;
         ndcol = kd2 - kd1 ;
         pdi 	= Lpi [d] ;
+        pdi1 = pdi + Lpos[d];
         pdx 	= Lpx [d] ;
         pdend = Lpi [d+1] ;
         ndrow = pdend - pdi ;
+        ndrow2 = pdend - pdi1 ;
+
+        cudaEventSynchronize (Common->updateCDevBuffersFree[gpuid][iBuff]);
+
+        cudaMemsetAsync (Lx, 0, sizeof(double) * ndcol * ndrow2, Common->gpuStream[gpuid][iBuff]);
+
+        //for (k = kd1; k < kd2; k++)
+        //{
+        //    if (stype)
+        //    {
+        //        p = Ap[k];
+        //        pend = Ap [k+1];
+        //        for (; p < pend; p++)
+        //        {
+        //            i = Ai[p];
+        //            if (i >= k)
+        //            {
+        //                imap = Map[i];
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //    }
+        //}
 
         for (s = tree_p->supernode_parent[d]; s != EMPTY; s = tree_p->supernode_parent[s])
         {

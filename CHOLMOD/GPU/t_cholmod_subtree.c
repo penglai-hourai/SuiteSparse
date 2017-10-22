@@ -90,6 +90,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_LxFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
 
+    gpu_p->d_MapFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+
+    gpu_p->d_MapFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+
     /* pointers to supernode matrices */
     gpu_p->d_ptrSuper[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 3*gb_p->ptrSuperSize;
@@ -172,7 +178,13 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
 
     gpu_p->h_LxFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
+
+    gpu_p->h_MapFactorized[gpuid][0] = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
+
+    gpu_p->h_MapFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
 
     /* Ax */
     h_Ax 				 = gpu_p->hostPtr[gpuid];

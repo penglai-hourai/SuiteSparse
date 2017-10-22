@@ -325,6 +325,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     gb_p->dimSuperSize  = sizeof(Int)*(gb_p->maxbatch);       		/* size of dimension arrays for super. */
     gb_p->ptrSuperSize  = sizeof(double *)*(gb_p->maxbatch);     	/* size of pointer arrays for super. */
 
+    gb_p->MapSizeFactorized = sizeof(Int) * n;
 
     /* size of Ap, Ai, Ax buffers (0 if GPU subtrees not used) */
     if(gb_p->runType != 1 && gb_p->runType != 3) size_A = gb_p->ApSize + gb_p->AiSize + gb_p->AxSize;    	/* if not root and not CPU only */
@@ -332,12 +333,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
 
     /* total amount of GPU memory needed */
-    gpu_memtot = 2 * gb_p->LxSizeFactorized +
+    gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized +
         gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize)) +
                  2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = 2 * gb_p->LxSizeFactorized +
+    cpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized +
         gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */

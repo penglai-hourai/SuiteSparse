@@ -132,6 +132,7 @@ typedef struct cholmod_global_pointers
     size_t ptrSuperSize;		/* size of pointers array for super	(GPU) */
 
     size_t LxSizeFactorized;
+    size_t MapSizeFactorized;
 
     /* workspace buffers */
     Int *Iwork;					/* integer workspace */
@@ -293,6 +294,9 @@ typedef struct cholmod_gpu_pointers
 
     double *h_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
     double *d_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
+
+    double *h_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
+    double *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
 
     /* lists for batching supernodes */
     Int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */
