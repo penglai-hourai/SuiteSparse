@@ -11,9 +11,11 @@
 /* includes */
 #include <stdio.h>
 #include "SuiteSparse_config.h"
+#include "cholmod_core.h"
+#include "cholmod_subtree.h"
 
 /* 64-bit version only */
-#define Int SuiteSparse_long
+//#define Int SuiteSparse_long
 
 
 
@@ -788,13 +790,13 @@ extern "C" {
 
     /*
      * Function:
-     *   initLxonDevice_batch
+     *   initLxOnDevice_batch
      *
      * Description:
      *   wrapper for kernel: kernelSetLx_batch
      *
      */
-    void initLxonDevice_batch ( double *d_Lx,		/* Lx (factor) on device */
+    void initLxOnDevice_batch ( double *d_Lx,		/* Lx (factor) on device */
             double *d_Ax,       	/* Ax on device */
             Int *d_Ap,          	/* Ap on device */
             Int *d_Ai,          	/* Ai on device */
@@ -928,48 +930,40 @@ extern "C" {
 
 
     __global__ void kernelCreateMap_factorized
-        ( Int *d_Map,		/* map on device */
-          Int *d_Ls,    		/* Ls on device */
-          Int *d_psi,		/* list of psi (for each supernode) */
-          Int *d_nsrow,		/* list of nsrow */
-          int n,
-          int nbatch)		/* batch size */
+        ( Int *Map,		/* map on device */
+          Int *Ls,    		/* Ls on device */
+          struct desc_attributes *attributes )
         {
             /* set global thread indices */
             int ix = blockIdx.x * blockDim.x + threadIdx.x;
-            int iy = blockIdx.y * blockDim.y + threadIdx.y;;
 
-            /* loop over batch (supernodes) */
-            if(iy < nbatch) {
-                /* loop over rows */
-                if(ix < d_nsrow[iy]) {
-                    int mapid = iy*(n+1);                            	/* map to use (different for each supernode) */
-                    d_Map[mapid + d_Ls[d_psi[iy]+ix]] = ((Int) (ix));       	/* set map */
-                }
-            }
+            //Int nsrow = attributes->nsrow;
+            //Int psi = attributes->psi;
+
+            ///* loop over batch (supernodes) */
+            ///* loop over rows */
+            //if(ix < nsrow) {
+            //    Map[Ls[psi+ix]] = ((Int) (ix));       	/* set map */
+            //}
         }
 
     void createMapOnDevice_factorized
         ( Int *d_Map,    	   	/* map on device */
           Int *d_Ls,	   	/* Ls on device */
-          Int *d_psi,     	    	/* list of psi (for each supernode */
-        Int *d_nsrow,     	/* list of nsrow */
-        Int maxsnsrow,      	/* maximum nsrow in batch of supernodes */
-        int n,
-        int nbatch,             	/* batch size (# supernodes) */
-        cudaStream_t* astream ) 	/* cuda stream */
-          {
-          /* set blocks & grids */
-          dim3 grids;
-          dim3 blocks(32,32);
+          Int nsrow,     	/* list of nsrow */
+          struct desc_attributes *d_attributes,
+          cudaStream_t stream ) 	/* cuda stream */
+        {
+            /* set blocks & grids */
+            dim3 grids;
+            dim3 blocks(32,32);
 
-          grids.x = (maxsnsrow + blocks.x - 1)/blocks.x;
-          grids.y = (nbatch + blocks.y - 1)/blocks.y;
+            grids.x = (nsrow + blocks.x - 1)/blocks.x;
 
-          /* call kernel */
-          kernelCreateMap_factorized <<<grids, blocks, 0, *astream>>> ( d_Map, d_Ls, d_psi, d_nsrow, n, nbatch );
+            /* call kernel */
+            kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, d_attributes);
 
-          }
+        }
 
     __global__ void kernelSetLx_factorized
         ( double *Lx,     	/* Lx *factor) on device */
@@ -977,25 +971,17 @@ extern "C" {
         Int *Ap,		/* Ap on device */
         Int *Ai,		/* Ai on device */
         Int *Map,       	/* map on device */
-        Int *d_nsrow,   	/* list of nsrow (for current supernde) */
-        Int *d_psx,     	/* list of psx */
-        Int *d_k1,      	/* list of k1 */
-        Int *d_k2,      	/* list of k2 */
-        Int n,
-        int nbatch)     	/* batch size (# supernodes) */
+        struct desc_attributes *attributes )
         {
             /* set global thread index */
             int idx = blockIdx.x * blockDim.x + threadIdx.x;
             int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-            /* local variable */
-            int node=0;
-
             /* loop over supernodes  */
-            for(node = 0; node < nbatch; node++) {
+            {
 
-                Int k1 = d_k1[node];        	 /* supernode dimensions */
-                Int k2 = d_k2[node];
+                Int k1 = attributes->k1;        	 /* supernode dimensions */
+                Int k2 = attributes->k2;
 
                 /* loop over columns */
                 if(idx < (k2-k1)) {
@@ -1005,18 +991,18 @@ extern "C" {
 
                     /* loop over.. */
                     if(idy < pend-pstart) {
-                        Int nsrow = d_nsrow[node];	/* supernode dimensions */
+                        Int nsrow = attributes->nsrow;	/* supernode dimensions */
                         Int p = idy+pstart;
                         Int i = Ai[p];
 
                         /* check for triangular part */
                         if (i >= k) {
-                            Int imap = Map [node*(n+1) + i] ; 	/* map to use (different for each supernode) */
+                            Int imap = Map [i] ; 	/* map to use (different for each supernode) */
 
                             /* only for map's for the current supernode */
                             if (imap >= 0 && imap < nsrow) {
                                 Int id;
-                                Int psx = d_psx[node];
+                                Int psx = attributes->psx;
                                 id = imap+(psx+(k-k1)*nsrow);
                                 Lx[id] = Ax[p];
                             }
@@ -1030,31 +1016,26 @@ extern "C" {
             } /* end loop over supernodes */
         }
 
-    void initLxonDevice_factorized
+    void initLxOnDevice_factorized
         ( double *d_Lx,		/* Lx (factor) on device */
           double *d_Ax,       	/* Ax on device */
           Int *d_Ap,          	/* Ap on device */
           Int *d_Ai,          	/* Ai on device */
           Int *d_Map,         	/* map on device */
-          Int *d_nsrow,       	/* list of snrow (for each supernode) */
-          Int *d_psx,      		/* list of psx */
-          Int *d_k1,			/* list of k1 */
-          Int *d_k2,			/* list of k2 */
+          Int nscol,
+          struct desc_attributes *d_attributes,
           Int nzmax,
-          Int maxkdif,
-          Int n,
-          int nbatch,			/* batch size (# supernodes) */
-          cudaStream_t* astream)  	/* cuda stream */
+          cudaStream_t stream )  	/* cuda stream */
         {
             /* set grids & blocks */
             dim3 grids;
             dim3 blocks(16,16);
 
-            grids.x = (maxkdif + blocks.x - 1)/blocks.x;
+            grids.x = (nscol + blocks.x - 1)/blocks.x;
             grids.y = (nzmax + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelSetLx_factorized <<<grids, blocks, 0, *astream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_nsrow, d_psx, d_k1, d_k2, n, nbatch);
+            kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_attributes);
 
         }
 } /* end extern C */

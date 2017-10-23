@@ -1268,6 +1268,16 @@ typedef struct cholmod_sparse_struct
 
 
 
+struct desc_attributes
+{
+    Int k1;
+    Int k2;
+    Int nscol;
+    Int nsrow;
+    Int psi;
+    Int psx;
+};
+
 /* structures for holding syrk,gemm,potrf,trsm parameters */
 typedef struct cholmod_syrk_t {
   double score;

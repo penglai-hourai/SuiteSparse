@@ -5,8 +5,8 @@
 /* -----------------------------------------------------------------------------
  * CHOLMOD/Include/cholmod_subtree.h.
  * Copyright (C) 2016, Timothy A. Davis
- * CHOLMOD/Include/cholmod_subtree.h and the CHOLMOD GPU Module are licensed 
- * under Version 2.0 of the GNU General Public License.  See gpl.txt for a text 
+ * CHOLMOD/Include/cholmod_subtree.h and the CHOLMOD GPU Module are licensed
+ * under Version 2.0 of the GNU General Public License.  See gpl.txt for a text
  * of the license.  CHOLMOD is also available under other licenses; contact
  * authors for details.
  * http://www.suitesparse.com
@@ -41,7 +41,7 @@
 #define CHOLMOD_ND_COL_LIMIT 32   			/* required descendnat cols */
 #define CHOLMOD_ND_ROW_LIMIT 256  			/* required descendant rows */
 #define CHOLMOD_POTRF_LIMIT  512  			/* required cols for POTRF & TRSM on GPU */
-#define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */ 
+#define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */
 
 
 
@@ -60,12 +60,12 @@
   #define PRINTFV(s,var)          		printf(s,var);
 #else
   /* undefine GPU timers */
-  #define TIMER_START(tstart,id)          
-  #define TIMER_END(tstart,tend,id)       
-  #define TIMER_START1(tstart)            
-  #define TIMER_END1(tstart,tend,id)      
-  #define CLEAR1(buf,id)                   
-  #define SUM(buf,id,val)                 
+  #define TIMER_START(tstart,id)
+  #define TIMER_END(tstart,tend,id)
+  #define TIMER_START1(tstart)
+  #define TIMER_END1(tstart,tend,id)
+  #define CLEAR1(buf,id)
+  #define SUM(buf,id,val)
   /* undefine prints */
   #define PRINTF(s)
   #define PRINTFV(s,var)
@@ -109,7 +109,7 @@ typedef struct cholmod_global_pointers
     int numRoot;			/* # root supernodes */
     int work_size;			/* size of workspace for cuSolver */
     int check[CHOLMOD_MAX_NUM_PGPUS+2];	/* stores whether subtree is positive-defininte or not (1: positive-definite, 0: not positive definite) */
-    
+
     /* max buffer sizes */
     Int maxCsize;			/* max Cbuff size (needed to store batch of schur complements) */
     Int maxndesc;			/* max # descendants in a batch */
@@ -143,8 +143,8 @@ typedef struct cholmod_global_pointers
 
     /* workspace buffer size */
     size_t IworkSize;
-    size_t XworkSize; 
-    size_t BworkSize;	
+    size_t XworkSize;
+    size_t BworkSize;
     size_t CworkSize;
     size_t MapworkSize;
 
@@ -167,7 +167,7 @@ typedef struct cholmod_loadbalance_pointers
     Int    *listSubtreePerDevice;           /* subtree id's per device  */
     double *workPerDevice;                 /* workload per device (measured in aggregate flop/flops) */
     double *subtreeSize;                    /* size of each subtree */
-    struct cholmod_subtree_order_t *subtreeReorder;	 
+    struct cholmod_subtree_order_t *subtreeReorder;
 
 } cholmod_loadbalance_pointers ;
 
@@ -195,8 +195,8 @@ typedef struct cholmod_tree_pointers
   Int *supernode_children_ptrs;                 /* list of first child in each supernode  (pointer to start of supernode) */
   Int *supernode_children_num;                  /* list of number of children in each supernode */
   Int *supernode_children_num2;                 /* list of number of children in each supernode - backup */
-  Int *supernode_children_count;                
-  Int *supernode_children_count2;               
+  Int *supernode_children_count;
+  Int *supernode_children_count2;
   Int *supernode_num_levels;                    /* list of number of levels in each subtree */
   Int *level_descendants;                       /* list of maximum number of descendants any supernode has in each level */
   Int *level_descendants_ptrs;                  /* list of first (the above) in each subtree (pointer to start of subtree) */
@@ -233,9 +233,9 @@ typedef struct cholmod_cpu_pointers
     double *beta;
 
     /* host buffers */
-    Int *Ls; 
-    Int *Lpi; 
-    Int *Lpx; 
+    Int *Ls;
+    Int *Lpi;
+    Int *Lpx;
     Int *Lpos;
     Int *LpxSub;
     Int *Fp;
@@ -254,7 +254,7 @@ typedef struct cholmod_cpu_pointers
     Int *Previous;
     Int *Next_save;
     Int *Lpos_save;
-    double *Lx; 
+    double *Lx;
     double *Ax;
     double *Az;
     double *Fx;
@@ -285,7 +285,7 @@ typedef struct cholmod_gpu_pointers
     double *d_Lx[CHOLMOD_MAX_NUM_PGPUS];				/* factor in device */
     double *d_C[CHOLMOD_MAX_NUM_PGPUS];				/* schur complement in device */
     Int    *d_Ls[CHOLMOD_MAX_NUM_PGPUS];				/* Ls in device */
-    Int    *d_Map[CHOLMOD_MAX_NUM_PGPUS];			/* Map in device */    
+    Int    *d_Map[CHOLMOD_MAX_NUM_PGPUS];			/* Map in device */
     Int    *d_Ap[CHOLMOD_MAX_NUM_PGPUS];				/* Ap in device */
     Int    *d_Ai[CHOLMOD_MAX_NUM_PGPUS];				/* Ai in device */
     double *d_Ax[CHOLMOD_MAX_NUM_PGPUS];				/* Ax in device */
@@ -328,17 +328,17 @@ typedef struct cholmod_gpu_pointers
     struct cholmod_trsm_ptrs_t 	h_trsm[CHOLMOD_MAX_NUM_PGPUS];
     struct cholmod_desc_ptrs_t 	h_desc[CHOLMOD_MAX_NUM_PGPUS];
 
-    
+
     /* root buffers */
     double *h_Lx_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS+1];
-    double *d_Lx_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS]; 
+    double *d_Lx_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
     double *d_C_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_C_BUFFERS];
     double *d_A_root[CHOLMOD_MAX_NUM_GPUS][2];
     Int *d_Ls_root[CHOLMOD_MAX_NUM_GPUS];
     Int *d_Map_root[CHOLMOD_MAX_NUM_GPUS];
     Int *d_RelativeMap_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
 
-   
+    struct desc_attributes *d_attributes[CHOLMOD_MAX_NUM_PGPUS];
 } cholmod_gpu_pointers ;
 
 
@@ -375,7 +375,7 @@ typedef struct cholmod_profile_pointers
     double syrk_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
     double gemm_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
     double potrf_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
-    double trsm_flop[CHOLMOD_MAX_NUM_PGPUS+2][2]; 
+    double trsm_flop[CHOLMOD_MAX_NUM_PGPUS+2][2];
 
 } cholmod_profile_pointers ;
 
@@ -409,7 +409,7 @@ int cholmod_l_gpu_memorysize /* GPU memory size available, 1 if no GPU */
 
 
 
- 
+
 int cholmod_gpu_probe   ( cholmod_common *Common ) ;
 int cholmod_l_gpu_probe ( cholmod_common *Common ) ;
 

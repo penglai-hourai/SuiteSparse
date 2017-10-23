@@ -154,6 +154,9 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
 
+    gpu_p->d_attributes[gpuid] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
+
     /* cuSolver Cholesky initialization (get workspace size) */
     cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
@@ -404,7 +407,7 @@ void TEMPLATE2 (CHOLMOD (gpu_initialize_supernode_batch))
 
 
   /* initialize Lx (factor) for batch of supernoeds */
-  initLxonDevice_batch( gpu_p->d_Lx[gpuid],
+  initLxOnDevice_batch( gpu_p->d_Lx[gpuid],
                         gpu_p->d_Ax[gpuid],
                         gpu_p->d_Ap[gpuid],
                         gpu_p->d_Ai[gpuid],
