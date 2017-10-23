@@ -937,20 +937,20 @@ extern "C" {
             /* set global thread indices */
             int ix = blockIdx.x * blockDim.x + threadIdx.x;
 
-            Int ndrow = attributes->ndrow;
-            Int pdi = attributes->pdi;
+            Int pdi0 = attributes->pdi0;
+            Int ndrow0 = attributes->ndrow0;
 
             /* loop over batch (supernodes) */
             /* loop over rows */
-            if(ix < ndrow) {
-                Map[Ls[pdi+ix]] = ((Int) (ix));       	/* set map */
+            if(ix < ndrow0) {
+                Map[Ls[pdi0+ix]] = (Int) ix;       	/* set map */
             }
         }
 
     void createMapOnDevice_factorized
         ( Int *d_Map,    	   	/* map on device */
           Int *d_Ls,	   	/* Ls on device */
-          Int ndrow,     	/* list of ndrow */
+          Int ndrow0,
           struct desc_attributes *d_attributes,
           cudaStream_t stream ) 	/* cuda stream */
         {
@@ -958,7 +958,7 @@ extern "C" {
             dim3 grids;
             dim3 blocks(32,32);
 
-            grids.x = (ndrow + blocks.x - 1)/blocks.x;
+            grids.x = (ndrow0 + blocks.x - 1)/blocks.x;
 
             /* call kernel */
             kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, d_attributes );
@@ -980,18 +980,18 @@ extern "C" {
             /* loop over supernodes  */
             {
 
-                Int pdi1 = attributes->pdi1;        	 /* supernode dimensions */
+                Int kd1 = attributes->kd1;
                 Int kd2 = attributes->kd2;
 
                 /* loop over columns */
-                if(idx < (kd2-pdi1)) {
-                    Int k = idx + pdi1;
+                if(idx < (kd2-kd1)) {
+                    Int k = idx + kd1;
                     Int pstart = Ap[k];
                     Int pend = Ap[k+1];
 
                     /* loop over.. */
                     if(idy < pend-pstart) {
-                        Int ndrow = attributes->ndrow;	/* supernode dimensions */
+                        Int ndrow0 = attributes->ndrow0;	/* supernode dimensions */
                         Int p = idy+pstart;
                         Int i = Ai[p];
 
@@ -1000,10 +1000,10 @@ extern "C" {
                             Int imap = Map [i] ; 	/* map to use (different for each supernode) */
 
                             /* only for map's for the current supernode */
-                            if (imap >= 0 && imap < ndrow) {
+                            if (imap >= 0 && imap < ndrow0) {
                                 Int id;
-                                Int pdx = attributes->pdx;
-                                id = imap+(pdx+(k-pdi1)*ndrow);
+                                Int pdx0 = attributes->pdx0;
+                                id = imap+(pdx0+(k-kd1)*ndrow0);
                                 Lx[id] = Ax[p];
                             }
                         }
@@ -1049,6 +1049,7 @@ extern "C" {
           Int d_psend,      /* psend */
           Int d_nsrow,      /* nsrow */
           Int d_pdi1,       /* pdi1 (for current descendant) */
+          Int d_ndrow0,     /* ndrow0 */
           Int d_ndrow1,     /* ndrow1 */
           Int d_ndrow2 )    /* ndrow2 */
         {
@@ -1063,7 +1064,8 @@ extern "C" {
             Int psend = d_psend;
             Int nsrow = d_nsrow;
             Int pdi1 = d_pdi1;
-            Int ndrow1 = d_ndrow1;                   	  /* descendant dimensions */
+            Int ndrow0 = d_ndrow0;                   	  /* descendant dimensions */
+            Int ndrow1 = d_ndrow1;
             Int ndrow2 = d_ndrow2;
 
             /* loop over rows & cols */
@@ -1084,7 +1086,7 @@ extern "C" {
                         /* check for triangular part */
                         if(isrow >= iscol) {
                             Int idx = isrow + iscol * nsrow;  			 /* mapping index */
-                            d_A[idx] += d_C[idrow+ndrow2*idcol]; 	 /* add schur complement to supernode */
+                            d_A[idx] += d_C[idrow+ndrow0*idcol]; 	 /* add schur complement to supernode */
                         }
                     }
                 }
@@ -1101,6 +1103,7 @@ extern "C" {
           Int psend,
           Int nsrow,
           Int pdi1,
+          Int ndrow0,
           Int ndrow1,
           Int ndrow2,
           cudaStream_t stream )/* cuda stream */
@@ -1113,7 +1116,7 @@ extern "C" {
             grids.y = (ndrow1 + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2 );
+            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2 );
 
         }
 

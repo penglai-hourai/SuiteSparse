@@ -727,6 +727,7 @@ static int TEMPLATE (cholmod_super_numeric)
         /* get current subtree & # supernodes */
         Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
 
+        printf ("checkpoint root start\n");
         PRINTF("\n\nroot start -\t");
         PRINTFV("device:%d ",deviceid);
         PRINTFV("subtree:%d ",subtree);
