@@ -429,7 +429,7 @@ extern "C" {
                                        Int id;
                                        Int psx = d_psx[node];
                                        id = imap+(psx+(k-k1)*nsrow);
-                                       Lx[id] = Ax[p];
+                                       Lx[id] += Ax[p];
                                    }
                                }
                            } /* end loop over.. */
@@ -1038,4 +1038,83 @@ extern "C" {
             kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_attributes );
 
         }
+
+    __global__ void kernelAddUpdate_factorized
+        ( double *d_A,
+          double *d_C, /* list of schur complements */
+          Int *d_Ls,	    /* Ls on device */
+          Int d_k1,
+          Int d_k2,
+          Int d_psi,        /* psi */
+          Int d_psend,      /* psend */
+          Int d_nsrow,      /* nsrow */
+          Int d_pdi1,       /* pdi1 (for current descendant) */
+          Int d_ndrow1,     /* ndrow1 */
+          Int d_ndrow2 )    /* ndrow2 */
+        {
+            /* set global thread indices */
+            int idrow = blockIdx.x * blockDim.x + threadIdx.x;
+            int idcol = blockIdx.y * blockDim.y + threadIdx.y;
+
+
+            Int k1 = d_k1;
+            Int k2 = d_k2;
+            Int psi = d_psi;
+            Int psend = d_psend;
+            Int nsrow = d_nsrow;
+            Int pdi1 = d_pdi1;
+            Int ndrow1 = d_ndrow1;                   	  /* descendant dimensions */
+            Int ndrow2 = d_ndrow2;
+
+            /* loop over rows & cols */
+            if( idcol < ndrow1 && idrow < ndrow2 ) {
+
+                Int iscol;
+                Int isrow;
+
+                iscol = 0;
+                while ((iscol < k2 - k1) && (d_Ls[psi+iscol] != d_Ls[pdi1+idcol])) iscol++;
+                if (iscol < k2 - k1)
+                {
+                    isrow = iscol;
+                    while ((isrow < psend - psi) && (d_Ls[psi+isrow] != d_Ls[pdi1+idrow])) isrow++;
+
+                    if ((isrow < psend - psi))
+                    {
+                        /* check for triangular part */
+                        if(isrow >= iscol) {
+                            Int idx = isrow + iscol * nsrow;  			 /* mapping index */
+                            d_A[idx] += d_C[idrow+ndrow2*idcol]; 	 /* add schur complement to supernode */
+                        }
+                    }
+                }
+            }
+        }
+
+    void addUpdateOnDevice_factorized
+        ( double *d_A,
+          double *d_C,
+          Int *d_Ls,		/* Ls on device */
+          Int k1,
+          Int k2,
+          Int psi,
+          Int psend,
+          Int nsrow,
+          Int pdi1,
+          Int ndrow1,
+          Int ndrow2,
+          cudaStream_t stream )/* cuda stream */
+        {
+            /* set grids & blocks */
+            dim3 grids;
+            dim3 blocks(16,16);
+
+            grids.x = (ndrow2 + blocks.x - 1)/blocks.x;
+            grids.y = (ndrow1 + blocks.y - 1)/blocks.y;
+
+            /* call kernel */
+            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2 );
+
+        }
+
 } /* end extern C */

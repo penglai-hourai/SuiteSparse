@@ -884,6 +884,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         for (s = tree_p->supernode_parent[d]; s != EMPTY; s = tree_p->supernode_parent[s])
         {
+            Int k1, k2, psi, psend, nsrow;
+
             if (tree_p->factorized[s] || LpxSub[s] < 0) continue;
 
             p 	= Lpos[d] ;
@@ -894,6 +896,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             ndrow1 = pdi2 - pdi1 ;
             ndrow2 = pdend - pdi1 ;
             ndrow3 = ndrow2 - ndrow1 ;
+
+            k1 = Super[s];
+            k2 = Super[s+1];
+            psi = Lpi[s];
+            psend = Lpi[s+1];
+            nsrow = psend - psi;
 
             d_A = d_Lx + (pdi1 - pdi0) * ndrow2;
             d_B = d_A + ndrow1;
@@ -926,6 +934,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                     &beta,
                     d_D,
                     ndrow2);
+            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + LpxSub[s], d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cudaEventRecord (Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
             /* prepare for next descendant */
@@ -934,6 +943,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
+
+    cudaEventSynchronize(Common->updateCKernelsComplete[gpuid]);
 
       /*
        *  Supernode Assembly - BATCHED
