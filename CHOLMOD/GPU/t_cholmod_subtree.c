@@ -154,7 +154,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
 
-    gpu_p->d_attributes[gpuid] = gpu_p->gpuPtr[gpuid];
+    gpu_p->d_attributes[gpuid][0] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
+
+    gpu_p->d_attributes[gpuid][1] = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
 
     /* cuSolver Cholesky initialization (get workspace size) */

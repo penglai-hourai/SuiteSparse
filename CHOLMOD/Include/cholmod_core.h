@@ -1270,12 +1270,13 @@ typedef struct cholmod_sparse_struct
 
 struct desc_attributes
 {
-    Int k1;
-    Int k2;
-    Int nscol;
-    Int nsrow;
-    Int psi;
-    Int psx;
+    Int kd1;
+    Int kd2;
+    Int ndcol;
+    Int ndrow;
+    Int pdi;
+    Int pdi1;
+    Int pdx;
 };
 
 /* structures for holding syrk,gemm,potrf,trsm parameters */

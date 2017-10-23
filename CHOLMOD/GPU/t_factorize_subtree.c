@@ -825,21 +825,23 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         const int stype = cpu_p->stype;
 
-        Int i, j, k, p, pend, imap;
-        Int *d_Ls, *d_Map, *d_Ap, *d_Ai;
+        Int i, j, k, p, pend, nzmax, imap;
+        Int *d_Ls, *d_Map, *d_Ap, *d_Ai, Apdiff;
         double *d_Ax, *d_Lx;
         struct desc_attributes h_attributes, *d_attributes;
+
+        double *d_A, *d_B, *d_C, *d_D;
 
         iBuff = Common->ibuffer[gpuid] % 2;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
 
         d_Ls = gpu_p->d_Ls[gpuid];
-        d_Map = gpu_p->d_Map[gpuid];
+        d_Map = gpu_p->d_MapFactorized[gpuid][iBuff];
         d_Ap = gpu_p->d_Ap[gpuid];
         d_Ai = gpu_p->d_Ai[gpuid];
         d_Ax = gpu_p->d_Ax[gpuid];
         d_Lx = gpu_p->d_LxFactorized[gpuid][iBuff];
-        d_attributes = gpu_p->d_attributes[gpuid];
+        d_attributes = gpu_p->d_attributes[gpuid][iBuff];
 
         d = update_factorized[d_itr];
 
@@ -854,12 +856,20 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         ndrow = pdend - pdi ;
         ndrow2 = pdend - pdi1 ;
 
-        h_attributes.k1 = k1;
-        h_attributes.k2 = k2;
-        h_attributes.nscol = ndcol;
-        h_attributes.nsrow = ndrow;
-        h_attributes.psi = psi;
-        h_attributes.psx = psx;
+        nzmax = 0;
+        for (k = kd1; k < kd2; k++)
+        {
+            Apdiff = Ap[k+1] - Ap[k];
+            if (nzmax < Apdiff) nzmax = Apdiff;
+        }
+
+        h_attributes.kd1 = kd1;
+        h_attributes.kd2 = kd2;
+        h_attributes.ndcol = ndcol;
+        h_attributes.ndrow = ndrow;
+        h_attributes.pdi = pdi;
+        h_attributes.pdi1 = pdi1;
+        h_attributes.pdx = pdx;
 
         cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid][iBuff]);
 
@@ -869,9 +879,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         createMapOnDevice_factorized (d_Map, d_Ls, ndrow, d_attributes, Common->gpuStream[gpuid][iBuff]);
 
-        initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, L->nzmax, Common->gpuStream[gpuid][iBuff]);
-
-        cudaStreamSynchronize (Common->gpuStream[gpuid][iBuff]);
+        initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid][iBuff]);
 
         for (s = tree_p->supernode_parent[d]; s != EMPTY; s = tree_p->supernode_parent[s])
         {
@@ -889,6 +897,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             /* prepare for next descendant */
             Lpos [d] = pdi2 - pdi ;
         }
+
+        cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iBuff], Common->gpuStream[gpuid][iBuff]);
     }
 
       /*

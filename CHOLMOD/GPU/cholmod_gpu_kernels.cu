@@ -937,20 +937,20 @@ extern "C" {
             /* set global thread indices */
             int ix = blockIdx.x * blockDim.x + threadIdx.x;
 
-            //Int nsrow = attributes->nsrow;
-            //Int psi = attributes->psi;
+            Int ndrow = attributes->ndrow;
+            Int pdi = attributes->pdi;
 
-            ///* loop over batch (supernodes) */
-            ///* loop over rows */
-            //if(ix < nsrow) {
-            //    Map[Ls[psi+ix]] = ((Int) (ix));       	/* set map */
-            //}
+            /* loop over batch (supernodes) */
+            /* loop over rows */
+            if(ix < ndrow) {
+                Map[Ls[pdi+ix]] = ((Int) (ix));       	/* set map */
+            }
         }
 
     void createMapOnDevice_factorized
         ( Int *d_Map,    	   	/* map on device */
           Int *d_Ls,	   	/* Ls on device */
-          Int nsrow,     	/* list of nsrow */
+          Int ndrow,     	/* list of ndrow */
           struct desc_attributes *d_attributes,
           cudaStream_t stream ) 	/* cuda stream */
         {
@@ -958,10 +958,10 @@ extern "C" {
             dim3 grids;
             dim3 blocks(32,32);
 
-            grids.x = (nsrow + blocks.x - 1)/blocks.x;
+            grids.x = (ndrow + blocks.x - 1)/blocks.x;
 
             /* call kernel */
-            kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, d_attributes);
+            kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, d_attributes );
 
         }
 
@@ -980,18 +980,18 @@ extern "C" {
             /* loop over supernodes  */
             {
 
-                Int k1 = attributes->k1;        	 /* supernode dimensions */
-                Int k2 = attributes->k2;
+                Int kd1 = attributes->kd1;        	 /* supernode dimensions */
+                Int kd2 = attributes->kd2;
 
                 /* loop over columns */
-                if(idx < (k2-k1)) {
-                    Int k = idx + k1;
+                if(idx < (kd2-kd1)) {
+                    Int k = idx + kd1;
                     Int pstart = Ap[k];
                     Int pend = Ap[k+1];
 
                     /* loop over.. */
                     if(idy < pend-pstart) {
-                        Int nsrow = attributes->nsrow;	/* supernode dimensions */
+                        Int ndrow = attributes->ndrow;	/* supernode dimensions */
                         Int p = idy+pstart;
                         Int i = Ai[p];
 
@@ -1000,10 +1000,10 @@ extern "C" {
                             Int imap = Map [i] ; 	/* map to use (different for each supernode) */
 
                             /* only for map's for the current supernode */
-                            if (imap >= 0 && imap < nsrow) {
+                            if (imap >= 0 && imap < ndrow) {
                                 Int id;
-                                Int psx = attributes->psx;
-                                id = imap+(psx+(k-k1)*nsrow);
+                                Int pdx = attributes->pdx;
+                                id = imap+(pdx+(k-kd1)*ndrow);
                                 Lx[id] = Ax[p];
                             }
                         }
@@ -1022,7 +1022,7 @@ extern "C" {
           Int *d_Ap,          	/* Ap on device */
           Int *d_Ai,          	/* Ai on device */
           Int *d_Map,         	/* map on device */
-          Int nscol,
+          Int ndcol,
           struct desc_attributes *d_attributes,
           Int nzmax,
           cudaStream_t stream )  	/* cuda stream */
@@ -1031,11 +1031,11 @@ extern "C" {
             dim3 grids;
             dim3 blocks(16,16);
 
-            grids.x = (nscol + blocks.x - 1)/blocks.x;
+            grids.x = (ndcol + blocks.x - 1)/blocks.x;
             grids.y = (nzmax + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_attributes);
+            kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_attributes );
 
         }
 } /* end extern C */
