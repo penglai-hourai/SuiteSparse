@@ -980,12 +980,12 @@ extern "C" {
             /* loop over supernodes  */
             {
 
-                Int kd1 = attributes->kd1;        	 /* supernode dimensions */
+                Int pdi1 = attributes->pdi1;        	 /* supernode dimensions */
                 Int kd2 = attributes->kd2;
 
                 /* loop over columns */
-                if(idx < (kd2-kd1)) {
-                    Int k = idx + kd1;
+                if(idx < (kd2-pdi1)) {
+                    Int k = idx + pdi1;
                     Int pstart = Ap[k];
                     Int pend = Ap[k+1];
 
@@ -1003,7 +1003,7 @@ extern "C" {
                             if (imap >= 0 && imap < ndrow) {
                                 Int id;
                                 Int pdx = attributes->pdx;
-                                id = imap+(pdx+(k-kd1)*ndrow);
+                                id = imap+(pdx+(k-pdi1)*ndrow);
                                 Lx[id] = Ax[p];
                             }
                         }
