@@ -148,6 +148,7 @@ typedef struct cholmod_global_pointers
     size_t CworkSize;
     size_t MapworkSize;
 
+    int has_root;
 } cholmod_global_pointers ;
 
 

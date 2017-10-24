@@ -426,7 +426,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (loop = 0; loop < 2; loop++)
+    for (loop = 0; loop < 1; loop++)
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
@@ -600,7 +600,7 @@ static int TEMPLATE (cholmod_super_numeric)
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
 #ifdef TDEBUG
-      double loop_time;
+          //double loop_time;
 #endif
 
           PRINTF("\n\nGPU start -\t");
@@ -609,11 +609,11 @@ static int TEMPLATE (cholmod_super_numeric)
 
           TIMER_START(bstart,deviceid);
 #ifdef TDEBUG
-        loop_time = SuiteSparse_time();
+          //loop_time = SuiteSparse_time();
 #endif
           TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, subtree, LpxSub);
 #ifdef TDEBUG
-        //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
+          //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
 #endif
     	  TIMER_END(bstart,bend,deviceid);
 
@@ -697,6 +697,8 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+    if (gb_p->has_root == TRUE)
+    {
     /*
      * root algorithm
      *
@@ -727,7 +729,7 @@ static int TEMPLATE (cholmod_super_numeric)
         /* get current subtree & # supernodes */
         Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
 
-        printf ("checkpoint root start\n");
+        printf ("checkpoint root start numSubtreePerDevice = %ld subtreeid = %ld subtree = %ld\n", numSubtreePerDevice, subtreeid, subtree);
         PRINTF("\n\nroot start -\t");
         PRINTFV("device:%d ",deviceid);
         PRINTFV("subtree:%d ",subtree);
@@ -752,6 +754,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
       } /* end loop over subtree */
     } /* end if root subtree */
+    }
 
 
 
