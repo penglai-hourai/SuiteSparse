@@ -304,6 +304,11 @@ static int TEMPLATE (cholmod_super_numeric)
   }
 
 
+  for (i = 0 ; i < L->nsuper ; i++)
+  {
+      cpu_p->Head[i] = EMPTY;
+      cpu_p->Next[i] = EMPTY;
+  }
 
 
 
@@ -426,7 +431,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (loop = 0; loop < 2; loop++)
+    for (loop = 0; loop < 1; loop++)
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
@@ -729,7 +734,6 @@ static int TEMPLATE (cholmod_super_numeric)
         /* get current subtree & # supernodes */
         Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
 
-        printf ("checkpoint root start numSubtreePerDevice = %ld subtreeid = %ld subtree = %ld\n", numSubtreePerDevice, subtreeid, subtree);
         PRINTF("\n\nroot start -\t");
         PRINTFV("device:%d ",deviceid);
         PRINTFV("subtree:%d ",subtree);

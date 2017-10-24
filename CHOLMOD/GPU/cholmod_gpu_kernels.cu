@@ -1115,7 +1115,6 @@ extern "C" {
             grids.x = (ndrow2 + blocks.x - 1)/blocks.x;
             grids.y = (ndrow1 + blocks.y - 1)/blocks.y;
 
-            printf ("checkpoint ndrow1 = %ld ndrow2 = %ld\n", ndrow1, ndrow2);
             /* call kernel */
             kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2 );
 

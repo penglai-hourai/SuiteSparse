@@ -528,6 +528,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
   h_syrk    = &gpu_p->h_syrk[gpuid];
   d_syrk    = &gpu_p->d_syrk[gpuid];
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -15 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -14 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   /* loop over 'large' syrk's */
   for(i = 0; i < syrk_count; i++) {
@@ -555,6 +558,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   h_syrk->C[i],
                   h_syrk->ldc[i]);
   }
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -13 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -12 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   /* check if any syrk's left for batching */
   if( (nbatch - syrk_count) > 0 ) {
@@ -574,6 +580,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                                       &d_syrk->ldc[syrk_count],
                                       nbatch-syrk_count);
   }
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -11 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -10 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   TIMER_END1(tstart1,syrk_time,0);
   TIMER_END1(tstart1,syrk_time,1);
@@ -619,6 +628,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   h_gemm->ldc[i]);
   }
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -9 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -8 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   /* check if any gemm's left for batching */
   if( (nbatch - gemm_count) > 0 ) {
@@ -641,6 +653,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             &d_gemm->ldc[gemm_count],
             nbatch-gemm_count);
   }
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -7 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -6 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   TIMER_END1(tstart1,gemm_time,0);
   TIMER_END1(tstart1,gemm_time,1);
@@ -666,19 +681,22 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           Lpx);
   }
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -5 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -4 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
       for (k = 0; k < Common->numGPU_subtree_parallel; k++)
       {
-      for (vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel; vgpuid < k * Common->numGPU + (gpuid+1) * Common->numGPU_parallel; vgpuid++)
-      {
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) {
-      printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU dgemm_custom_simple_1block_batch") ;
-    }
-      }
+          for (vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel; vgpuid < k * Common->numGPU + (gpuid+1) * Common->numGPU_parallel; vgpuid++)
+          {
+              cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
+              if (cudaStat) {
+                  printf("error: %s\n",cudaGetErrorString(cudaStat));
+                  ERROR (CHOLMOD_GPU_PROBLEM, "GPU dgemm_custom_simple_1block_batch") ;
+              }
+          }
       }
   }
   cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
@@ -723,6 +741,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
 
   }
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -3 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -2 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
 
   /* loop over 'large' addUpdate's */
@@ -732,6 +753,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       //vgpuid = gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
       vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel + i / CHOLMOD_DEVICE_STREAMS % Common->numGPU_parallel;
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint in -1 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint in -0 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
     /* mapping (to factor Lx) for each descendants */
     addUpdateOnDevice_large(
             gpu_p->d_Lx[gpuid],
@@ -745,21 +769,34 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             h_super->nsrow[h_desc->s[i]],
             (Int)((n+1)*h_desc->s[i]),
             &(Common->gpuStream[vgpuid][j]));
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint in 0 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) //checkpoint
+  { //checkpoint
+      printf ("checkpoint in 1 CUDA error: %s gpuid = %d update_count = %ld i = %d pdi1 = %ld ndrow1 = %ld ndrow2 = %ld psx = %ld nsrow = %ld mapid = %ld\n" //checkpoint
+              , cudaGetErrorString(cudaGetLastError()), gpuid, update_count, i, h_desc->pdi1[i], h_desc->ndrow1[i], h_desc->ndrow2[i], h_super->psx[h_desc->s[i]], h_super->nsrow[h_desc->s[i]], (Int)((n+1)*h_desc->s[i])); //checkpoint
+      exit(0); //checkpoint
+  } //checkpoint
   }
 
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -1 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+  cudaStat = cudaDeviceSynchronize (); //checkpoint
+  if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint -0 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
 
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
       for (k = 0; k < Common->numGPU_subtree_parallel; k++)
       {
-      for (vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel; vgpuid < k * Common->numGPU + (gpuid+1) * Common->numGPU_parallel; vgpuid++)
-      {
-    cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
-    if (cudaStat) {
-      printf("error: %s\n",cudaGetErrorString(cudaGetLastError()));
-      ERROR (CHOLMOD_GPU_PROBLEM, "GPU addUpdateOnDevice_batch") ;
-    }
-      }
+          for (vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel; vgpuid < k * Common->numGPU + (gpuid+1) * Common->numGPU_parallel; vgpuid++)
+          {
+              if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint 0 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+              cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
+              if (cudaGetLastError() != cudaSuccess) {printf ("checkpoint 1 CUDA error: %s\n", cudaGetErrorString(cudaGetLastError())); exit(0);}
+              if (cudaStat) {
+                  printf("error: %s\n",cudaGetErrorString(cudaStat));
+                  ERROR (CHOLMOD_GPU_PROBLEM, "GPU addUpdateOnDevice_batch") ;
+              }
+          }
       }
   }
   cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]) ;

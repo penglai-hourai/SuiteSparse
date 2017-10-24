@@ -493,7 +493,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
        TIMER_START(tstart,2);
 
-       printf ("checkpoint 0\n");
 //#pragma omp critical
 {
 
@@ -516,6 +515,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         idescendant = 0;
         dlarge = Head[s];
 
+printf ("checkpoint 0\n");
         /* loop over descendants */
         while(idescendant < ndescendants[s]) {
 
@@ -531,48 +531,45 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           pdend = Lpi [d+1] ;
           ndrow = pdend - pdi ;
 
-       printf ("checkpoint 0.0\n");
           if (tree_p->factorized[d] == -1)
           {
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-       printf ("checkpoint 0.0.0\n");
+              if (s != dancestor) printf ("checkpoint -1 s = %ld dancestor = %ld\n", s, dancestor);
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
+#pragma omp atomic
                   ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
                   dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               }
-       printf ("checkpoint 0.0.1\n");
           }
           else if (tree_p->factorized[d] == 1)
           {
               Lpos_save[d] = Lpos[d];
 
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-       printf ("checkpoint 0.0.2\n");
+              if (s != dancestor) printf ("checkpoint 1 s = %ld dancestor = %ld\n", s, dancestor);
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
                   ndescendants[dancestor]--;
 
-       printf ("checkpoint 0.0.2.0 nsuper = %ld idescendant = %ld ndescendants[%ld] = %ld, d = %ld pdend = %ld Super[%ld] = %ld\n", L->nsuper, idescendant, s, ndescendants[s], d, pdend, dancestor+1, Super[dancestor+1]);
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
-       printf ("checkpoint 0.0.2.1\n");
                   Lpos[d] = pdi2 - pdi;
-       printf ("checkpoint 0.0.2.3\n");
                   dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-       printf ("checkpoint 0.0.2.4 Lpos[%ld] = %ld pdi = %ld pdi2 = %ld\n", d, Lpos[d], pdi, pdi2);
               }
-       printf ("checkpoint 0.0.3\n");
 
               Lpos[d] = Lpos_save[d];
 
               if (dancestor != EMPTY && Lpos[d] < ndrow)
-#pragma omp critical (head_next)
               {
-                  Next [d] = Head [dancestor] ;
-                  Head [dancestor] = d ;
+#pragma omp critical (head_next)
+                  {
+                      Next [d] = Head [dancestor] ;
+                      Head [dancestor] = d ;
+                  }
+                  tree_p->factorized[d] = 2;
               }
               else
                   tree_p->factorized[d] = -2;
@@ -596,12 +593,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           Lpos [d] = pdi2 - pdi ;
 
           if (Lpos [d] < ndrow) {
-            dancestor = SuperMap [Ls [pdi2]] ;
+              dancestor = SuperMap [Ls [pdi2]] ;
 #pragma omp critical (head_next)
-            {
-                Next [d] = Head [dancestor] ;
-                Head [dancestor] = d ;
-            }
+              {
+                  Next [d] = Head [dancestor] ;
+                  Head [dancestor] = d ;
+              }
+              tree_p->factorized[d] = 2;
           }
           else
               tree_p->factorized[d] = -2;
@@ -651,9 +649,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
           }
-       printf ("checkpoint 0.1\n");
 
         } /* end loop over descendants */
+printf ("checkpoint 1\n");
 
 
         /* prepare for next supernode */
@@ -674,7 +672,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       } /* end loop over supernodes */
 
 }/* end pragma omp critical */
-       printf ("checkpoint 1\n");
 
 
 
@@ -844,9 +841,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               super_count,
               gpuid);
      TIMER_END(tstart,tend,3);
-       printf ("checkpoint 2\n");
 
      Common->ibuffer[gpuid] = 0;
+printf ("checkpoint 2\n");
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
         int iBuff;
@@ -900,7 +897,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         h_attributes.pdx0 = pdx0;
         h_attributes.ndrow0 = ndrow0;
 
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid][iBuff], 0);
+        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
 
         cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
@@ -911,11 +908,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         s = SuperMap [Ls [pdi + Lpos[d]]];
+printf ("checkpoint 2.0\n");
         while (s != EMPTY && LpxSub[s] >= 0 && Lpos[d] < ndrow)
         {
+printf ("checkpoint LpxSub[%ld] = %lx Lpos[%ld] = %ld ndrow = %ld\n", s, LpxSub[s], d, Lpos[d], ndrow);
             Int k1, k2, psi, psend, nsrow;
 
-            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid], 0);
+            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             p 	= Lpos[d] ;
             pdi1 	= pdi + p ;
@@ -964,18 +963,18 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                     &beta,
                     d_D,
                     ndrow0);
-        printf ("checkpoint nsuper = %ld s = %ld d = %ld ndrow1 = %ld ndrow2 = %ld\n", L->nsuper, s, d, ndrow1, ndrow2);
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + LpxSub[s], d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            cudaEventRecord (Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
             s = SuperMap [Ls [pdi + Lpos[d]]];
         }
+printf ("checkpoint 2.1\n");
 
-        cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
-       printf ("checkpoint 3\n");
+printf ("checkpoint 3\n");
 
-    cudaEventSynchronize(Common->updateCKernelsComplete[gpuid]);
+    cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
 
       /*
        *  Supernode Assembly - BATCHED

@@ -573,6 +573,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                             Next [s] = Head [sparent] ;
                             Head [sparent] = s ;
                         }
+                        Head[s] = EMPTY;
                     }
 
                 } /* end pragma omp critical */
