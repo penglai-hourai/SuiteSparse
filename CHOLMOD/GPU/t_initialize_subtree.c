@@ -858,8 +858,9 @@ void TEMPLATE2 (CHOLMOD (build_tree))
    *
    */
   /* loop over supernodes */
-  //memcpy (cpu_p->Lpos_save, cpu_p->Head, sizeof(Int) * L->nsuper);
-  //memcpy (cpu_p->Next_save, cpu_p->Next, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Map, cpu_p->Head, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Next_save, cpu_p->Next, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Lpos_save, cpu_p->Lpos, sizeof(Int) * L->nsuper);
   for(s = 0; s < L->nsuper; s++) {
 
     /* clear variables */
@@ -971,6 +972,9 @@ void TEMPLATE2 (CHOLMOD (build_tree))
     }
 
   } /* end loop over supernodes */
+  memcpy (cpu_p->Head, cpu_p->Map, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Next, cpu_p->Next_save, sizeof(Int) * L->nsuper);
+  memcpy (cpu_p->Lpos, cpu_p->Lpos_save, sizeof(Int) * L->nsuper);
 
 
 

@@ -493,6 +493,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
        TIMER_START(tstart,2);
 
+       printf ("checkpoint 0\n");
 //#pragma omp critical
 {
 
@@ -530,35 +531,44 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           pdend = Lpi [d+1] ;
           ndrow = pdend - pdi ;
 
+       printf ("checkpoint 0.0\n");
           if (tree_p->factorized[d] == -1)
           {
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              while (dancestor != EMPTY)
+       printf ("checkpoint 0.0.0\n");
+              while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
                   ndescendants[dancestor]--;
 
-                  for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
+                  for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
                   dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               }
+       printf ("checkpoint 0.0.1\n");
           }
           else if (tree_p->factorized[d] == 1)
           {
               Lpos_save[d] = Lpos[d];
 
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              while (dancestor != EMPTY && LpxSub[dancestor] >= 0)
+       printf ("checkpoint 0.0.2\n");
+              while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
                   ndescendants[dancestor]--;
 
-                  for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
+       printf ("checkpoint 0.0.2.0 nsuper = %ld idescendant = %ld ndescendants[%ld] = %ld, d = %ld pdend = %ld Super[%ld] = %ld\n", L->nsuper, idescendant, s, ndescendants[s], d, pdend, dancestor+1, Super[dancestor+1]);
+                  for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
+       printf ("checkpoint 0.0.2.1\n");
                   Lpos[d] = pdi2 - pdi;
+       printf ("checkpoint 0.0.2.3\n");
                   dancestor = SuperMap [Ls [pdi + Lpos[d]]];
+       printf ("checkpoint 0.0.2.4 Lpos[%ld] = %ld pdi = %ld pdi2 = %ld\n", d, Lpos[d], pdi, pdi2);
               }
+       printf ("checkpoint 0.0.3\n");
 
               Lpos[d] = Lpos_save[d];
 
-              if (dancestor != EMPTY)
+              if (dancestor != EMPTY && Lpos[d] < ndrow)
 #pragma omp critical (head_next)
               {
                   Next [d] = Head [dancestor] ;
@@ -641,6 +651,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
           }
+       printf ("checkpoint 0.1\n");
 
         } /* end loop over descendants */
 
@@ -663,6 +674,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       } /* end loop over supernodes */
 
 }/* end pragma omp critical */
+       printf ("checkpoint 1\n");
 
 
 
@@ -832,6 +844,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               super_count,
               gpuid);
      TIMER_END(tstart,tend,3);
+       printf ("checkpoint 2\n");
 
      Common->ibuffer[gpuid] = 0;
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
@@ -870,6 +883,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         pdi0 = pdi + Lpos[d];
         pdend = Lpi [d+1] ;
         pdx0 	= Lpx [d] + Lpos[d] ;
+        ndrow = pdend - pdi ;
         ndrow0 = pdend - pdi0 ;
 
         nzmax = 0;
@@ -897,7 +911,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         s = SuperMap [Ls [pdi + Lpos[d]]];
-        while (s != EMPTY && LpxSub[s] >= 0)
+        while (s != EMPTY && LpxSub[s] >= 0 && Lpos[d] < ndrow)
         {
             Int k1, k2, psi, psend, nsrow;
 
@@ -959,6 +973,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
+       printf ("checkpoint 3\n");
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid]);
 
