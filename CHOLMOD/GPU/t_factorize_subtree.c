@@ -176,6 +176,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
     diff  = (end - start);                   	                                        /* # supernodes in level */
     strideSize = level_num_desc[level_num_desc_ptrs[subtree]+level];	 	        /* largest number of descendants in a batch in current level */
+    if (strideSize == 0) printf ("\ncheckpoint strideSize = 0 level = %ld start = %ld end = %ld", level, start, end); //checkpoint
     nbatch = supernode_batch[supernode_levels_subtree_ptrs[subtree] + level];		/* size of batch for current level */
     node = 0;
 
@@ -512,12 +513,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         nscol = h_super->nscol[i];
         psi = h_super->psi[i];
 
-        idescendant = 0;
+        //idescendant = 0;
         dlarge = Head[s];
 
-printf ("checkpoint 0\n");
         /* loop over descendants */
-        while(idescendant < ndescendants[s]) {
+        while (dlarge != EMPTY)
+        //while(idescendant < ndescendants[s])
+        {
 
             d = dlarge;
             dlarge = Next[dlarge];
@@ -534,11 +536,10 @@ printf ("checkpoint 0\n");
           if (tree_p->factorized[d] == -1)
           {
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              if (s != dancestor) printf ("checkpoint -1 s = %ld dancestor = %ld\n", s, dancestor);
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
-#pragma omp atomic
-                  ndescendants[dancestor]--;
+//#pragma omp atomic
+                  //ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
@@ -550,10 +551,9 @@ printf ("checkpoint 0\n");
               Lpos_save[d] = Lpos[d];
 
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              if (s != dancestor) printf ("checkpoint 1 s = %ld dancestor = %ld\n", s, dancestor);
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
-                  ndescendants[dancestor]--;
+                  //ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
@@ -578,7 +578,7 @@ printf ("checkpoint 0\n");
           }
           else
           {
-          idescendant++;
+          //idescendant++;
 
           p 	= Lpos[d] ;
           pdi1 	= pdi + p ;
@@ -651,7 +651,6 @@ printf ("checkpoint 0\n");
           }
 
         } /* end loop over descendants */
-printf ("checkpoint 1\n");
 
 
         /* prepare for next supernode */
@@ -664,9 +663,7 @@ printf ("checkpoint 1\n");
               Head [sparent] = s ;
           }
         }
-
-        Head [s] = EMPTY ;
-        tree_p->ndescendants[s] = 0;
+        //Head [s] = EMPTY ;
 
 
       } /* end loop over supernodes */
@@ -705,6 +702,9 @@ printf ("checkpoint 1\n");
         h_syrk->ldc[j]       	= syrk[i].ldc;
         h_syrk->A[j]         	= syrk[i].A;
         h_syrk->C[j]     	    = syrk[i].C;
+        //printf ("\ncheckpoint level = %ld start = %ld end = %ld\n", level, start, end); cudaDeviceSynchronize(); //checkpoint
+        //printf ("checkpoint syrk i = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", i, syrk[i].n, syrk[i].k, syrk[i].A, syrk[i].lda, syrk[i].C, syrk[i].ldc);
+        //printf ("checkpoint h_syrk j = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", j, h_syrk->n[j], h_syrk->k[j], h_syrk->A[j], h_syrk->lda[j], h_syrk->C[j], h_syrk->ldc[j]);
         j++;
       }
       syrk_count = j;
@@ -719,6 +719,9 @@ printf ("checkpoint 1\n");
         h_syrk->ldc[j]          = syrk[i].ldc;
         h_syrk->A[j]            = syrk[i].A;
         h_syrk->C[j]            = syrk[i].C;
+        //printf ("\ncheckpoint -level = %ld start = %ld end = %ld\n", level, start, end); cudaDeviceSynchronize(); //checkpoint
+        //printf ("checkpoint -syrk i = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", i, syrk[i].n, syrk[i].k, syrk[i].A, syrk[i].lda, syrk[i].C, syrk[i].ldc);
+        //printf ("checkpoint -h_syrk j = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", j, h_syrk->n[j], h_syrk->k[j], h_syrk->A[j], h_syrk->lda[j], h_syrk->C[j], h_syrk->ldc[j]);
         j++;
       }
 
@@ -843,7 +846,6 @@ printf ("checkpoint 1\n");
      TIMER_END(tstart,tend,3);
 
      Common->ibuffer[gpuid] = 0;
-printf ("checkpoint 2\n");
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
         int iBuff;
@@ -908,10 +910,8 @@ printf ("checkpoint 2\n");
         initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         s = SuperMap [Ls [pdi + Lpos[d]]];
-printf ("checkpoint 2.0\n");
         while (s != EMPTY && LpxSub[s] >= 0 && Lpos[d] < ndrow)
         {
-printf ("checkpoint LpxSub[%ld] = %lx Lpos[%ld] = %ld ndrow = %ld\n", s, LpxSub[s], d, Lpos[d], ndrow);
             Int k1, k2, psi, psend, nsrow;
 
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
@@ -930,6 +930,7 @@ printf ("checkpoint LpxSub[%ld] = %lx Lpos[%ld] = %ld ndrow = %ld\n", s, LpxSub[
             k1 = Super[s];
             k2 = Super[s+1];
             psi = Lpi[s];
+            psx = Lpx[s];
             psend = Lpi[s+1];
             nsrow = psend - psi;
 
@@ -963,16 +964,14 @@ printf ("checkpoint LpxSub[%ld] = %lx Lpos[%ld] = %ld ndrow = %ld\n", s, LpxSub[
                     &beta,
                     d_D,
                     ndrow0);
-            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + LpxSub[s], d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
             s = SuperMap [Ls [pdi + Lpos[d]]];
         }
-printf ("checkpoint 2.1\n");
 
         cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
-printf ("checkpoint 3\n");
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
 

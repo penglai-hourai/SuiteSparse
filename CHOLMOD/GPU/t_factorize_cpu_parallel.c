@@ -388,8 +388,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
               Head [sparent]  = s ;
           }
         }
-
-        Head [s] = EMPTY ;
+        //Head [s] = EMPTY ;
 
 
 

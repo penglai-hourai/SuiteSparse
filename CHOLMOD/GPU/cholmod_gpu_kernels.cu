@@ -333,7 +333,7 @@ extern "C" {
      *
      */
     __global__ void kernelAddUpdate_large ( double *d_A,
-            double **devPtrC, /* list of schur complements */
+            double *devPtrC, /* list of schur complements */
             Int *d_Map,       /* map on device */
             Int *d_Ls,	    /* Ls on device */
             Int d_pdi1,       /* pdi1 (for current descendant) */
@@ -363,7 +363,7 @@ extern "C" {
             /* check for triangular part */
             if(isrow >= iscol) {
                 Int idx = psx + isrow + iscol * nsrow;  			 /* mapping index */
-                atomicAdd(&d_A[idx],devPtrC[0][idrow+ndrow2*idcol]); 	 /* add schur complement to supernode */
+                atomicAdd(&d_A[idx],devPtrC[idrow+ndrow2*idcol]); 	 /* add schur complement to supernode */
             }
         }
     }
@@ -761,7 +761,7 @@ extern "C" {
      *
      */
     void addUpdateOnDevice_large ( double *d_A,
-            double **devPtrC,
+            double *devPtrC,
             Int *d_Map,           	/* map on device */
             Int *d_Ls,		/* Ls on device */
             Int pdi1,

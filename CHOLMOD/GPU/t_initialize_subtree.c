@@ -519,7 +519,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   {
 
     subtreeReorder[i].id = i;                            /* subtree id */
-    int numSuper = supernode_subtree_ptrs[i+1] - supernode_subtree_ptrs[i];
+    Int numSuper = supernode_subtree_ptrs[i+1] - supernode_subtree_ptrs[i];
 
     /* loop over supernodes in subtree */
     for(j = 0; j < numSuper; j++) {
@@ -954,7 +954,7 @@ void TEMPLATE2 (CHOLMOD (build_tree))
           Head [sparent] = s ;
       }
     }
-    Head [s] = EMPTY ;
+    //Head [s] = EMPTY ;
 
 
     /* store tree information */
@@ -1795,17 +1795,23 @@ void TEMPLATE2 (CHOLMOD (gpu_num_descendants))
    )
 {
 
-  Int d, nextd, n_descendant = 0;
+    Int d, n_descendant = 0;
 
-  d = cpu_p->Head[s];
-  while ( d != EMPTY )
-  {
-    nextd = cpu_p->Next[d];
-    n_descendant++;
-    d = nextd;
-  }
+    if (tree_p->factorized[s])
+    {
+        tree_p->ndescendants[s] = 0;
+        return;
+    }
 
-  tree_p->ndescendants[s] = n_descendant;
+    d = cpu_p->Head[s];
+    while ( d != EMPTY )
+    {
+        if (!(tree_p->factorized[d]))
+            n_descendant++;
+        d = cpu_p->Next[d];
+    }
+
+    tree_p->ndescendants[s] = n_descendant;
 }
 
 
