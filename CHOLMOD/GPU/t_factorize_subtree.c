@@ -176,7 +176,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
     diff  = (end - start);                   	                                        /* # supernodes in level */
     strideSize = level_num_desc[level_num_desc_ptrs[subtree]+level];	 	        /* largest number of descendants in a batch in current level */
-    if (strideSize == 0) printf ("\ncheckpoint strideSize = 0 level = %ld start = %ld end = %ld", level, start, end); //checkpoint
+    printf ("\ncheckpoint strideSize = %ld level = %ld start = %ld end = %ld\n", strideSize, level, start, end); //checkpoint
     nbatch = supernode_batch[supernode_levels_subtree_ptrs[subtree] + level];		/* size of batch for current level */
     node = 0;
 
@@ -513,12 +513,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         nscol = h_super->nscol[i];
         psi = h_super->psi[i];
 
-        //idescendant = 0;
+        idescendant = 0;
         dlarge = Head[s];
 
         /* loop over descendants */
-        while (dlarge != EMPTY)
-        //while(idescendant < ndescendants[s])
+        //while (dlarge != EMPTY)
+        while(idescendant < ndescendants[s])
         {
 
             d = dlarge;
@@ -536,10 +536,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           if (tree_p->factorized[d] == -1)
           {
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
+              //printf ("checkpoint -1 nsuper = %ld dancestor = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, dancestor, d, idescendant, ndescendants[dancestor]);
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
-//#pragma omp atomic
-                  //ndescendants[dancestor]--;
+#pragma omp atomic
+                  ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
@@ -551,9 +552,10 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               Lpos_save[d] = Lpos[d];
 
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
+              //printf ("checkpoint 1 nsuper = %ld dancestor = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, dancestor, d, idescendant, ndescendants[dancestor]);
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
-                  //ndescendants[dancestor]--;
+                  ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
                   Lpos[d] = pdi2 - pdi;
@@ -578,7 +580,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           }
           else
           {
-          //idescendant++;
+              //printf ("checkpoint 0 nsuper = %ld s = %ld d = %ld idescendant = %ld ndescendants = %ld nscol = %lx nsrow = %lx\n", L->nsuper, s, d, idescendant, ndescendants[s], Super[s+1]-Super[s], Lpi[s+1]-Lpi[s]);
+          idescendant++;
 
           p 	= Lpos[d] ;
           pdi1 	= pdi + p ;
