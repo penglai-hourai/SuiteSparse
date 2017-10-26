@@ -418,6 +418,8 @@ static int TEMPLATE (cholmod_super_numeric)
     TIMER_START(tstart,1);
     TEMPLATE2 (CHOLMOD (build_tree))( Common,L,gb_p,cpu_p,tree_p );
 
+    /* store copy of # children per supernode */
+    memcpy(tree_p->supernode_children_num2, tree_p->supernode_children_num, L->nsuper*sizeof(Int));
     TIMER_END(tstart,tend,1);
 
 
@@ -434,8 +436,6 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
 #endif
-    /* store copy of # children per supernode */
-    memcpy(tree_p->supernode_children_num2, tree_p->supernode_children_num, L->nsuper*sizeof(Int));
         memset (lb_p->numSubtreePerDevice, 0, sizeof(Int) * size);
     /*
      * Binary search for optimal subtree size
@@ -607,6 +607,7 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
           //double loop_time;
 #endif
+          printf ("checkpoint subtree factorization subtree = %ld numSubtree = %ld\n", subtree, gb_p->numSubtree);
 
           PRINTF("\n\nGPU start -\t");
           PRINTFV("device:%d ",deviceid);

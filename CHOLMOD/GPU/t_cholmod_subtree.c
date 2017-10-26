@@ -79,6 +79,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     nvtxRangeId_t range1 = nvtxRangeStartA("gpu_init");
 #endif
 
+    //printf ("checkpoint 6.0\n");
     /* set gpu memory pointers */
     gpu_p->gpuPtr[gpuid]		 = Common->dev_mempool[gpuid];
 
@@ -160,12 +161,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_attributes[gpuid][1] = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
 
+    //printf ("checkpoint 6.1\n");
     /* cuSolver Cholesky initialization (get workspace size) */
     cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);
     if (cusolverErr != CUSOLVER_STATUS_SUCCESS) {
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cusolverDnDpotrf_bufferSize failure");
     }
 
+    //printf ("checkpoint 6.2\n");
     /* Copy arrays to device from pinned memory */
     Ls = L->s;
     Ap = A->p;
@@ -214,14 +217,27 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     cudaErr = cudaStreamCreate (&memsetstream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaStreamCreate(memsetstream)");
 
+    //printf ("checkpoint 6.3 gpuid = %d AxDim = %lx h_Ax = %lx Ax = %lx\n", gpuid, AxDim, h_Ax, Ax);
     /* Copy arrays to pinned memory from regular memory */
+#pragma omp parallel for num_threads(numThreads) private(i)
+    for(i = 0; i < AxDim; i++) {
+      Ax[i] = Ax[i];
+    }
+    //printf ("checkpoint 6.3-0 gpuid = %d AxDim = %lx h_Ax = %lx Ax = %lx\n", gpuid, AxDim, h_Ax, Ax);
+#pragma omp parallel for num_threads(numThreads) private(i)
+    for(i = 0; i < AxDim; i++) {
+      h_Ax[i] = h_Ax[i];
+    }
+    //printf ("checkpoint 6.3-1 gpuid = %d AxDim = %lx h_Ax = %lx Ax = %lx\n", gpuid, AxDim, h_Ax, Ax);
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < AxDim; i++) {
       h_Ax[i] = Ax[i];
     }
+    //printf ("checkpoint 6.3-2 gpuid = %d AxDim = %lx h_Ax = %lx Ax = %lx\n", gpuid, AxDim, h_Ax, Ax);
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ax[gpuid], h_Ax, gb_p->AxSize, cudaMemcpyHostToDevice, copystream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ax)");
 
+    //printf ("checkpoint 6.4\n");
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < LsDim; i++){
       h_Ls[i] = Ls[i];
@@ -229,6 +245,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ls[gpuid], h_Ls, gb_p->LsSize, cudaMemcpyHostToDevice, copystream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ls)");
 
+    //printf ("checkpoint 6.5\n");
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < ApDim; i++){
       h_Ap[i] = Ap[i];
@@ -236,6 +253,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ap[gpuid], h_Ap, gb_p->ApSize, cudaMemcpyHostToDevice, copystream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ap)");
 
+    //printf ("checkpoint 6.6\n");
 #pragma omp parallel for num_threads(numThreads) private(i)
     for(i = 0; i < AiDim; i++){
       h_Ai[i] = Ai[i];
@@ -243,10 +261,12 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     cudaErr = cudaMemcpyAsync ( gpu_p->d_Ai[gpuid], h_Ai, gb_p->AiSize, cudaMemcpyHostToDevice, copystream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpy(d_Ai)");
 
+    //printf ("checkpoint 6.7\n");
     /* Copy arrays to device from pinned memory */
     cudaErr = cudaMemsetAsync ( gpu_p->d_Lx[gpuid], 0, gb_p->LxSize, memsetstream);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemset(d_Lx)");
 
+    //printf ("checkpoint 6.8\n");
     /* set pinned memory pointers */
     gpu_p->hostPtr[gpuid] 	 = Common->host_pinned_mempool[gpuid];
 
@@ -271,6 +291,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->h_dimDesc[gpuid] 	 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= 14*gb_p->dimDescSize;
 
+    //printf ("checkpoint 6.9\n");
     /* get device pointer to pinted buffer */
     cudaErr = cudaHostGetDevicePointer ( (void**)&gpu_p->h_pLx[gpuid], gpu_p->h_Lx[gpuid], 0);
     if (cudaErr) {
@@ -278,6 +299,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
       ERROR ( CHOLMOD_GPU_PROBLEM, "GPU cudaHostGetDevicePointer");
     }
 
+    //printf ("checkpoint 6.10\n");
 #ifdef USE_NVTX
     nvtxRangeEnd(range1);
 #endif

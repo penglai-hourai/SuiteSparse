@@ -238,10 +238,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     /* reset counters */
     memset(supernode_children_count2, 0, L->nsuper*sizeof(Int));
 
+    printf ("checkpoint 0\n");
     TEMPLATE2 (CHOLMOD (build_subtree))( L,
 					gb_p,
 					tree_p,
 					subtreeSize);
+    printf ("checkpoint 1\n");
 
 
 
@@ -269,6 +271,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       level_descendants_ptrs[subtree]       = counts[1];
       supernode_levels_subtree_ptrs[subtree] = counts[2];
 
+    printf ("checkpoint 2\n");
       /* get # children in root supernode of root tree */
       TEMPLATE2 (CHOLMOD (get_children_root))( Common,
 					       gb_p,
@@ -277,6 +280,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					       subtree);
 
 
+    printf ("checkpoint 3\n");
       /* get size of factor (Lx) in current subtree */
       TEMPLATE2 (CHOLMOD (get_factor_size))( gb_p,
 					     cpu_p,
@@ -287,6 +291,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
                          LpxSub);
 
 
+    printf ("checkpoint 4\n");
       /* get current subtree size/info */
       TEMPLATE2 (CHOLMOD (process_subtree))( Common,
 					    A,
@@ -299,6 +304,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    subtree,
 					    max_factor_size,
                         counts);
+    printf ("checkpoint 5\n");
 
 
     } /* end loop over subtrees */
@@ -611,7 +617,11 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* issue less GPUs if not sufficient subtrees */
-  if(numSubtree-1 < Common->numGPU_physical)
+  if(gb_p->has_root == FALSE && numSubtree < Common->numGPU_physical)
+  {
+    gb_p->numGPU = numSubtree;
+  }
+  else if(gb_p->has_root == TRUE && numSubtree-1 < Common->numGPU_physical)
   {
     gb_p->numGPU = numSubtree-1;
   }
@@ -673,12 +683,14 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
       cudaSetDevice(gpuid);
 
       /* initialize GPU (set pointers, copy memory, etc.) */
+      printf ("checkpoint 6 gpuid = %d numGPU_physical = %d\n", gpuid, numGPU_physical);
       TEMPLATE2 (CHOLMOD (gpu_init))( Common,
   				      L,
 				      A,
 				      gb_p,
 				      gpu_p,
 				      gpuid);
+      printf ("checkpoint 7\n");
     }
   }
 
@@ -1185,7 +1197,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
   } /* end loop over supernodes */
 
   /* set pointer for end of last subtree */
-    //if (gb_p->has_root == TRUE)
+    if (gb_p->has_root == TRUE)
   supernode_subtree_ptrs[++(gb_p->numSubtree)] = j;
 
 }
@@ -1434,7 +1446,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       if (tree_p->factorized[s] == 0 && supernode_children_num[s] == 0)
       { /* case supernode has no children (belongs to current level) */
 
-          printf ("checkpoint post s = %ld idx = %ld\n", s, count2);
+          //printf ("checkpoint post s = %ld idx = %ld\n", s, count2);
         supernode_levels[count2++] = s;    	/* store supernode in level */
         nsupernodes++;                     		/* increment # supernodes in level */
         processed_nodes++;                 		/* increment processed supernode coutner */
@@ -1459,7 +1471,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     for(i = 0; i < nsupernodes; i++) {
 
       node = supernode_levels[supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i];	/* get supernode */
-          printf ("checkpoint remove s = %ld idx = %ld\n", node, supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i);
+          //printf ("checkpoint remove nsuper = %ld s = %ld idx = %ld subtree = %ld numSubtree = %ld\n", L->nsuper, node, supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i, subtree, gb_p->numSubtree);
       supernode_children_num[node] = EMPTY;   									/* empty children of supernode */
       sparent = supernode_parent[node];   									/* get parent of supernode*/
 
@@ -1670,7 +1682,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     /* store pointer to level */
     supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels] = count2;
 
-    printf ("checkpoint processed_nodes = %ld numSuper = %ld\n", processed_nodes, numSuper);
+    //printf ("checkpoint processed_nodes = %ld numSuper = %ld\n", processed_nodes, numSuper);
   } /* end loop over levels */
 
 

@@ -176,7 +176,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     end   = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+level+1];        /* ending supernode of level */
     diff  = (end - start);                   	                                        /* # supernodes in level */
     strideSize = level_num_desc[level_num_desc_ptrs[subtree]+level];	 	        /* largest number of descendants in a batch in current level */
-    printf ("\ncheckpoint strideSize = %ld level = %ld start = %ld end = %ld\n", strideSize, level, start, end); //checkpoint
     nbatch = supernode_batch[supernode_levels_subtree_ptrs[subtree] + level];		/* size of batch for current level */
     node = 0;
 
