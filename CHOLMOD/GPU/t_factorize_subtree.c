@@ -535,7 +535,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           if (tree_p->factorized[d] == -1)
           {
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              //printf ("checkpoint -1 nsuper = %ld dancestor = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, dancestor, d, idescendant, ndescendants[dancestor]);
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
 #pragma omp atomic
@@ -551,7 +550,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               Lpos_save[d] = Lpos[d];
 
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
-              //printf ("checkpoint 1 nsuper = %ld dancestor = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, dancestor, d, idescendant, ndescendants[dancestor]);
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
                   ndescendants[dancestor]--;
@@ -579,7 +577,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           }
           else
           {
-              //printf ("checkpoint 0 nsuper = %ld s = %ld d = %ld idescendant = %ld ndescendants = %ld nscol = %lx nsrow = %lx\n", L->nsuper, s, d, idescendant, ndescendants[s], Super[s+1]-Super[s], Lpi[s+1]-Lpi[s]);
           idescendant++;
 
           p 	= Lpos[d] ;
@@ -704,9 +701,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         h_syrk->ldc[j]       	= syrk[i].ldc;
         h_syrk->A[j]         	= syrk[i].A;
         h_syrk->C[j]     	    = syrk[i].C;
-        //printf ("\ncheckpoint level = %ld start = %ld end = %ld\n", level, start, end); cudaDeviceSynchronize(); //checkpoint
-        //printf ("checkpoint syrk i = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", i, syrk[i].n, syrk[i].k, syrk[i].A, syrk[i].lda, syrk[i].C, syrk[i].ldc);
-        //printf ("checkpoint h_syrk j = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", j, h_syrk->n[j], h_syrk->k[j], h_syrk->A[j], h_syrk->lda[j], h_syrk->C[j], h_syrk->ldc[j]);
         j++;
       }
       syrk_count = j;
@@ -721,9 +715,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         h_syrk->ldc[j]          = syrk[i].ldc;
         h_syrk->A[j]            = syrk[i].A;
         h_syrk->C[j]            = syrk[i].C;
-        //printf ("\ncheckpoint -level = %ld start = %ld end = %ld\n", level, start, end); cudaDeviceSynchronize(); //checkpoint
-        //printf ("checkpoint -syrk i = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", i, syrk[i].n, syrk[i].k, syrk[i].A, syrk[i].lda, syrk[i].C, syrk[i].ldc);
-        //printf ("checkpoint -h_syrk j = %ld n = %ld k = %ld A = 0x%lx lda = %ld C = 0x%lx ldc = %ld\n", j, h_syrk->n[j], h_syrk->k[j], h_syrk->A[j], h_syrk->lda[j], h_syrk->C[j], h_syrk->ldc[j]);
         j++;
       }
 

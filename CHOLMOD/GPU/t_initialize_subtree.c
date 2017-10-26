@@ -238,12 +238,10 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     /* reset counters */
     memset(supernode_children_count2, 0, L->nsuper*sizeof(Int));
 
-    printf ("checkpoint 0\n");
     TEMPLATE2 (CHOLMOD (build_subtree))( L,
 					gb_p,
 					tree_p,
 					subtreeSize);
-    printf ("checkpoint 1\n");
 
 
 
@@ -271,7 +269,6 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
       level_descendants_ptrs[subtree]       = counts[1];
       supernode_levels_subtree_ptrs[subtree] = counts[2];
 
-    printf ("checkpoint 2\n");
       /* get # children in root supernode of root tree */
       TEMPLATE2 (CHOLMOD (get_children_root))( Common,
 					       gb_p,
@@ -280,7 +277,6 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					       subtree);
 
 
-    printf ("checkpoint 3\n");
       /* get size of factor (Lx) in current subtree */
       TEMPLATE2 (CHOLMOD (get_factor_size))( gb_p,
 					     cpu_p,
@@ -291,7 +287,6 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
                          LpxSub);
 
 
-    printf ("checkpoint 4\n");
       /* get current subtree size/info */
       TEMPLATE2 (CHOLMOD (process_subtree))( Common,
 					    A,
@@ -304,7 +299,6 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    subtree,
 					    max_factor_size,
                         counts);
-    printf ("checkpoint 5\n");
 
 
     } /* end loop over subtrees */
@@ -461,7 +455,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   /* local variables */
   double GPUflops, CPUflops, flop, GPUtime, CPUtime;
   double *subtreeSize, *supernode_flop, *workPerDevice;
-  int i, j, runType, numDevice, numSubtree;
+  int i, j, runType, numDevice, numSubtree, numSubtreeProper;
   Int s;
   Int *supernode_subtree, *supernode_subtree_ptrs, *numSubtreePerDevice, *listSubtreePerDevice;
   struct props gpu, cpu;
@@ -477,6 +471,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   /* set variables */
   runType	= gb_p->runType;
   numSubtree 	= gb_p->numSubtree;
+  numSubtreeProper	= gb_p->numSubtreeProper;
 
   /* set load-balance pointers */
   subtreeSize		= lb_p->subtreeSize;
@@ -572,7 +567,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
       minDevice = Common->numGPU_physical;                          	/* set CPU device */
     }
     /* case root (last subtree) */
-    else if(subtreeReorder[i].id == numSubtree-1)
+    else if(subtreeReorder[i].id == numSubtreeProper)
     {
       minDevice = Common->numGPU_physical + 1;				/* set root */
     }
@@ -617,13 +612,16 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* issue less GPUs if not sufficient subtrees */
-  if(gb_p->has_root == FALSE && numSubtree < Common->numGPU_physical)
+//  if(gb_p->has_root == FALSE && numSubtree < Common->numGPU_physical)
+//  {
+//    gb_p->numGPU = numSubtree;
+//  }
+//  else
+      if(
+//              gb_p->has_root == TRUE && 
+              numSubtreeProper < Common->numGPU_physical)
   {
-    gb_p->numGPU = numSubtree;
-  }
-  else if(gb_p->has_root == TRUE && numSubtree-1 < Common->numGPU_physical)
-  {
-    gb_p->numGPU = numSubtree-1;
+    gb_p->numGPU = numSubtreeProper;
   }
   else
   {
@@ -683,14 +681,12 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
       cudaSetDevice(gpuid);
 
       /* initialize GPU (set pointers, copy memory, etc.) */
-      printf ("checkpoint 6 gpuid = %d numGPU_physical = %d\n", gpuid, numGPU_physical);
       TEMPLATE2 (CHOLMOD (gpu_init))( Common,
   				      L,
 				      A,
 				      gb_p,
 				      gpu_p,
 				      gpuid);
-      printf ("checkpoint 7\n");
     }
   }
 
@@ -726,7 +722,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
     cholmod_tree_pointers *tree_p
   )
 {
-   int i, runType, numSubtree, numThreads;
+   int i, runType, numSubtree, numSubtreeProper, numThreads;
    Int s;
    Int *supernode_subtree, *supernode_subtree_ptrs;
    size_t CSize, MapSize;
@@ -735,6 +731,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
   /* set variables */
   runType	= gb_p->runType;
   numSubtree     = gb_p->numSubtree;
+  numSubtreeProper     = gb_p->numSubtreeProper;
   numThreads	= Common->ompNumThreads;
   CSize         = (gb_p->CSize);
   MapSize       = (gb_p->MapSize);
@@ -759,7 +756,7 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
   /* clear Lx factor (supernodes used for root alg.) */
   Int *lpx = L->px;
   #pragma omp parallel for num_threads(numThreads) private(i, s)
-  for(i=supernode_subtree_ptrs[numSubtree-1]; i<supernode_subtree_ptrs[numSubtree]; i++) {
+  for(i=supernode_subtree_ptrs[numSubtreeProper]; i<supernode_subtree_ptrs[numSubtree]; i++) {
     s = supernode_subtree[i];
     double *ps = (double *)&cpu_p->Lx[lpx[s]];
     memset(ps, 0, sizeof(double));
@@ -1149,7 +1146,6 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
       /* case: descend to next child (traverse down tree)
        *       if supernode has children that haven't been added to the subtree
        */
-    //printf ("checkpoint 0.0.0.0 supernode_children_num[%ld] = %ld\n", s, supernode_children_num[s]);
       if(supernode_children_count2[s] < supernode_children_num[s]) {
         id = supernode_children_ptrs[s] + supernode_children_count2[s];       /* get id of children of the supernode */
         supernode_children_count2[s]++;                                       /* increment children count */
@@ -1164,7 +1160,6 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
         s = supernode_parent[s];                                         /* get id of the parent */
       }
 
-    //printf ("checkpoint 0.0.0.1 supernode_children_num[%ld] = %ld\n", s, supernode_children_num[s]);
       /* exit if root of tree reached */
       if(s == supernode_root[i] && supernode_children_count2[s] == supernode_children_num[s]) {
         break;
@@ -1187,6 +1182,8 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
 
   gb_p->has_root = FALSE;
   supernode_subtree_ptrs[(gb_p->numSubtree)] = j;  	/* set poiner to last subtree */
+
+  gb_p->numSubtreeProper = gb_p->numSubtree;
 
   for(s=0; s < L->nsuper; s++) {                 		/* loop over supernodes */
     /* case if size of candidate subtree > cutoff subtree size */
@@ -1232,10 +1229,11 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
   /* local variables */
   Int i, j, k, s;
   Int *supernode_children, *supernode_children_ptrs, *supernode_subtree, *supernode_subtree_ptrs, *supernode_children_num;
-  int num, child, numSubtree, numThreads;
+  int num, child, numSubtree, numSubtreeProper, numThreads;
 
   /* set variables */
   numSubtree 	= gb_p->numSubtree;
+  numSubtreeProper	= gb_p->numSubtreeProper;
   numThreads	= Common->ompNumThreads;
 
   /* set tree poitners */
@@ -1254,7 +1252,7 @@ void TEMPLATE2 (CHOLMOD (get_children_root))
    */
 
   /* case if root (last) subtree */
-  if(subtree == numSubtree-1) {
+  if(subtree == numSubtreeProper) {
 
     /* loop over supernodes */
 #pragma omp parallel for num_threads(numThreads) private (i, j, k, s, child, num)
@@ -1446,7 +1444,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       if (tree_p->factorized[s] == 0 && supernode_children_num[s] == 0)
       { /* case supernode has no children (belongs to current level) */
 
-          //printf ("checkpoint post s = %ld idx = %ld\n", s, count2);
         supernode_levels[count2++] = s;    	/* store supernode in level */
         nsupernodes++;                     		/* increment # supernodes in level */
         processed_nodes++;                 		/* increment processed supernode coutner */
@@ -1456,7 +1453,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     } /* end loop over supernodes */
 
 
-  if (nsupernodes <= 0) continue;
 
 
 
@@ -1471,7 +1467,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     for(i = 0; i < nsupernodes; i++) {
 
       node = supernode_levels[supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i];	/* get supernode */
-          //printf ("checkpoint remove nsuper = %ld s = %ld idx = %ld subtree = %ld numSubtree = %ld\n", L->nsuper, node, supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels]+i, subtree, gb_p->numSubtree);
       supernode_children_num[node] = EMPTY;   									/* empty children of supernode */
       sparent = supernode_parent[node];   									/* get parent of supernode*/
 
@@ -1522,13 +1517,15 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
      */
 
 
+    maxnumdescendantsperlevel = 0;
+    nbatch = MAXBATCHSIZE;
     /*
      * case if:
      *   1. one of GPU subtrees (not root subtree)
      *   2. not root only
      *   3. not CPU only
      */
-    if((subtree != gb_p->numSubtree-1) && (runType != 3) && (runType != 1)) {
+    if((subtree != gb_p->numSubtreeProper) && (runType != 3) && (runType != 1)) {
 
 
 
@@ -1537,7 +1534,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
       maxsubtreendesc = gb_p->maxndesc;
       maxsubtreebatch = gb_p->maxbatch;
       maxnumdescendantsperlevel = 0;
-      gpu_memtot = 2 * gb_p->LxSizeFactorized;
+      gpu_memtot = 0;
       gpu_memtot_prev = gpu_memtot;
       nbatch = 1;
 
@@ -1682,7 +1679,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     /* store pointer to level */
     supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+num_levels] = count2;
 
-    //printf ("checkpoint processed_nodes = %ld numSuper = %ld\n", processed_nodes, numSuper);
   } /* end loop over levels */
 
 
@@ -1731,11 +1727,12 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
   /* local variables */
   Int p, i, s, nscol, nsrow;
   Int *Super, *Lpi, *supernode_subtree, *supernode_subtree_ptrs, *factor_size;
-  int numSubtree;
+  int numSubtree, numSubtreeProper;
 
   /* set variables */
   p = 0;
   numSubtree	= gb_p->numSubtree;
+  numSubtreeProper	= gb_p->numSubtreeProper;
 
   /* set host pointers */
   Super		= cpu_p->Super;
@@ -1759,7 +1756,7 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
   /* case:
    *   1. subtrees that go to GPU only algorithm (not last/root subtree)
    */
-  if(subtree != numSubtree-1 /*|| numSubtree == 1*/)  {
+  if(subtree != numSubtreeProper /*|| numSubtree == 1*/)  {
 
     /* loop over supernodes */
     for(i=0; i < numSuper; i++) {
@@ -1833,7 +1830,6 @@ void TEMPLATE2 (CHOLMOD (gpu_num_descendants))
     }
 
     tree_p->ndescendants[s] = n_descendant;
-    //printf ("checkpoint ndescendants[%ld] = %ld\n", s, tree_p->ndescendants[s]);
 }
 
 

@@ -106,6 +106,7 @@ typedef struct cholmod_global_pointers
     int numGPU;				/* # GPUs to initialize ( < Common->useGPU if to few subtrees */
     int numDevice;                      /* # devices to use (GPU, CPU, root) */
     int numSubtree;			/* total # subtrees */
+    int numSubtreeProper;			/* total # subtrees excluding root */
     int numRoot;			/* # root supernodes */
     int work_size;			/* size of workspace for cuSolver */
     int check[CHOLMOD_MAX_NUM_PGPUS+2];	/* stores whether subtree is positive-defininte or not (1: positive-definite, 0: not positive definite) */

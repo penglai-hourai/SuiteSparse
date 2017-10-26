@@ -607,7 +607,6 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
           //double loop_time;
 #endif
-          printf ("checkpoint subtree factorization subtree = %ld numSubtree = %ld\n", subtree, gb_p->numSubtree);
 
           PRINTF("\n\nGPU start -\t");
           PRINTFV("device:%d ",deviceid);
