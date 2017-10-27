@@ -524,6 +524,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d = dlarge;
             dlarge = Next[dlarge];
 
+            if (d == EMPTY) {printf ("checkpoint nsuper = %ld s = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, idescendant, ndescendants[s]); exit(0);}
           /* get descendant dimensions */
           kd1 	= Super [d] ;
           kd2 	= Super [d+1] ;
@@ -538,6 +539,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
+            printf ("checkpoint dec -1 nsuper = %ld s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, dancestor, idescendant, ndescendants[dancestor]);
 #pragma omp atomic
                   ndescendants[dancestor]--;
 
@@ -545,6 +547,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   Lpos[d] = pdi2 - pdi;
                   dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               }
+
+          if (dprev != EMPTY)
+              Next[dprev] = dlarge;
+          else
+              Head[s] = dlarge;
           }
           else if (tree_p->factorized[d] == 1)
           {
@@ -553,6 +560,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
+            printf ("checkpoint dec 1 nsuper = %ld s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, dancestor, idescendant, ndescendants[dancestor]);
                   ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);
@@ -573,6 +581,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               }
               else
                   tree_p->factorized[d] = -2;
+
+          if (dprev != EMPTY)
+              Next[dprev] = dlarge;
+          else
+              Head[s] = dlarge;
 
               update_factorized[update_count_factorized++] = d;
           }
@@ -648,14 +661,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
-          }
-
-          if (dprev != EMPTY)
-              Next[dprev] = dlarge;
-          else
-              Head[s] = dlarge;
 
           dprev = d;
+          }
 
         } /* end loop over descendants */
 
@@ -734,6 +742,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int m = gemm[i].m;
         Int n = gemm[i].n;
         Int k = gemm[i].k;
+
 
         if(m < 128 && n < 128 && k < 128) continue;
         h_gemm->m[j]         	= gemm[i].m;
@@ -915,7 +924,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         {
             Int k1, k2, psi, psend, nsrow;
 
-            //printf ("checkpoint nsuper = %ld s = %ld d = %ld LpxSub = %lx\n", L->nsuper, s, d, LpxSub[s]);
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             p 	= Lpos[d] ;
@@ -954,18 +962,21 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                     &beta,
                     d_C,
                     ndrow0);
-            cublasDgemm (
-                    Common->cublasHandle[gpuid],
-                    CUBLAS_OP_N, CUBLAS_OP_T,
-                    ndrow3, ndrow1, ndcol,
-                    &alpha,
-                    d_B,
-                    ndrow0,
-                    d_A,
-                    ndrow0,
-                    &beta,
-                    d_D,
-                    ndrow0);
+            if (ndrow3 > 0)
+            {
+                cublasDgemm (
+                        Common->cublasHandle[gpuid],
+                        CUBLAS_OP_N, CUBLAS_OP_T,
+                        ndrow3, ndrow1, ndcol,
+                        &alpha,
+                        d_B,
+                        ndrow0,
+                        d_A,
+                        ndrow0,
+                        &beta,
+                        d_D,
+                        ndrow0);
+            }
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
