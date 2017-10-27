@@ -934,7 +934,7 @@ void TEMPLATE2 (CHOLMOD (build_tree))
       Lpos [d] = pdi2 - pdi ;
       if (Lpos [d] < ndrow) {
         dancestor = SuperMap [Ls [pdi2]] ;
-//#pragma omp critical
+//#pragma omp critical (head_next)
         {
             Next [d] = Head [dancestor] ;
             Head [dancestor] = d ;
@@ -959,13 +959,13 @@ void TEMPLATE2 (CHOLMOD (build_tree))
     if(nsrow > nscol) {
       Lpos [s] = nscol ;
       sparent = SuperMap [Ls [psi + nscol]] ;
-//#pragma omp critical
+//#pragma omp critical (head_next)
       {
           Next [s] = Head [sparent] ;
           Head [sparent] = s ;
       }
     }
-    //Head [s] = EMPTY ;
+    Head [s] = EMPTY ;
 
 
     /* store tree information */

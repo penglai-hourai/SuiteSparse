@@ -493,7 +493,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
        TIMER_START(tstart,2);
 
-//#pragma omp critical
+//#pragma omp critical (head_next)
 {
 
       /*
@@ -662,7 +662,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               Head [sparent] = s ;
           }
         }
-        //Head [s] = EMPTY ;
+        Head [s] = EMPTY ;
 
 
       } /* end loop over supernodes */

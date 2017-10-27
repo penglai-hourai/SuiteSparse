@@ -277,7 +277,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
        *  into lists, in the order specified.
        *
        */
-//#pragma omp critical
+//#pragma omp critical (head_next)
 {
 
       TIMER_START(tstart,2);
@@ -323,7 +323,7 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
           if (Lpos [d] < ndrow)
           {
             Int dancestor    = SuperMap [Ls [pdi2]] ;
-//#pragma omp critical
+//#pragma omp critical (head_next)
             {
                 Next [d] 	     = Head [dancestor] ;
                 Head [dancestor] = d ;
@@ -382,13 +382,13 @@ int TEMPLATE2 (CHOLMOD (gpu_factorize_cpu_parallel))
         if(nsrow2 > 0) {
           Lpos [s]        = nscol ;
           Int sparent     = SuperMap [Ls [psi + nscol]] ;
-//#pragma omp critical
+//#pragma omp critical (head_next)
           {
               Next [s]        = Head [sparent] ;
               Head [sparent]  = s ;
           }
+          //Head [s] = EMPTY ;
         }
-        //Head [s] = EMPTY ;
 
 
 
