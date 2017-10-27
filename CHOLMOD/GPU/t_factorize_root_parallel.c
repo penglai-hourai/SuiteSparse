@@ -690,7 +690,7 @@ printf ("checkpoint 3\n");
 #else
                 openblas_set_num_threads(numThreads1);
 #endif
-printf ("checkpoint 3\n");
+printf ("checkpoint 3 s = %ld ndescendants = %ld tree_p->ndescendants = %ld\n", s, ndescendants, tree_p->ndescendants[s]);
 
 
 
@@ -714,6 +714,7 @@ printf ("checkpoint 3.-6\n");
 #ifdef QUERY_LX_EVENTS
                         cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
+printf ("checkpoint 3.-6.0\n");
                         while ( (cuErrHost != cudaSuccess
 #ifdef QUERY_LX_EVENTS
                                     || cuErrDev != cudaSuccess
@@ -736,6 +737,7 @@ printf ("checkpoint 3.-6\n");
                             cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
                         }
+printf ("checkpoint 3.-6.1\n");
 
                         if ( cuErrHost == cudaSuccess
 #ifdef QUERY_LX_EVENTS
@@ -760,6 +762,7 @@ printf ("checkpoint 3.-6\n");
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
                         }
+printf ("checkpoint 3.-6.2\n");
                     }
 
 printf ("checkpoint 3.-5\n");
@@ -798,7 +801,7 @@ printf ("checkpoint 3.-5\n");
                      */
                     if ( GPUavailable == 1 )
                     {
-printf ("checkpoint 3.-4 s = %ld d = %ld\n", s, d);
+printf ("checkpoint 3.-4 s = %ld d = %ld ndcol = %ld lpos = %ld pdi = %ld pdend = %ld pdi1 = %ld pdx = %ld ndrow = %ld ndrow2 = %ld\n", s, d, ndcol, p, pdi, pdend, pdi1, pdx, ndrow, ndrow2);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
 printf ("checkpoint 3.-3\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/

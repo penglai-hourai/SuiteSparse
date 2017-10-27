@@ -510,6 +510,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     return (0);
   }
 
+  printf ("checkpoint 3.-4.3-0\n");
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
   /* make the current stream wait for kernels in previous streams */
@@ -530,6 +531,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
+      printf ("checkpoint CUDA error: %s\n", cudaGetErrorString(cudaErr));
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
