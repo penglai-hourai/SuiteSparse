@@ -441,6 +441,13 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         for ( node=0; node<event_len; node++ ) {
             omp_init_lock(&node_locks[node]);
         }
+        {//checkpoint
+            Int s;
+    for (s = 0; s < L->nsuper; s++)//checkpoint
+    {//checkpoint
+        printf ("checkpoint Lpos factorize_root 0: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", s, cpu_p->Lpos[s], cpu_p->Lpi[s], cpu_p->Lpi[s+1], cpu_p->Lpi[s+1] - cpu_p->Lpi[s]);
+    }//checkpoint
+        }//checkpoint
 
         /* loop over supernodes */
         {
@@ -510,6 +517,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 pk = psx;
 
 
+                        printf ("checkpoint -0\n");
 
                 /*
                  *  Initialize Supernode
@@ -522,6 +530,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                  */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, psx, gpuid );
 
+                        printf ("checkpoint -1\n");
 
                 /* construct the scattered Map for supernode s */
 #pragma omp parallel for num_threads(numThreads) if ( nsrow > 128 )
@@ -529,17 +538,20 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     Map [Ls [psi + k]] = k ;
                 }
 
+                        printf ("checkpoint -2\n");
 
 //#pragma omp critical (head_next)
                 {
                     /* reorder descendants in supernode by descreasing size */
                     TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, k1, k2, Ls, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
+                        printf ("checkpoint -3\n");
 
                     for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
                         Next_local[d] = Next[d];
                         Previous_local[d] = Previous[d];
                         Lpos_local[d] = Lpos[d];
                     }
+                        printf ("checkpoint -4\n");
 
                     for ( d = Head[s]; d != EMPTY; d = Next_local[d] ) {
 
@@ -561,6 +573,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         }
 
                     }
+                        printf ("checkpoint -5\n");
 
                     /* prepare next supernode */
                     /* Lpos [s] is offset of first row of s affecting its parent */
@@ -575,9 +588,11 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         }
                         //Head[s] = EMPTY;
                     }
+                        printf ("checkpoint -6\n");
 
                 } /* end pragma omp critical */
 
+                        printf ("checkpoint -7\n");
 
                 /* copy matrix into supernode s (lower triangular part only) */
 #pragma omp parallel for private ( p, pend, pfend, pf, i, j, imap, q ) num_threads(numThreads) if ( k2-k1 > 64 )
@@ -630,6 +645,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
                 }
 
+                        printf ("checkpoint -8\n");
 
                 /* add beta (only real part) to the diagonal of the supernode, if nonzero */
                 if (beta [0] != 0.0)
@@ -641,6 +657,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         pk += nsrow + 1 ;       	/* advance to the next diagonal entry */
                     }
                 }
+                        printf ("checkpoint -9\n");
 
                 /* save/restore the list of supernodes */
                 if (!repeat_supernode)
@@ -660,6 +677,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
                 }
 
+                        printf ("checkpoint -10\n");
 
                 /* initialize the buffer counter */
                 Common->ibuffer[gpuid] = 0;
@@ -671,6 +689,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 dsmall_save = tail;
                 GPUavailable = 1;
 
+                        printf ("checkpoint -11\n");
 
 
 #ifdef MKLROOT
@@ -680,6 +699,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 #endif
 
 
+                        printf ("checkpoint -12\n");
 
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
@@ -770,8 +790,8 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     /* construct the update matrix C for this supernode d */
                     ndrow3 = ndrow2 - ndrow1 ;  	 	/* number of rows of C2 */
 
-printf ("checkpoint desc stats idescendant = %ld ndescendants = %ld s = %ld d = %ld ndcol = %ld lpos = %ld pdi = %ld pdend = %ld pdi1 = %ld pdx = %ld ndrow = %ld ndrow1 = %ld ndrow2 = %ld pdi[d-1] = %ld pdi[d+1] = %ld\n"
-        , idescendant, ndescendants, s, d, ndcol, p, pdi, pdend, pdi1, pdx, ndrow, ndrow1, ndrow2, Lpi[d-1], Lpi[d+1]); //checkpoint
+printf ("checkpoint desc stats idescendant = %ld ndescendants = %ld s = %ld d = %ld ndcol = %ld lpos = %ld pdi = %ld pdend = %ld pdi1 = %ld pdx = %ld ndrow = %ld ndrow1 = %ld ndrow2 = %ld\n"
+        , idescendant, ndescendants, s, d, ndcol, p, pdi, pdend, pdi1, pdx, ndrow, ndrow1, ndrow2); //checkpoint
 
                     /*
                      *  Supernode Assembly

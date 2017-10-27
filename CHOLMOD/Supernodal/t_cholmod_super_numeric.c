@@ -426,6 +426,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+    for (i = 0; i < L->nsuper; i++)//checkpoint
+    {//checkpoint
+        printf ("checkpoint Lpos pre: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", i, cpu_p->Lpos[i], cpu_p->Lpi[i], cpu_p->Lpi[i+1], cpu_p->Lpi[i+1] - cpu_p->Lpi[i]);
+    }//checkpoint
 
 
 
@@ -700,10 +704,10 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (i = 0; i < L->nsuper; i++)
-    {
-            printf ("checkpoint Lpos error: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", i, cpu_p->Lpos[i], cpu_p->Lpi[i], cpu_p->Lpi[i+1], cpu_p->Lpi[i+1] - cpu_p->Lpi[i]);
-    }
+    for (i = 0; i < L->nsuper; i++)//checkpoint
+    {//checkpoint
+        printf ("checkpoint Lpos post: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", i, cpu_p->Lpos[i], cpu_p->Lpi[i], cpu_p->Lpi[i+1], cpu_p->Lpi[i+1] - cpu_p->Lpi[i]);
+    }//checkpoint
 
 
     if (gb_p->has_root == TRUE)
