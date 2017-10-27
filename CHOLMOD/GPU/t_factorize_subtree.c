@@ -907,6 +907,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         {
             Int k1, k2, psi, psend, nsrow;
 
+            //printf ("checkpoint nsuper = %ld s = %ld d = %ld LpxSub = %lx\n", L->nsuper, s, d, LpxSub[s]);
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             p 	= Lpos[d] ;

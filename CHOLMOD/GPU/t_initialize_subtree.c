@@ -256,6 +256,8 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      * 3. Find batching cutoff (up to what level to batch over supernodes)
      */
 
+    memset (LpxSub, -1, sizeof(Int) * L->nsuper);
+    printf ("checkpoint LpxSub reset\n");
     /* loop over subtrees */
     for(subtree = 0; subtree < gb_p->numSubtree; subtree++) {
 
@@ -1181,6 +1183,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
    */
 
   gb_p->has_root = FALSE;
+  printf ("checkpoint has_root = FALSE\n");
   supernode_subtree_ptrs[(gb_p->numSubtree)] = j;  	/* set poiner to last subtree */
 
   gb_p->numSubtreeProper = gb_p->numSubtree;
@@ -1189,6 +1192,7 @@ void TEMPLATE2 (CHOLMOD (build_subtree))
     /* case if size of candidate subtree > cutoff subtree size */
     if(supernode_size[s] > subtreeSize || (runType == 3) || (runType == 1)) {
       gb_p->has_root = TRUE;
+  printf ("checkpoint has_root = TRUE s = %ld\n", s);
       supernode_subtree[j++] = s;              	/* store supernode in subtree */
     }
   } /* end loop over supernodes */
@@ -1767,6 +1771,7 @@ void TEMPLATE2 (CHOLMOD (get_factor_size))
           nscol = Super [s+1] - Super [s] ;
           nsrow = Lpi[s+1] - Lpi[s] ;
           LpxSub [s] = p ;                                           /* store pointers to supernodes in sub-factor */
+          printf ("checkpoint LpxSub[%ld] = %ld\n", s, p);
           p += nscol * nsrow ;                                       /* increment pointer to supernodes */
       }
       else

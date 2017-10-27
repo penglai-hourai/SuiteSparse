@@ -475,6 +475,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    * better H2D bandwidth.
    */
   /* copy host data to pinned buffer */
+  printf ("checkpoint 3.-4.0 ndcol = %ld ndrow = %ld ndrow2 = %ld\n", ndcol, ndrow, ndrow2);
 #pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
   for ( icol=0; icol<ndcol; icol++ ) {
     for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
@@ -483,6 +484,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     }
   }
 
+  printf ("checkpoint 3.-4.1\n");
 
 
   /* make the current stream wait for kernels in previous streams */
@@ -491,6 +493,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
+  printf ("checkpoint 3.-4.2\n");
 
   /* copy pinned buffer to device */
   cudaErr = cudaMemcpyAsync (
@@ -499,8 +502,10 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           ndrow2*ndcol*L_ENTRY*sizeof(devPtrLx[0]),
           cudaMemcpyHostToDevice,
           Common->gpuStream[gpuid][iDevBuff]);
+  printf ("checkpoint 3.-4.3\n");
 
   if ( cudaErr ) {
+      printf ("checkpoint CUDA error: %s\n", cudaGetErrorString(cudaErr));
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
     return (0);
   }
@@ -511,6 +516,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
+  printf ("checkpoint 3.-4.4\n");
 
   /* create relative map for the descendant */
   createRelativeMapOnDevice (
@@ -520,6 +526,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           pdi1,
           ndrow2,
           &(Common->gpuStream[gpuid][iDevBuff]));
+  printf ("checkpoint 3.-4.5\n");
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
@@ -535,6 +542,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     return(0);
   }
 
+  printf ("checkpoint 3.-4.6\n");
 
   /*
    * Perform DSYRK on GPU for current descendant
@@ -578,6 +586,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
+  printf ("checkpoint 3.-4.7\n");
 
 
   /*
@@ -634,6 +643,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
 
+  printf ("checkpoint 3.-4.8\n");
 
   /*
    * Assemble the update C on the devicet
@@ -665,6 +675,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
+  printf ("checkpoint 3.-4.9\n");
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
