@@ -523,7 +523,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d = dlarge;
             dlarge = Next[dlarge];
 
-            if (d == EMPTY) {printf ("checkpoint nsuper = %ld s = %ld d = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, idescendant, ndescendants[s]); exit(0);}
           /* get descendant dimensions */
           kd1 	= Super [d] ;
           kd2 	= Super [d+1] ;
@@ -538,7 +537,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               while (dancestor != EMPTY && Lpos[d] < ndrow)
               {
-            printf ("checkpoint dec -1 nsuper = %ld s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, dancestor, idescendant, ndescendants[dancestor]);
 #pragma omp atomic
                   ndescendants[dancestor]--;
 
@@ -554,7 +552,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               dancestor = SuperMap [Ls [pdi + Lpos[d]]];
               while (dancestor != EMPTY && LpxSub[dancestor] >= 0 && Lpos[d] < ndrow)
               {
-            printf ("checkpoint dec 1 nsuper = %ld s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", L->nsuper, s, d, dancestor, idescendant, ndescendants[dancestor]);
                   ndescendants[dancestor]--;
 
                   for (pdi2 = pdi + Lpos[d]; pdi2 < pdend && Ls [pdi2] < Super[dancestor+1]; pdi2++);

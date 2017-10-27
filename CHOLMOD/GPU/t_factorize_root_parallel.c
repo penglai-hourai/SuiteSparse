@@ -508,7 +508,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 nsrow = psend - psi;       		/* # of rows in all of s */
                 pend = psx + nsrow * nscol;       	/* s is nsrow-by-nscol */
                 pk = psx;
-printf ("checkpoint 0\n");
 
 
 
@@ -522,7 +521,6 @@ printf ("checkpoint 0\n");
                  *
                  */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, psx, gpuid );
-printf ("checkpoint 1\n");
 
 
                 /* construct the scattered Map for supernode s */
@@ -531,31 +529,25 @@ printf ("checkpoint 1\n");
                     Map [Ls [psi + k]] = k ;
                 }
 
-printf ("checkpoint 1-0\n");
 
 //#pragma omp critical (head_next)
                 {
                     /* reorder descendants in supernode by descreasing size */
                     TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, k1, k2, Ls, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
-printf ("checkpoint 1-1\n");
 
                     for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
                         Next_local[d] = Next[d];
                         Previous_local[d] = Previous[d];
                         Lpos_local[d] = Lpos[d];
                     }
-printf ("checkpoint 1-2\n");
 
                     for ( d = Head[s]; d != EMPTY; d = Next_local[d] ) {
 
-printf ("checkpoint 1-2.0 s = %ld d = %ld\n", s, d);
                         p = Lpos [d] ;          	 	/* offset of 1st row of d affecting s */
                         pdi = Lpi [d] ;         		/* pointer to first row of d in Ls */
                         pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
                         pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
-printf ("checkpoint 1-2.1\n");
                         for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
-printf ("checkpoint 1-2.2\n");
                         ndrow = pdend - pdi ;   	 	/* # rows in all of d */
                         Lpos [d] = pdi2 - pdi ;
 
@@ -569,7 +561,6 @@ printf ("checkpoint 1-2.2\n");
                         }
 
                     }
-printf ("checkpoint 1-3\n");
 
                     /* prepare next supernode */
                     /* Lpos [s] is offset of first row of s affecting its parent */
@@ -584,10 +575,8 @@ printf ("checkpoint 1-3\n");
                         }
                         //Head[s] = EMPTY;
                     }
-printf ("checkpoint 1-4\n");
 
                 } /* end pragma omp critical */
-printf ("checkpoint 2\n");
 
 
                 /* copy matrix into supernode s (lower triangular part only) */
@@ -640,7 +629,6 @@ printf ("checkpoint 2\n");
                         }
                     }
                 }
-printf ("checkpoint 3\n");
 
 
                 /* add beta (only real part) to the diagonal of the supernode, if nonzero */
@@ -690,7 +678,6 @@ printf ("checkpoint 3\n");
 #else
                 openblas_set_num_threads(numThreads1);
 #endif
-printf ("checkpoint 3 s = %ld ndescendants = %ld tree_p->ndescendants = %ld\n", s, ndescendants, tree_p->ndescendants[s]);
 
 
 
@@ -705,7 +692,6 @@ printf ("checkpoint 3 s = %ld ndescendants = %ld tree_p->ndescendants = %ld\n", 
                     Common->ibuffer[gpuid]++;
                     Common->ibuffer[gpuid] = Common->ibuffer[gpuid]%(CHOLMOD_HOST_SUPERNODE_BUFFERS*CHOLMOD_DEVICE_LX_BUFFERS*CHOLMOD_DEVICE_C_BUFFERS*CHOLMOD_DEVICE_STREAMS);
 
-printf ("checkpoint 3.-6\n");
 
                     /* get next descendant */
                     if ( idescendant > 0 ) {
@@ -714,7 +700,6 @@ printf ("checkpoint 3.-6\n");
 #ifdef QUERY_LX_EVENTS
                         cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
-printf ("checkpoint 3.-6.0\n");
                         while ( (cuErrHost != cudaSuccess
 #ifdef QUERY_LX_EVENTS
                                     || cuErrDev != cudaSuccess
@@ -737,7 +722,6 @@ printf ("checkpoint 3.-6.0\n");
                             cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
                         }
-printf ("checkpoint 3.-6.1\n");
 
                         if ( cuErrHost == cudaSuccess
 #ifdef QUERY_LX_EVENTS
@@ -762,10 +746,8 @@ printf ("checkpoint 3.-6.1\n");
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
                         }
-printf ("checkpoint 3.-6.2\n");
                     }
 
-printf ("checkpoint 3.-5\n");
 
                     /* get the size of supernode d */
                     kd1 = Super [d] ;      		/* d contains cols kd1 to kd2-1 of L */
@@ -788,6 +770,8 @@ printf ("checkpoint 3.-5\n");
                     /* construct the update matrix C for this supernode d */
                     ndrow3 = ndrow2 - ndrow1 ;  	 	/* number of rows of C2 */
 
+printf ("checkpoint desc stats idescendant = %ld ndescendants = %ld s = %ld d = %ld ndcol = %ld lpos = %ld pdi = %ld pdend = %ld pdi1 = %ld pdx = %ld ndrow = %ld ndrow1 = %ld ndrow2 = %ld pdi[d-1] = %ld pdi[d+1] = %ld\n"
+        , idescendant, ndescendants, s, d, ndcol, p, pdi, pdend, pdi1, pdx, ndrow, ndrow1, ndrow2, Lpi[d-1], Lpi[d+1]); //checkpoint
 
                     /*
                      *  Supernode Assembly
@@ -801,9 +785,9 @@ printf ("checkpoint 3.-5\n");
                      */
                     if ( GPUavailable == 1 )
                     {
-printf ("checkpoint 3.-4 s = %ld d = %ld ndcol = %ld lpos = %ld pdi = %ld pdend = %ld pdi1 = %ld pdx = %ld ndrow = %ld ndrow2 = %ld\n", s, d, ndcol, p, pdi, pdend, pdi1, pdx, ndrow, ndrow2);
+                        printf ("checkpoint 0\n");
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
-printf ("checkpoint 3.-3\n");
+                        printf ("checkpoint 1\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }
@@ -819,7 +803,6 @@ printf ("checkpoint 3.-3\n");
                         gemm_count = 0;
                         counter = 0;
 
-printf ("checkpoint 3.-2\n");
                         /* loop over descendants */
                         for(tid = 0; tid < nthreads; tid++)
                         {
@@ -910,7 +893,6 @@ printf ("checkpoint 3.-2\n");
                                 }
                             }
                         } /* end loop over parallel descendants (threads) */
-printf ("checkpoint 3.-1\n");
 
 #ifdef USE_PTHREAD
                         {
@@ -960,14 +942,12 @@ printf ("checkpoint 3.-1\n");
 
 
 #ifdef REAL
-printf ("checkpoint 3.0 ldc = %ld\n", ldc);
                                 BLAS_dsyrk ("L", "N",
                                         n, k,
                                         one,
                                         A, lda,
                                         zero,
                                         C, ldc) ;
-printf ("checkpoint 3.1\n");
 #else
                                 BLAS_zherk ("L", "N",
                                         n, k,
@@ -1011,7 +991,6 @@ printf ("checkpoint 3.1\n");
                                 if (m > 0)
                                 {
 #ifdef REAL
-printf ("checkpoint 3.2\n");
                                     BLAS_dgemm ("N","T",
                                             m, n, k,
                                             one,
@@ -1019,7 +998,6 @@ printf ("checkpoint 3.2\n");
                                             B, ldb,
                                             zero,
                                             C, ldc) ;
-printf ("checkpoint 3.3\n");
 #else
                                     BLAS_zgemm ("N", "C",
                                             m, n, k,
@@ -1078,7 +1056,6 @@ printf ("checkpoint 3.3\n");
                     }
 
                 } /* end loop over descendants */
-printf ("checkpoint 4\n");
 
 #ifdef USE_PTHREAD
                 if (pid != 0)
@@ -1102,7 +1079,6 @@ printf ("checkpoint 4\n");
                 iHostBuff = (Common->ibuffer[gpuid])%CHOLMOD_HOST_SUPERNODE_BUFFERS;
                 iDevBuff = (Common->ibuffer[gpuid])%CHOLMOD_DEVICE_LX_BUFFERS;
                 TEMPLATE2 ( CHOLMOD (gpu_final_assembly_root ))( Common, gpu_p, Lx, psx, nscol, nsrow, supernodeUsedGPU, gpuid );
-printf ("checkpoint 5\n");
 
 
 
@@ -1121,12 +1097,10 @@ printf ("checkpoint 5\n");
                     supernodeUsedGPU = 0;
 
 #ifdef REAL
-printf ("checkpoint 5.1\n");
                     LAPACK_dpotrf ("L",
                             nscol2,                    	/* N: nscol2 */
                             Lx + L_ENTRY*psx, nsrow,    	/* A, LDA: S1, nsrow */
                             info) ;                    	/* INFO */
-printf ("checkpoint 5.2\n");
 #else
                     LAPACK_zpotrf ("L",
                             nscol2,                     /* N: nscol2 */
@@ -1136,7 +1110,6 @@ printf ("checkpoint 5.2\n");
 
 
                 }
-printf ("checkpoint 6\n");
 
 
 
@@ -1239,7 +1212,6 @@ printf ("checkpoint 6\n");
                     }
 
                 } /* end if info */
-printf ("checkpoint 7\n");
 
 
                 if (!repeat_supernode)
@@ -1327,7 +1299,6 @@ printf ("checkpoint 7\n");
                             s = EMPTY;
                     }
                 }
-printf ("checkpoint 8\n");
             }
                 else
                 {
