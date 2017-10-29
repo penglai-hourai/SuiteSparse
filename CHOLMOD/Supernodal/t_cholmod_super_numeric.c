@@ -256,8 +256,8 @@ static int TEMPLATE (cholmod_super_numeric)
   cpu_p->SuperMap     = Iwork;
   cpu_p->RelativeMap  = Iwork + L->n;
   cpu_p->Next         = Iwork + 2*((size_t)L->n);
-  cpu_p->Lpos         = Iwork + 2*((size_t)L->n) + L->nsuper;
-  cpu_p->Next_save    = Iwork + 2*((size_t)L->n) + 2*((size_t)L->nsuper);
+  cpu_p->Next_save    = Iwork + 2*((size_t)L->n) + 1*((size_t)L->nsuper);
+  cpu_p->Lpos         = Iwork + 2*((size_t)L->n) + 2*((size_t)L->nsuper);
   cpu_p->Lpos_save    = Iwork + 2*((size_t)L->n) + 3*((size_t)L->nsuper);
   cpu_p->Previous     = Iwork + 2*((size_t)L->n) + 4*((size_t)L->nsuper);
 
@@ -426,10 +426,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (i = 0; i < L->nsuper; i++)//checkpoint
-    {//checkpoint
-        printf ("checkpoint Lpos pre: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", i, cpu_p->Lpos[i], cpu_p->Lpi[i], cpu_p->Lpi[i+1], cpu_p->Lpi[i+1] - cpu_p->Lpi[i]);
-    }//checkpoint
 
 
 
@@ -704,10 +700,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (i = 0; i < L->nsuper; i++)//checkpoint
-    {//checkpoint
-        printf ("checkpoint Lpos post: idx = %ld lpos = %ld pdi = %ld pdend = %ld nrows = %ld\n", i, cpu_p->Lpos[i], cpu_p->Lpi[i], cpu_p->Lpi[i+1], cpu_p->Lpi[i+1] - cpu_p->Lpi[i]);
-    }//checkpoint
 
 
     if (gb_p->has_root == TRUE)

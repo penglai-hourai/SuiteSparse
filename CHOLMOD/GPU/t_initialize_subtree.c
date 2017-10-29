@@ -104,7 +104,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
   )
 {
   /* local variables */
-  Int n, nls, numSuper, subtree, subtreeSize, subtreeSizeDiff, subtreeSizePrev, max_factor_size;
+  Int s, n, nls, numSuper, subtree, subtreeSize, subtreeSizeDiff, subtreeSizePrev, max_factor_size;
   Int *supernode_children_num, *supernode_children_num2, *supernode_children_count2,
       *supernode_levels_subtree_ptrs, *supernode_subtree_ptrs, *level_num_desc_ptrs,
       *level_descendants_ptrs, *Lpi;
@@ -256,7 +256,13 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
      * 3. Find batching cutoff (up to what level to batch over supernodes)
      */
 
-    memset (LpxSub, -1, sizeof(Int) * L->nsuper);
+    //memset (LpxSub, -1, sizeof(Int) * L->nsuper);
+    int numThreads	= Common->ompNumThreads;
+#pragma omp parallel for num_threads(numThreads)
+    for (s = 0; s < L->nsuper; s++)
+    {
+        LpxSub[s] = -1;
+    }
     /* loop over subtrees */
     for(subtree = 0; subtree < gb_p->numSubtree; subtree++) {
 
@@ -1811,7 +1817,6 @@ void TEMPLATE2 (CHOLMOD (gpu_num_descendants))
     d = cpu_p->Head[s];
     while ( d != EMPTY )
     {
-        printf ("checkpoint counter init s = %ld d = %ld counter = %ld\n", s, d, n_descendant);
         n_descendant++;
         d = cpu_p->Next[d];
     }

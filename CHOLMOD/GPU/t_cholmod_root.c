@@ -475,7 +475,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    * better H2D bandwidth.
    */
   /* copy host data to pinned buffer */
-  printf ("chckpoint 0.0\n");
 #pragma omp parallel for num_threads(numThreads) private (icol, irow) if (ndcol > 32)
   for ( icol=0; icol<ndcol; icol++ ) {
     for ( irow=0; irow<ndrow2*L_ENTRY; irow++ ) {
@@ -485,7 +484,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
-  printf ("chckpoint 0.1\n");
 
   /* make the current stream wait for kernels in previous streams */
 #ifndef QUERY_LX_EVENTS
@@ -493,7 +491,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
-  printf ("chckpoint 0.2\n");
 
   /* copy pinned buffer to device */
   cudaErr = cudaMemcpyAsync (
@@ -507,7 +504,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
     return (0);
   }
-  printf ("chckpoint 0.3\n");
 
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
@@ -515,7 +511,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
-  printf ("chckpoint 0.4\n");
 
   /* create relative map for the descendant */
   createRelativeMapOnDevice (
@@ -531,7 +526,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"createRelativeMapOnDevice");
   }
 
-  printf ("chckpoint 0.5\n");
 
 
   /* set cuBlas stream  */
@@ -550,7 +544,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
 #ifdef REAL
-  printf ("chckpoint 0.6\n");
   cublasStatus = cublasDsyrk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
           CUBLAS_FILL_MODE_LOWER,
@@ -563,7 +556,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           &beta,          				/* BETA:   0 */
           devPtrC,
           ndrow2) ;       				/* C, LDC: C1 */
-  printf ("chckpoint 0.7\n");
 #else
   cublasStatus = cublasZherk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
@@ -586,7 +578,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
-  printf ("chckpoint 0.8\n");
 
 
   /*
@@ -642,7 +633,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
-  printf ("chckpoint 0.9\n");
 
 
   /*
@@ -652,7 +642,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][iDevBuff], Common->cublasEventPotrf[gpuid][0], 0) ;
 #endif
 #ifdef REAL
-  printf ("chckpoint 0.10\n");
   addUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
           devPtrC,
@@ -661,7 +650,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           ndrow2,
           nsrow,
           &(Common->gpuStream[gpuid][iDevBuff]));
-  printf ("chckpoint 0.11\n");
 #else
   addComplexUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
