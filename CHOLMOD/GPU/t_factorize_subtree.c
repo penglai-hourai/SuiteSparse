@@ -556,11 +556,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
               if (dancestor != EMPTY && Lpos[d] < ndrow)
               {
-#pragma omp critical (head_next)
-                  {
-                      Next [d] = Head [dancestor] ;
-                      Head [dancestor] = d ;
-                  }
+//#pragma omp critical (head_next)
+//                  {
+//                      Next [d] = Head [dancestor] ;
+//                      Head [dancestor] = d ;
+//                  }
                   tree_p->factorized[d] = 1;
               }
               else
@@ -582,22 +582,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           ndrow1 = pdi2 - pdi1 ;
           ndrow2 = pdend - pdi1 ;
           ndrow3 = ndrow2 - ndrow1 ;
-
-          /* prepare for next descendant */
-          Lpos [d] = pdi2 - pdi ;
-
-          if (Lpos [d] < ndrow) {
-              dancestor = SuperMap [Ls [pdi2]] ;
-#pragma omp critical (head_next)
-              {
-                  Next [d] = Head [dancestor] ;
-                  Head [dancestor] = d ;
-              }
-              tree_p->factorized[d] = 2;
-          }
-          else
-              tree_p->factorized[d] = -2;
-
 
           Int m   = ndrow2-ndrow1;
           Int n   = ndrow1;
@@ -642,6 +626,21 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           devPtrC+=ndrow1*ndrow2;
           desc_count++;
+
+          /* prepare for next descendant */
+          Lpos [d] = pdi2 - pdi ;
+
+          if (Lpos [d] < ndrow) {
+              dancestor = SuperMap [Ls [pdi2]] ;
+//#pragma omp critical (head_next)
+//              {
+//                  Next [d] = Head [dancestor] ;
+//                  Head [dancestor] = d ;
+//              }
+              tree_p->factorized[d] = 2;
+          }
+          else
+              tree_p->factorized[d] = -2;
           }
 
         } /* end loop over descendants */
@@ -665,6 +664,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       } /* end loop over supernodes */
 
 }/* end pragma omp critical */
+    if (gb_p->loop > 0) return;//checkpoint
 
 
 
@@ -723,7 +723,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int m = gemm[i].m;
         Int n = gemm[i].n;
         Int k = gemm[i].k;
-
 
         if(m < 128 && n < 128 && k < 128) continue;
         h_gemm->m[j]         	= gemm[i].m;
@@ -837,137 +836,137 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
      TIMER_END(tstart,tend,3);
 
      Common->ibuffer[gpuid] = 0;
-    for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
-    {
-        int iBuff;
-
-        const int stype = cpu_p->stype;
-
-        Int i, j, k, p, pend, nzmax, imap;
-        Int pdi0, pdx0, ndrow0;
-        Int *d_Ls, *d_Map, *d_Ap, *d_Ai, Apdiff;
-        double *d_Ax, *d_Lx;
-        struct desc_attributes h_attributes, *d_attributes;
-
-        const double alpha = 1, beta = 0;
-        double *d_A, *d_B, *d_C, *d_D;
-
-        iBuff = Common->ibuffer[gpuid] % 2;
-        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
-
-        d_Ls = gpu_p->d_Ls[gpuid];
-        d_Map = gpu_p->d_MapFactorized[gpuid][iBuff];
-        d_Ap = gpu_p->d_Ap[gpuid];
-        d_Ai = gpu_p->d_Ai[gpuid];
-        d_Ax = gpu_p->d_Ax[gpuid];
-        d_Lx = gpu_p->d_LxFactorized[gpuid][iBuff];
-        d_attributes = gpu_p->d_attributes[gpuid][iBuff];
-
-        d = update_factorized[d_itr];
-
-        /* get descendant dimensions */
-        kd1 	= Super [d] ;
-        kd2 	= Super [d+1] ;
-        ndcol = kd2 - kd1 ;
-        pdi 	= Lpi [d] ;
-        pdi0 = pdi + Lpos[d];
-        pdend = Lpi [d+1] ;
-        pdx0 	= Lpx [d] + Lpos[d] ;
-        ndrow = pdend - pdi ;
-        ndrow0 = pdend - pdi0 ;
-
-        nzmax = 0;
-        for (k = kd1; k < kd2; k++)
-        {
-            Apdiff = Ap[k+1] - Ap[k];
-            if (nzmax < Apdiff) nzmax = Apdiff;
-        }
-
-        h_attributes.kd1 = kd1;
-        h_attributes.kd2 = kd2;
-        h_attributes.ndcol = ndcol;
-        h_attributes.pdi0 = pdi0;
-        h_attributes.pdx0 = pdx0;
-        h_attributes.ndrow0 = ndrow0;
-
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
-
-        cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        cudaMemsetAsync (d_Lx, 0, sizeof(double) * ndcol * ndrow0, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        createMapOnDevice_factorized (d_Map, d_Ls, ndrow0, d_attributes, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        s = SuperMap [Ls [pdi + Lpos[d]]];
-        while (s != EMPTY && LpxSub[s] >= 0 && Lpos[d] < ndrow)
-        {
-            Int k1, k2, psi, psend, nsrow;
-
-            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
-
-            p 	= Lpos[d] ;
-            pdi1 	= pdi + p ;
-
-            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Super[s+1]; pdi2++) ;
-            ndrow1 = pdi2 - pdi1 ;
-            ndrow2 = pdend - pdi1 ;
-            ndrow3 = ndrow2 - ndrow1 ;
-
-            /* prepare for next descendant */
-            Lpos [d] = pdi2 - pdi ;
-
-            k1 = Super[s];
-            k2 = Super[s+1];
-            psi = Lpi[s];
-            psx = Lpx[s];
-            psend = Lpi[s+1];
-            nsrow = psend - psi;
-
-            d_A = d_Lx + (pdi1 - pdi0);
-            d_B = d_A + ndrow1;
-            d_C = gpu_p->d_C[gpuid];
-            d_D = d_C + ndrow1;
-
-            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            cublasDsyrk (
-                    Common->cublasHandle[gpuid],
-                    CUBLAS_FILL_MODE_LOWER,
-                    CUBLAS_OP_N,
-                    ndrow1,
-                    ndcol,
-                    &alpha,
-                    d_A,
-                    ndrow0,
-                    &beta,
-                    d_C,
-                    ndrow0);
-            if (ndrow3 > 0)
-            {
-                cublasDgemm (
-                        Common->cublasHandle[gpuid],
-                        CUBLAS_OP_N, CUBLAS_OP_T,
-                        ndrow3, ndrow1, ndcol,
-                        &alpha,
-                        d_B,
-                        ndrow0,
-                        d_A,
-                        ndrow0,
-                        &beta,
-                        d_D,
-                        ndrow0);
-            }
-            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-            s = SuperMap [Ls [pdi + Lpos[d]]];
-        }
-
-        cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-    }
-
-    cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
+//    for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
+//    {
+//        int iBuff;
+//
+//        const int stype = cpu_p->stype;
+//
+//        Int i, j, k, p, pend, nzmax, imap;
+//        Int pdi0, pdx0, ndrow0;
+//        Int *d_Ls, *d_Map, *d_Ap, *d_Ai, Apdiff;
+//        double *d_Ax, *d_Lx;
+//        struct desc_attributes h_attributes, *d_attributes;
+//
+//        const double alpha = 1, beta = 0;
+//        double *d_A, *d_B, *d_C, *d_D;
+//
+//        iBuff = Common->ibuffer[gpuid] % 2;
+//        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) / 2;
+//
+//        d_Ls = gpu_p->d_Ls[gpuid];
+//        d_Map = gpu_p->d_MapFactorized[gpuid][iBuff];
+//        d_Ap = gpu_p->d_Ap[gpuid];
+//        d_Ai = gpu_p->d_Ai[gpuid];
+//        d_Ax = gpu_p->d_Ax[gpuid];
+//        d_Lx = gpu_p->d_LxFactorized[gpuid][iBuff];
+//        d_attributes = gpu_p->d_attributes[gpuid][iBuff];
+//
+//        d = update_factorized[d_itr];
+//
+//        /* get descendant dimensions */
+//        kd1 	= Super [d] ;
+//        kd2 	= Super [d+1] ;
+//        ndcol = kd2 - kd1 ;
+//        pdi 	= Lpi [d] ;
+//        pdi0 = pdi + Lpos[d];
+//        pdend = Lpi [d+1] ;
+//        pdx0 	= Lpx [d] + Lpos[d] ;
+//        ndrow = pdend - pdi ;
+//        ndrow0 = pdend - pdi0 ;
+//
+//        nzmax = 0;
+//        for (k = kd1; k < kd2; k++)
+//        {
+//            Apdiff = Ap[k+1] - Ap[k];
+//            if (nzmax < Apdiff) nzmax = Apdiff;
+//        }
+//
+//        h_attributes.kd1 = kd1;
+//        h_attributes.kd2 = kd2;
+//        h_attributes.ndcol = ndcol;
+//        h_attributes.pdi0 = pdi0;
+//        h_attributes.pdx0 = pdx0;
+//        h_attributes.ndrow0 = ndrow0;
+//
+//        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+//
+//        cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//
+//        cudaMemsetAsync (d_Lx, 0, sizeof(double) * ndcol * ndrow0, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//
+//        createMapOnDevice_factorized (d_Map, d_Ls, ndrow0, d_attributes, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//
+//        initLxOnDevice_factorized (d_Lx, d_Ax, d_Ap, d_Ai, d_Map, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//
+//        s = SuperMap [Ls [pdi + Lpos[d]]];
+//        while (s != EMPTY && LpxSub[s] >= 0 && Lpos[d] < ndrow)
+//        {
+//            Int k1, k2, psi, psend, nsrow;
+//
+//            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
+//
+//            p 	= Lpos[d] ;
+//            pdi1 	= pdi + p ;
+//
+//            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Super[s+1]; pdi2++) ;
+//            ndrow1 = pdi2 - pdi1 ;
+//            ndrow2 = pdend - pdi1 ;
+//            ndrow3 = ndrow2 - ndrow1 ;
+//
+//            k1 = Super[s];
+//            k2 = Super[s+1];
+//            psi = Lpi[s];
+//            psx = Lpx[s];
+//            psend = Lpi[s+1];
+//            nsrow = psend - psi;
+//
+//            d_A = d_Lx + (pdi1 - pdi0);
+//            d_B = d_A + ndrow1;
+//            d_C = gpu_p->d_C[gpuid];
+//            d_D = d_C + ndrow1;
+//
+//            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//            cublasDsyrk (
+//                    Common->cublasHandle[gpuid],
+//                    CUBLAS_FILL_MODE_LOWER,
+//                    CUBLAS_OP_N,
+//                    ndrow1,
+//                    ndcol,
+//                    &alpha,
+//                    d_A,
+//                    ndrow0,
+//                    &beta,
+//                    d_C,
+//                    ndrow0);
+//            if (ndrow3 > 0)
+//            {
+//                cublasDgemm (
+//                        Common->cublasHandle[gpuid],
+//                        CUBLAS_OP_N, CUBLAS_OP_T,
+//                        ndrow3, ndrow1, ndcol,
+//                        &alpha,
+//                        d_B,
+//                        ndrow0,
+//                        d_A,
+//                        ndrow0,
+//                        &beta,
+//                        d_D,
+//                        ndrow0);
+//            }
+//            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//            cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//
+//            /* prepare for next descendant */
+//            Lpos [d] = pdi2 - pdi ;
+//
+//            s = SuperMap [Ls [pdi + Lpos[d]]];
+//        }
+//
+//        cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+//    }
+//
+//    cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
 
       /*
        *  Supernode Assembly - BATCHED

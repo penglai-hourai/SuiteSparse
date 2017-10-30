@@ -668,6 +668,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
+      printf ("checkpoint CUDA error: %s\n", cudaGetErrorString(cudaErr));
     ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n");
     return (0) ;
   }

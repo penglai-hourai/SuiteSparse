@@ -150,6 +150,7 @@ typedef struct cholmod_global_pointers
     size_t MapworkSize;
 
     int has_root;
+    int loop;//checkpoint
 } cholmod_global_pointers ;
 
 

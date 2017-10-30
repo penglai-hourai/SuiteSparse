@@ -613,6 +613,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
+    if (h_gemm->m[i] > 0)
     /* dgemm on cuBlas */
     cublasDgemm ( Common->cublasHandle[gpuid],
                   CUBLAS_OP_N, CUBLAS_OP_T,
@@ -983,6 +984,7 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
       ERROR (CHOLMOD_GPU_PROBLEM, "GPU cublasSetStream failure");
     }
 
+    if (h_trsm->m[i] > 0)
     /* trsm on cuBlas */
     cublasDtrsm ( Common->cublasHandle[gpuid],
                   CUBLAS_SIDE_RIGHT,

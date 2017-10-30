@@ -441,7 +441,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
         for ( node=0; node<event_len; node++ ) {
             omp_init_lock(&node_locks[node]);
         }
-            Int s;
 
         /* loop over supernodes */
         {
