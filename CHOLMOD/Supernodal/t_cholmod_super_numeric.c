@@ -431,8 +431,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (gb_p->loop = 0; gb_p->loop < 2; gb_p->loop++)
-    //for (loop = 0; loop < 2; loop++)
+    for (loop = 0; loop < 2; loop++)
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
@@ -455,7 +454,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    if (gb_p->loop > 0) break;//checkpoint
 
 
 
@@ -690,13 +688,6 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         printf ("subtree factorize time = %lf\n", SuiteSparse_time() - subtree_factorize_time);
 #endif
-        for (i = 0; i < L->nsuper; i++)
-        {
-            if (cpu_p->Lpos[i] < 0 || cpu_p->Lpos[i] > cpu_p->Lpi[i+1] - cpu_p->Lpi[i] || cpu_p->Lpi[i+1] < cpu_p->Lpi[i])
-            {
-                printf ("lpos error: loop = %d Lpos[%ld] = %ld Lpi[%ld] = %ld Lpi[%ld] = %ld nsuper = %ld\n", gb_p->loop, i, cpu_p->Lpos[i], i, cpu_p->Lpi[i], i+1, cpu_p->Lpi[i+1], L->nsuper);
-            }
-        }
     }
 
 

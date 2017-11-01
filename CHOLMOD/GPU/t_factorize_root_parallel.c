@@ -218,7 +218,6 @@
             Int s;
             s = supernode_levels[node];
             if (pending[node-start_global] == 0)
-            printf ("checkpoint leaves[%ld] = %ld\n", nleaves, s);
             leaves[nleaves++] = s;
         }
 
@@ -239,7 +238,7 @@
                 int i, j, k;
                 Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
                     kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
-                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, dsmall_save, tail, info = 0,
+                    idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, tail, info = 0,
                     GPUavailable, mapCreatedOnGpu, supernodeUsedGPU;
                 Int repeat_supernode;
                 cudaError_t cuErrHost;
@@ -287,6 +286,7 @@
                 pend = psx + nsrow * nscol;       	/* s is nsrow-by-nscol */
                 pk = psx;
 
+                        printf ("checkpoint -6\n");
 
 
                 /*
@@ -300,6 +300,7 @@
                  */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, psx, gpuid );
 
+                        printf ("checkpoint -5\n");
 
                 /* construct the scattered Map for supernode s */
 #pragma omp parallel for num_threads(numThreads) if ( nsrow > 128 )
@@ -307,6 +308,7 @@
                     Map [Ls [psi + k]] = k ;
                 }
 
+                        printf ("checkpoint -4\n");
 
 //#pragma omp critical (head_next)
                 {
@@ -325,9 +327,7 @@
                         pdi = Lpi [d] ;         		/* pointer to first row of d in Ls */
                         pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
                         pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
-            //printf ("checkpoint 0 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                         for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; pdi2++) ;
-            //printf ("checkpoint 1 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                         ndrow = pdend - pdi ;   	 	/* # rows in all of d */
                         Lpos [d] = pdi2 - pdi ;
 
@@ -358,6 +358,7 @@
 
                 } /* end pragma omp critical */
 
+                        printf ("checkpoint -3\n");
 
                 /* copy matrix into supernode s (lower triangular part only) */
 #pragma omp parallel for private ( p, pend, pfend, pf, i, j, imap, q ) num_threads(numThreads) if ( k2-k1 > 64 )
@@ -410,6 +411,7 @@
                     }
                 }
 
+                        printf ("checkpoint -2\n");
 
                 /* add beta (only real part) to the diagonal of the supernode, if nonzero */
                 if (beta [0] != 0.0)
@@ -421,6 +423,7 @@
                         pk += nsrow + 1 ;       	/* advance to the next diagonal entry */
                     }
                 }
+                        printf ("checkpoint -1\n");
 
                 /* save/restore the list of supernodes */
                 if (!repeat_supernode)
@@ -440,15 +443,14 @@
                     }
                 }
 
+                        printf ("checkpoint -0\n");
 
                 /* initialize the buffer counter */
                 Common->ibuffer[gpuid] = 0;
                 supernodeUsedGPU = 0;
                 idescendant = 0;
-                d = Head[s];
-                dlarge = Next_local[d];
+                dlarge = Head[s];
                 dsmall = tail;
-                dsmall_save = tail;
                 GPUavailable = 1;
 
 
@@ -460,6 +462,10 @@
 #endif
 
 
+                cuErrHost = cudaSuccess;
+#ifdef QUERY_LX_EVENTS
+                cuErrDev = cudaSuccess;
+#endif
 
                 /* loop over descendants d of supernode s */
                 while( (idescendant < ndescendants) )
@@ -499,6 +505,8 @@
 #endif
                         }
 
+                    }
+
                         if ( cuErrHost == cudaSuccess
 #ifdef QUERY_LX_EVENTS
                                 && cuErrDev == cudaSuccess
@@ -507,21 +515,18 @@
                         {
 
                             d = dlarge;
-                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 0: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
                             dlarge = Next_local[dlarge];
 
                             GPUavailable = 1;
 
                         }
                         else {
-                            dsmall = dsmall_save;
                             d = dsmall;
-                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 1: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
                         }
-                    }
 
+                        printf ("checkpoint s = %ld d = %ld idescendant = %ld ndescendants = %ld\n", s, d, idescendant, ndescendants);
 
                     /* get the size of supernode d */
                     kd1 = Super [d] ;      		/* d contains cols kd1 to kd2-1 of L */
@@ -537,9 +542,7 @@
                     pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
                     pdx1 = pdx + p ;        	 	/* ptr to 1st row of d affecting s in Lx */
 
-            //printf ("checkpoint 2 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                     for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
-            //printf ("checkpoint 3 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                     ndrow1 = pdi2 - pdi1 ;      	/* # rows in first part of d */
                     ndrow2 = pdend - pdi1 ;     	/* # rows in remaining d */
 
@@ -559,9 +562,9 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        printf ("checkpoint factorize 0\n");
+                        printf ("checkpoint 0\n");
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
-                        printf ("checkpoint factorize 1\n");
+                        printf ("checkpoint 1\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }
@@ -577,6 +580,7 @@
                         gemm_count = 0;
                         counter = 0;
 
+                        printf ("checkpoint 2\n");
                         /* loop over descendants */
                         for(tid = 0; tid < nthreads; tid++)
                         {
@@ -589,7 +593,6 @@
                                     d = dsmall;
                                     dsmall = Previous_local[dsmall];
                                 }
-                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 2: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
 
                                 {
 
@@ -606,9 +609,7 @@
                                     pdi1 = pdi + p ;
                                     pdx1 = pdx + p ;
 
-            //printf ("checkpoint 4 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                                     for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++);
-            //printf ("checkpoint 5 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                                     ndrow1 = pdi2 - pdi1 ;
                                     ndrow2 = pdend - pdi1 ;
                                     ndrow3 = ndrow2 - ndrow1 ;
@@ -625,6 +626,7 @@
                                         Int lda = ndrow;
                                         Int ldb = ndrow;
                                         Int ldc = ndrow2;
+                                        printf ("checkpoint d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdx = %ld pdx1 = %ld m = %ld n = %ld k = %ld lda = %ld ldb = %ld ldc = %ld\n", d, p, pdi, pdi1, pdx, pdx1, m, n, k, lda, ldb, ldc);
 
                                         /* store descendant dimensions */
                                         desc[desc_count].pdi1   = pdi1;
@@ -642,6 +644,8 @@
                                         syrk[syrk_count].C     = (double *)&C1[counter];
                                         syrk_count++;
 
+                                        if (m > 0)
+                                        {
                                         /* store gemm dimensions & pointers */
                                         gemm[gemm_count].m     = m;
                                         gemm[gemm_count].n     = n;
@@ -653,24 +657,22 @@
                                         gemm[gemm_count].B     = (double *)(Lx + L_ENTRY*pdx1);
                                         gemm[gemm_count].C     = (double *)(&C1[counter] + L_ENTRY*n);
                                         gemm_count++;
+                                        }
 
                                         /* increment pointer to C buff */
                                         counter += L_ENTRY*n*ldc;
 
-                                        if (d == dsmall_save)
-                                        {
-                                            dsmall_save = dsmall;
-                                        }
-                                        else
-                                        {
-                                            if (dsmall != EMPTY) Next_local[dsmall] = Next_local[d];
-                                            Previous_local[Next_local[d]] = dsmall;
-                                        }
+                                    }
+                                    else
+                                    {
+                                        dsmall = d;
+                                        tid = nthreads; // ends the loop
                                     }
                                 }
                             }
                         } /* end loop over parallel descendants (threads) */
 
+                        printf ("checkpoint 3\n");
                         {
                             int i;
                             /*
@@ -804,6 +806,7 @@
                                 }
                             } /* end loop over descendants */
                         }
+                        printf ("checkpoint 4\n");
 
                         nvtxRangeEnd(id2);
 

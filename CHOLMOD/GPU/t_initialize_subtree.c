@@ -307,7 +307,6 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    max_factor_size,
                         counts);
 
-  if (gb_p->loop > 0) return;//checkpoint
 
     } /* end loop over subtrees */
 
@@ -1477,7 +1476,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     level_descendants[count1++] = desc;
 
 
-  if (gb_p->loop > 0) return;//checkpoint
 
 
 
