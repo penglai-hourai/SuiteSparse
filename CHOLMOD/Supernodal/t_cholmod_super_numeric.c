@@ -434,11 +434,9 @@ static int TEMPLATE (cholmod_super_numeric)
     for (gb_p->loop = 0; gb_p->loop < 2; gb_p->loop++)
     //for (loop = 0; loop < 2; loop++)
     {
-        printf ("checkpoint loop = %ld\n", gb_p->loop);
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
 #endif
-        memset (lb_p->numSubtreePerDevice, 0, sizeof(Int) * size);
     /*
      * Binary search for optimal subtree size
      *
@@ -457,6 +455,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+    if (gb_p->loop > 0) break;//checkpoint
 
 
 
@@ -471,6 +470,7 @@ static int TEMPLATE (cholmod_super_numeric)
     PRINTF("\n\n\nload-balance devices..\n");
 
     TIMER_START(tstart,3);
+    memset (lb_p->numSubtreePerDevice, 0, sizeof(Int) * size);
     TEMPLATE2 (CHOLMOD(loadbalance_gpu))( Common,gb_p,tree_p,lb_p);
     TIMER_END(tstart,tend,3);
 
@@ -690,6 +690,13 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         printf ("subtree factorize time = %lf\n", SuiteSparse_time() - subtree_factorize_time);
 #endif
+        for (i = 0; i < L->nsuper; i++)
+        {
+            if (cpu_p->Lpos[i] < 0 || cpu_p->Lpos[i] > cpu_p->Lpi[i+1] - cpu_p->Lpi[i] || cpu_p->Lpi[i+1] < cpu_p->Lpi[i])
+            {
+                printf ("lpos error: loop = %d Lpos[%ld] = %ld Lpi[%ld] = %ld Lpi[%ld] = %ld nsuper = %ld\n", gb_p->loop, i, cpu_p->Lpos[i], i, cpu_p->Lpi[i], i+1, cpu_p->Lpi[i+1], L->nsuper);
+            }
+        }
     }
 
 

@@ -307,6 +307,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 					    max_factor_size,
                         counts);
 
+  if (gb_p->loop > 0) return;//checkpoint
 
     } /* end loop over subtrees */
 
@@ -496,6 +497,20 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
 
+  /* issue less GPUs if not sufficient subtrees */
+  if(numSubtreeProper < Common->numGPU_physical)
+  {
+    gb_p->numGPU = numSubtreeProper;
+  }
+  else
+  {
+    gb_p->numGPU = Common->numGPU_physical;
+  }
+
+
+
+
+
   /* get number of devices to use:
    *   1. GPU only: Common->numGPU_physical
    *   2. hybrid:   Common->numGPU_physical+1
@@ -613,27 +628,6 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
     workPerDevice[minDevice] += size;
 
   } /* end loop over subtrees */
-
-
-
-
-
-  /* issue less GPUs if not sufficient subtrees */
-//  if(gb_p->has_root == FALSE && numSubtree < Common->numGPU_physical)
-//  {
-//    gb_p->numGPU = numSubtree;
-//  }
-//  else
-      if(
-//              gb_p->has_root == TRUE && 
-              numSubtreeProper < Common->numGPU_physical)
-  {
-    gb_p->numGPU = numSubtreeProper;
-  }
-  else
-  {
-    gb_p->numGPU = Common->numGPU_physical;
-  }
 
 }
 
@@ -897,25 +891,18 @@ void TEMPLATE2 (CHOLMOD (build_tree))
     if(nscol > gb_p->maxnscol) gb_p->maxnscol = nscol;
 
     /* get number of descendants in supernode */
-    TEMPLATE2 (CHOLMOD (gpu_num_descendants))( Common,
-					       cpu_p,
-					       tree_p,
-                                               s);
+    TEMPLATE2 (CHOLMOD (gpu_num_descendants))( Common, cpu_p, tree_p, s);
 
     /* get current supernode */
-    d = Head[s];
-    dlarge = Next[d];
-
+    dlarge = Head[s];
 
 
     /* loop over descendants of supernode */
     while(idescendant < ndescendants[s]) {
 
       /* get current descendant */
-      if (idescendant > 0) {
         d = dlarge;
         dlarge = Next[dlarge];
-      }
 
       /* increment descendant count */
       idescendant++;
@@ -1363,6 +1350,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
 
 
+
   /*
    * Process subtree:
    * First store all supernodes within
@@ -1406,7 +1394,8 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           processed_nodes++;                 		/* increment processed supernode coutner */
           supernode_children_num[s] = EMPTY;   									/* empty children of supernode */
           sparent = supernode_parent[s];
-          supernode_children_num[sparent]--;
+          if (sparent != EMPTY)
+              supernode_children_num[sparent]--;
       }
     }
 
@@ -1488,6 +1477,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
     level_descendants[count1++] = desc;
 
 
+  if (gb_p->loop > 0) return;//checkpoint
 
 
 
@@ -1814,10 +1804,14 @@ void TEMPLATE2 (CHOLMOD (gpu_num_descendants))
 
     Int d, n_descendant = 0;
 
+    if (tree_p->factorized[s] != 0)
+        return 0;
+
     d = cpu_p->Head[s];
     while ( d != EMPTY )
     {
-        n_descendant++;
+        if (tree_p->factorized[d] == 0)
+            n_descendant++;
         d = cpu_p->Next[d];
     }
 

@@ -76,223 +76,6 @@
 #endif
 #endif
 
-//#define USE_PTHREAD
-
-#ifdef USE_PTHREAD
-struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
-{
-    int nthreads;
-    int numThreads1;
-    int *CPUavailable_ptr;
-    Int *Ls;
-    Int *Map;
-    Int nsrow;
-    Int psx;
-    double *Lx;
-    int desc_count;
-    int syrk_count;
-    int gemm_count;
-    struct cholmod_desc_t *desc;
-    struct cholmod_syrk_t *syrk;
-    struct cholmod_gemm_t *gemm;
-    cholmod_common *Common;
-};
-
-    void *TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_wrapper)) (void *void_parameters)
-{
-    struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters)) *struct_parameters = void_parameters;
-
-    int nthreads = struct_parameters->nthreads;
-    int numThreads1 = struct_parameters->numThreads1;
-    int *CPUavailable_ptr = struct_parameters->CPUavailable_ptr;
-    Int *Ls = struct_parameters->Ls;
-    Int *Map = struct_parameters->Map;
-    Int nsrow = struct_parameters->nsrow;
-    Int psx = struct_parameters->psx;
-    double *Lx = struct_parameters->Lx;
-    int desc_count = struct_parameters->desc_count;
-    int syrk_count = struct_parameters->syrk_count;
-    int gemm_count = struct_parameters->gemm_count;
-    struct cholmod_desc_t *desc = struct_parameters->desc;
-    struct cholmod_syrk_t *syrk = struct_parameters->syrk;
-    struct cholmod_gemm_t *gemm = struct_parameters->gemm;
-    cholmod_common *Common = struct_parameters->Common;
-
-    TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread)) (
-            nthreads,
-            numThreads1,
-            CPUavailable_ptr,
-            Ls,
-            Map,
-            nsrow,
-            psx,
-            Lx,
-            desc_count,
-            syrk_count,
-            gemm_count,
-            desc,
-            syrk,
-            gemm,
-            Common);
-
-    return NULL;
-}
-
-    void TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread))
-(
- int nthreads,
- int numThreads1,
- int *CPUavailable_ptr,
- Int *Ls,
- Int *Map,
- Int nsrow,
- Int psx,
- double *Lx,
- int desc_count,
- int syrk_count,
- int gemm_count,
- struct cholmod_desc_t *desc,
- struct cholmod_syrk_t *syrk,
- struct cholmod_gemm_t *gemm,
- cholmod_common *Common
- )
-{
-    int i;
-    /*
-     *  DSYRK
-     *
-     *   Perform dsyrk on batch of descendants
-     *
-     */
-    /* loop over syrk's */
-#pragma omp parallel for num_threads(nthreads)
-    for(i = 0; i < syrk_count; i++)
-    {
-
-        /* get syrk dimensions */
-        Int n   = syrk[i].n;
-        Int k   = syrk[i].k;
-        Int lda = syrk[i].lda;
-        Int ldc = syrk[i].ldc;
-
-        double *A = (double *)syrk[i].A;
-        double *C = (double *)syrk[i].C;
-
-        double one[2]  = {1.0, 0.0};
-        double zero[2] = {0.0, 0.0};
-
-
-#ifdef REAL
-        BLAS_dsyrk ("L", "N",
-                n, k,
-                one,
-                A, lda,
-                zero,
-                C, ldc) ;
-#else
-        BLAS_zherk ("L", "N",
-                n, k,
-                one,
-                A, lda,
-                zero,
-                C, ldc) ;
-#endif
-    } /* end loop over syrk's */
-
-
-
-
-
-    /*
-     *  DGEMM
-     *
-     *  Perform dgemm on batch of descendants
-     *
-     */
-    /* loop over gemm's */
-#pragma omp parallel for num_threads(nthreads)
-    for(i = 0; i < gemm_count; i++)
-    {
-        /* get gemm dimensions */
-        Int m   = gemm[i].m;
-        Int n   = gemm[i].n;
-        Int k   = gemm[i].k;
-        Int lda = gemm[i].lda;
-        Int ldb = gemm[i].ldb;
-        Int ldc = gemm[i].ldc;
-
-        double *A = (double *)gemm[i].A;
-        double *B = (double *)gemm[i].B;
-        double *C = (double *)gemm[i].C;
-
-        double one[2] = {1.0, 0.0};
-        double zero[2] = {0.0, 0.0};
-
-
-        if (m > 0)
-        {
-#ifdef REAL
-            BLAS_dgemm ("N","T",
-                    m, n, k,
-                    one,
-                    A, lda,
-                    B, ldb,
-                    zero,
-                    C, ldc) ;
-#else
-            BLAS_zgemm ("N", "C",
-                    m, n, k,
-                    one,
-                    A, lda,
-                    B, ldb,
-                    zero,
-                    C, ldc) ;
-#endif
-
-        }
-    } /* end loop over gemm's */
-
-
-
-
-
-    /*
-     *  Assembly
-     *
-     *  Assemble schur complements of a batch of descendants
-     *
-     */
-    /* loop over descendants */
-    for(i = 0; i < desc_count; i++)
-    {
-
-        Int ii, j, q, px;
-
-
-        /* get descendant dimensions */
-        Int pdi1 = desc[i].pdi1;
-        Int ndrow1 = desc[i].ndrow1;
-        Int ndrow2 = desc[i].ndrow2;
-
-        double *C = (double *)desc[i].C;
-
-
-#pragma omp parallel for private ( j, ii, px, q ) num_threads(numThreads1) if (ndrow1 > 64 )
-        for (j = 0 ; j < ndrow1 ; j++)
-        {
-            px = psx + Map [Ls [pdi1 + j]]*nsrow ;
-            for (ii = j ; ii < ndrow2 ; ii++)
-            {
-                q = px + Map [Ls [pdi1 + ii]] ;
-                L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
-            }
-        }
-    } /* end loop over descendants */
-#pragma omp atomic
-    (*CPUavailable_ptr)++;
-}
-#endif
-
 
 /*
  * Function:
@@ -435,6 +218,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
             Int s;
             s = supernode_levels[node];
             if (pending[node-start_global] == 0)
+            printf ("checkpoint leaves[%ld] = %ld\n", nleaves, s);
             leaves[nleaves++] = s;
         }
 
@@ -471,12 +255,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                 struct cholmod_desc_t desc[Common->ompNumThreads];
                 struct cholmod_syrk_t syrk[Common->ompNumThreads];
                 struct cholmod_gemm_t gemm[Common->ompNumThreads];
-
-#ifdef USE_PTHREAD
-                int CPUavailable = 1;
-                pthread_t pid = 0;
-                struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters)) struct_parameters;
-#endif
 
                 /* set device id, pointers */
                 gpuid  		= omp_get_thread_num();			/* get gpuid */
@@ -547,7 +325,9 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         pdi = Lpi [d] ;         		/* pointer to first row of d in Ls */
                         pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
                         pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
-                        for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
+            //printf ("checkpoint 0 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
+                        for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; pdi2++) ;
+            //printf ("checkpoint 1 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                         ndrow = pdend - pdi ;   	 	/* # rows in all of d */
                         Lpos [d] = pdi2 - pdi ;
 
@@ -704,11 +484,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
 #ifdef QUERY_LX_EVENTS
                                     || cuErrDev != cudaSuccess
 #endif
-                                    ) && (
-#ifdef USE_PTHREAD
-                                    CPUavailable <= 0 || 
-#endif
-                                    ndescendants - idescendant < CHOLMOD_HOST_SUPERNODE_BUFFERS) )
+                                    ) && (ndescendants - idescendant < CHOLMOD_HOST_SUPERNODE_BUFFERS) )
                         {
                             iHostBuff = (Common->ibuffer[gpuid]) % CHOLMOD_HOST_SUPERNODE_BUFFERS;
                             iDevBuff  = (Common->ibuffer[gpuid]) % CHOLMOD_DEVICE_LX_BUFFERS;
@@ -731,18 +507,16 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                         {
 
                             d = dlarge;
+                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 0: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
                             dlarge = Next_local[dlarge];
 
                             GPUavailable = 1;
 
                         }
                         else {
-#ifdef USE_PTHREAD
-#pragma omp atomic
-                            CPUavailable--;
-#endif
                             dsmall = dsmall_save;
                             d = dsmall;
+                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 1: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
                         }
@@ -763,7 +537,9 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     pdi1 = pdi + p ;        	 	/* ptr to 1st row of d affecting s in Ls */
                     pdx1 = pdx + p ;        	 	/* ptr to 1st row of d affecting s in Lx */
 
+            //printf ("checkpoint 2 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                     for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++) ;
+            //printf ("checkpoint 3 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                     ndrow1 = pdi2 - pdi1 ;      	/* # rows in first part of d */
                     ndrow2 = pdend - pdi1 ;     	/* # rows in remaining d */
 
@@ -783,7 +559,9 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                      */
                     if ( GPUavailable == 1 )
                     {
+                        printf ("checkpoint factorize 0\n");
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
+                        printf ("checkpoint factorize 1\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }
@@ -811,6 +589,7 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                     d = dsmall;
                                     dsmall = Previous_local[dsmall];
                                 }
+                            if (d < 0 || d >= L->nsuper) printf ("checkpoint d error 2: d = %ld idescendant = %ld ndescendants = %ld\n", d, idescendant, ndescendants);
 
                                 {
 
@@ -827,7 +606,9 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                     pdi1 = pdi + p ;
                                     pdx1 = pdx + p ;
 
+            //printf ("checkpoint 4 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                                     for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++);
+            //printf ("checkpoint 5 d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld k2 = %ld\n", d, p, pdi, pdi1, pdend, k2);
                                     ndrow1 = pdi2 - pdi1 ;
                                     ndrow2 = pdend - pdi1 ;
                                     ndrow3 = ndrow2 - ndrow1 ;
@@ -890,27 +671,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                             }
                         } /* end loop over parallel descendants (threads) */
 
-#ifdef USE_PTHREAD
-                        {
-                            struct_parameters.nthreads = nthreads;
-                            struct_parameters.numThreads1 = numThreads1;
-                            struct_parameters.CPUavailable_ptr = &CPUavailable;
-                            struct_parameters.Ls = Ls;
-                            struct_parameters.Map = Map;
-                            struct_parameters.nsrow = nsrow;
-                            struct_parameters.psx = psx;
-                            struct_parameters.Lx = Lx;
-                            struct_parameters.desc_count = desc_count;
-                            struct_parameters.syrk_count = syrk_count;
-                            struct_parameters.gemm_count = gemm_count;
-                            struct_parameters.desc = desc;
-                            struct_parameters.syrk = syrk;
-                            struct_parameters.gemm = gemm;
-                            struct_parameters.Common = Common;
-
-                            pthread_create (&pid, NULL, TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_wrapper)), &struct_parameters);
-                        }
-#else
                         {
                             int i;
                             /*
@@ -1044,7 +804,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                                 }
                             } /* end loop over descendants */
                         }
-#endif
 
                         nvtxRangeEnd(id2);
 
@@ -1052,14 +811,6 @@ struct TEMPLATE2 (CHOLMOD (cpu_factorize_root_pthread_parameters))
                     }
 
                 } /* end loop over descendants */
-
-#ifdef USE_PTHREAD
-                if (pid != 0)
-                {
-                    pthread_join (pid, NULL);
-                    pid = 0;
-                }
-#endif
 
 
 
