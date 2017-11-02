@@ -434,6 +434,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
     for (loop = 0; loop < 2; loop++)
     {
+        printf ("checkpoint loop = %d\n", loop);
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
 #endif
@@ -744,6 +745,21 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         root_time = SuiteSparse_time();
 #endif
+        {
+            Int itr;
+            int has_error;
+            has_error = 0;
+            for (itr = 0; itr < L->nsuper; itr++)
+            {
+                if (cpu_p->Lpi[itr] >= cpu_p->Lpi[itr+1])
+                {
+                    printf ("itr = %ld lpi = %ld lpi+1= %ld\n", itr, cpu_p->Lpi[itr], cpu_p->Lpi[itr+1]);
+                    has_error = 1;
+                }
+            }
+            if (has_error)
+                exit(0);
+        }
         check = TEMPLATE2 (CHOLMOD(gpu_factorize_root_parallel))( Common, L, gpu_p, cpu_p, tree_p, subtree );
 #ifdef TDEBUG
         printf ("root time = %lf\n", SuiteSparse_time() - root_time);

@@ -560,7 +560,7 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        printf ("checkpoint 0 s = %ld d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld idescendant = %ld ndescendants = %ld\n", s, d, p, pdi, pdi1, pdend, idescendant, ndescendants);
+                        printf ("checkpoint 0 s = %ld d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld ndrow = %ld ndrow1 = %ld ndrow2 = %ld ndrow3 = %ld idescendant = %ld ndescendants = %ld\n", s, d, p, pdi, pdi1, pdend, ndrow, ndrow1, ndrow2, ndrow3, idescendant, ndescendants);
                         printf ("checkpoint 0 s = %ld d = %ld lpos-2 = %ld lpos-1 = %ld lpos = %ld lpos+1 = %ld lpos+2 = %ld\n", s, d, Lpos_local[d-2], Lpos_local[d-1], Lpos_local[d], Lpos_local[d+1], Lpos_local[d+2]);
                         printf ("checkpoint 0 s = %ld d = %ld lpi-2 = %ld lpi-1 = %ld lpi = %ld lpi+1 = %ld lpi+2 = %ld\n", s, d, Lpi[d-2], Lpi[d-1], Lpi[d], Lpi[d+1], Lpi[d+2]);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
