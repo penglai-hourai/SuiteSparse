@@ -184,10 +184,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
 
     gpu_p->h_LxFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
+    gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
 
     gpu_p->h_MapFactorized[gpuid][0] = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
+    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
 
     gpu_p->h_MapFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
@@ -485,9 +485,9 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    int level,
    Int node,
    int nbatch,			/* size of batch (# descendants) */
-   int syrk_count,		/* # syrk calls sent to cuBlas */
-   int gemm_count,		/* # gemm calls sent to cuBlas */
-   int update_count,		/* # addUpdate calls to stream seperately */
+   Int syrk_count,		/* # syrk calls sent to cuBlas */
+   Int gemm_count,		/* # gemm calls sent to cuBlas */
+   Int update_count,		/* # addUpdate calls to stream seperately */
    int gpuid,
    int flag,
    Int start,
@@ -498,8 +498,8 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
    )
 {
   /* local variables */
-  int i, j, k;
-  int *ndrow1, *ndrow2, *ndrow3, *ndrow, *ndcol, *pdi1, *list, *nsrow;
+  Int i, j, k;
+  Int *ndrow1, *ndrow2, *ndrow3, *ndrow, *ndcol, *pdi1, *list, *nsrow;
   double alpha, beta, tstart1;
   double **Aptr, **Bptr, **Cptr, **C2ptr, *tend, *gemm_time, *syrk_time;
   struct cholmod_syrk_ptrs_t *h_syrk, *d_syrk;
@@ -806,13 +806,13 @@ void TEMPLATE2 (CHOLMOD (gpu_lower_potrf_batch))
    cholmod_gpu_pointers *gpu_p,		/* device pointers */
    cholmod_profile_pointers *prof_p,
    int nbatch,				/* batch size (# supernodes) */
-   int potrf_count,			/* # potrf calls sent to cuSolver */
+   Int potrf_count,			/* # potrf calls sent to cuSolver */
    int gpuid				/* gpu id */
    )
 {
   /* local variables */
-  int i, j, k, info;
-  int *nscol2, *nsrow;
+  Int i, j, k, info;
+  Int *nscol2, *nsrow;
   double tstart1;
   double **Aptr, *tend, *potrf_time;
   struct cholmod_potrf_ptrs_t *h_potrf, *d_potrf;
@@ -933,13 +933,13 @@ void TEMPLATE2 (CHOLMOD (gpu_triangular_solve_batch))
    cholmod_gpu_pointers *gpu_p,		/* device pointers */
    cholmod_profile_pointers *prof_p,
    int nbatch,				/* batch size (# supernodes) */
-   int trsm_count,			/* # trsm calls sent to cuBlas */
+   Int trsm_count,			/* # trsm calls sent to cuBlas */
    int gpuid				/* gpu id */
    )
 {
   /* local variables */
-  int i, j, k;
-  int *nsrow2, *nscol2, *nsrow;
+  Int i, j, k;
+  Int *nsrow2, *nscol2, *nsrow;
   double alpha, tstart1;
   double **Aptr, **Bptr, *tend, *trsm_time;
   struct cholmod_trsm_ptrs_t *h_trsm, *d_trsm;
@@ -1175,7 +1175,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       s = tree_p->supernode_levels[start_local + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
       nsrow = cpu_p->Lpi[s+1] - cpu_p->Lpi[s] ;
-      const int ssize = nscol*nsrow;
+      const Int ssize = nscol*nsrow;
 
       offset1 = ((Int*)Lpx)[s];
       offset2 = LpxSub[s];
@@ -1232,7 +1232,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_factorized))
    )
 {
   /* local variables */
-  int icol, irow, numThreads;
+  int numThreads;
+  Int icol, irow;
   Int ndrow3;
   double alpha, beta;
   double *devPtrLx, *devPtrC;

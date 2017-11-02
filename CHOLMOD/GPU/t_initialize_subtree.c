@@ -462,7 +462,8 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
   /* local variables */
   double GPUflops, CPUflops, flop, GPUtime, CPUtime;
   double *subtreeSize, *supernode_flop, *workPerDevice;
-  int i, j, runType, numDevice, numSubtree, numSubtreeProper;
+  Int i, j;
+  int runType, numDevice, numSubtree, numSubtreeProper;
   Int s;
   Int *supernode_subtree, *supernode_subtree_ptrs, *numSubtreePerDevice, *listSubtreePerDevice;
   struct props gpu, cpu;
