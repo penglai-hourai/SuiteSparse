@@ -469,7 +469,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCBuffersFree[gpuid][iHostBuff], 0 ) ;
 
 
-  printf ("checkpoint 0.0\n");
   /*
    * Copy Lx to the device:
    * First copy to pinned buffer, then to the device for
@@ -485,7 +484,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
-  printf ("checkpoint 0.1\n");
 
   /* make the current stream wait for kernels in previous streams */
 #ifndef QUERY_LX_EVENTS
@@ -493,7 +491,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
-  printf ("checkpoint 0.2 ndcol = %ld ndrow2 = %ld\n", ndcol, ndrow2);
 
   /* copy pinned buffer to device */
   cudaErr = cudaMemcpyAsync (
@@ -504,11 +501,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           Common->gpuStream[gpuid][iDevBuff]);
 
   if ( cudaErr ) {
-      printf ("checkpoint CUDA error: %s ndcol = %ld ndrow2 = %ld\n", cudaGetErrorString(cudaErr), ndcol, ndrow2);
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
     return (0);
   }
-  printf ("checkpoint 0.3\n");
 
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
@@ -516,7 +511,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
-  printf ("checkpoint 0.4 pdi1 = %ld ndrow2 = %ld\n", pdi1, ndrow2);
 
   /* create relative map for the descendant */
   createRelativeMapOnDevice (
@@ -533,7 +527,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
-  printf ("checkpoint 0.5\n");
 
   /* set cuBlas stream  */
   cublasStatus = cublasSetStream (Common->cublasHandle[gpuid / Common->numGPU_parallel], Common->gpuStream[gpuid][iDevBuff]) ;
@@ -551,7 +544,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
 #ifdef REAL
-  printf ("checkpoint 0.6\n");
   cublasStatus = cublasDsyrk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
           CUBLAS_FILL_MODE_LOWER,
@@ -564,7 +556,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           &beta,          				/* BETA:   0 */
           devPtrC,
           ndrow2) ;       				/* C, LDC: C1 */
-  printf ("checkpoint 0.7\n");
 #else
   cublasStatus = cublasZherk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
@@ -588,7 +579,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
 
-  printf ("checkpoint 0.8 ndrow3 = %ld\n", ndrow3);
 
   /*
    * Perform DSYRK on GPU for current descendant
@@ -640,7 +630,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     }
 
   }
-  printf ("checkpoint 0.9\n");
 
   cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
@@ -653,7 +642,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][iDevBuff], Common->cublasEventPotrf[gpuid][0], 0) ;
 #endif
 #ifdef REAL
-  printf ("checkpoint 0.10\n");
   addUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
           devPtrC,
@@ -662,7 +650,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           ndrow2,
           nsrow,
           &(Common->gpuStream[gpuid][iDevBuff]));
-  printf ("checkpoint 0.11 ndrow1 = %ld ndrow2 = %ld sizeof(int) = %d sizeof(SuiteSparse_long) = %d sizeof(Int) = %d\n", ndrow1, ndrow2, sizeof(int), sizeof(SuiteSparse_long), sizeof(Int));
 #else
   addComplexUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
@@ -678,11 +665,9 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
-  printf ("checkpoint 0.12\n");
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
-      printf ("checkpoint CUDA error: %s\n", cudaGetErrorString(cudaErr));
     ERROR (CHOLMOD_GPU_PROBLEM,"\naddUpdateOnDevice error!\n");
     return (0) ;
   }
@@ -694,7 +679,6 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cudaEventRecord (Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
 
 
-  printf ("checkpoint 0.13\n");
 
   return (1) ;
 }

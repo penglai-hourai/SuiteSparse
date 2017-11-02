@@ -286,7 +286,6 @@
                 pend = psx + nsrow * nscol;       	/* s is nsrow-by-nscol */
                 pk = psx;
 
-                        printf ("checkpoint -6\n");
 
 
                 /*
@@ -300,7 +299,6 @@
                  */
                 TEMPLATE2 ( CHOLMOD (gpu_initialize_supernode_root))( Common, gpu_p, nscol, nsrow, psi, psx, gpuid );
 
-                        printf ("checkpoint -5\n");
 
                 /* construct the scattered Map for supernode s */
 #pragma omp parallel for num_threads(numThreads) if ( nsrow > 128 )
@@ -308,22 +306,17 @@
                     Map [Ls [psi + k]] = k ;
                 }
 
-                        printf ("checkpoint -4\n");
 
 //#pragma omp critical (head_next)
                 {
-                        printf ("checkpoint -4.0\n");
                     /* reorder descendants in supernode by descreasing size */
                     TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, k1, k2, Ls, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
-                        printf ("checkpoint -4.1\n");
 
                     for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
                         Next_local[d] = Next[d];
                         Previous_local[d] = Previous[d];
                         Lpos_local[d] = Lpos[d];
-                        if (Lpos_local[d] > 10000) printf ("checkpoint lpos error: d = %ld lpos = %ld lpos_local = %ld\n", d, Lpos[d], Lpos_local[d]);
                     }
-                        printf ("checkpoint -4.2 EMPTY = %ld sizeof(int) = %ld sizeof(SuiteSparse_long) = %ld sizeof(Int) = %ld\n", EMPTY, sizeof(int), sizeof(SuiteSparse_long), sizeof(Int));
 
                     for ( d = Head[s]; d != EMPTY; d = Next_local[d] ) {
 
@@ -333,6 +326,9 @@
                         pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
                         for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; pdi2++) ;
                         ndrow = pdend - pdi ;   	 	/* # rows in all of d */
+                        printf ("checkpoint init d = %ld Next[d] = %ld Next_local[d] = %ld lpos = %ld pdi = %ld pdi1 = %ld pdi2 = %ld pdend = %ld ndrow = %ld\n", d, Next[d], Next_local[d], p, pdi, pdi1, pdi2, pdend, ndrow);
+                        printf ("checkpoint init d = %ld lpos-2 = %ld lpos-1 = %ld lpos = %ld lpos+1 = %ld lpos+2 = %ld\n", d, Lpos_local[d-2], Lpos_local[d-1], Lpos_local[d], Lpos_local[d+1], Lpos_local[d+2]);
+                        printf ("checkpoint init d = %ld lpi-2 = %ld lpi-1 = %ld lpi = %ld lpi+1 = %ld lpi+2 = %ld\n", d, Lpi[d-2], Lpi[d-1], Lpi[d], Lpi[d+1], Lpi[d+2]);
                         Lpos [d] = pdi2 - pdi ;
 
                         if (Lpos [d] < ndrow) {
@@ -345,7 +341,6 @@
                         }
 
                     }
-                        printf ("checkpoint -4.3\n");
 
                     /* prepare next supernode */
                     /* Lpos [s] is offset of first row of s affecting its parent */
@@ -360,11 +355,9 @@
                         }
                         //Head[s] = EMPTY;
                     }
-                        printf ("checkpoint -4.4\n");
 
                 } /* end pragma omp critical */
 
-                        printf ("checkpoint -3\n");
 
                 /* copy matrix into supernode s (lower triangular part only) */
 #pragma omp parallel for private ( p, pend, pfend, pf, i, j, imap, q ) num_threads(numThreads) if ( k2-k1 > 64 )
@@ -417,7 +410,6 @@
                     }
                 }
 
-                        printf ("checkpoint -2\n");
 
                 /* add beta (only real part) to the diagonal of the supernode, if nonzero */
                 if (beta [0] != 0.0)
@@ -429,7 +421,6 @@
                         pk += nsrow + 1 ;       	/* advance to the next diagonal entry */
                     }
                 }
-                        printf ("checkpoint -1\n");
 
                 /* save/restore the list of supernodes */
                 if (!repeat_supernode)
@@ -449,7 +440,6 @@
                     }
                 }
 
-                        printf ("checkpoint -0\n");
 
                 /* initialize the buffer counter */
                 Common->ibuffer[gpuid] = 0;
@@ -488,11 +478,11 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
-                        cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        //cuErrHost = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        //cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        cuErrHost = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
 #ifdef QUERY_LX_EVENTS
-                        cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        //cuErrDev = cudaEventSynchronize ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        cuErrDev = cudaEventSynchronize ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
                         while ( (cuErrHost != cudaSuccess
 #ifdef QUERY_LX_EVENTS
@@ -535,7 +525,6 @@
                             GPUavailable = 0;
                         }
 
-                        printf ("checkpoint s = %ld d = %ld idescendant = %ld ndescendants = %ld\n", s, d, idescendant, ndescendants);
 
                     /* get the size of supernode d */
                     kd1 = Super [d] ;      		/* d contains cols kd1 to kd2-1 of L */
@@ -572,8 +561,9 @@
                     if ( GPUavailable == 1 )
                     {
                         printf ("checkpoint 0 s = %ld d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld idescendant = %ld ndescendants = %ld\n", s, d, p, pdi, pdi1, pdend, idescendant, ndescendants);
+                        printf ("checkpoint 0 s = %ld d = %ld lpos-2 = %ld lpos-1 = %ld lpos = %ld lpos+1 = %ld lpos+2 = %ld\n", s, d, Lpos_local[d-2], Lpos_local[d-1], Lpos_local[d], Lpos_local[d+1], Lpos_local[d+2]);
+                        printf ("checkpoint 0 s = %ld d = %ld lpi-2 = %ld lpi-1 = %ld lpi = %ld lpi+1 = %ld lpi+2 = %ld\n", s, d, Lpi[d-2], Lpi[d-1], Lpi[d], Lpi[d+1], Lpi[d+2]);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
-                        printf ("checkpoint 1\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
                     }
@@ -589,7 +579,6 @@
                         gemm_count = 0;
                         counter = 0;
 
-                        printf ("checkpoint 2\n");
                         /* loop over descendants */
                         for(tid = 0; tid < nthreads; tid++)
                         {
@@ -622,7 +611,6 @@
                                 ndrow2 = pdend - pdi1 ;
                                 ndrow3 = ndrow2 - ndrow1 ;
 
-                        printf ("checkpoint counter = %ld ndrow1 = %ld ndrow2 = %ld Common->devBuffSize = %ld\n", counter, ndrow1, ndrow2, Common->devBuffSize);
                                 /* ensure there is sufficient C buffer space to hold Schur complement update */
                                 if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
                                 {
@@ -635,7 +623,6 @@
                                     Int lda = ndrow;
                                     Int ldb = ndrow;
                                     Int ldc = ndrow2;
-                                    printf ("checkpoint d = %ld kd1 = %ld kd2 = %ld ndcol = %ld lpos = %ld pdi = %ld pdi1 = %ld pdx = %ld pdx1 = %ld m = %ld n = %ld k = %ld lda = %ld ldb = %ld ldc = %ld\n", d, kd1, kd2, ndcol, p, pdi, pdi1, pdx, pdx1, m, n, k, lda, ldb, ldc);
 
                                     /* store descendant dimensions */
                                     desc[desc_count].pdi1   = pdi1;
@@ -685,10 +672,8 @@
                             }
                         } /* end loop over parallel descendants (threads) */
 
-                        printf ("checkpoint 3\n");
                         {
                             Int i;
-                        printf ("checkpoint 3.0\n");
                             /*
                              *  DSYRK
                              *
@@ -732,7 +717,6 @@
 
 
 
-                        printf ("checkpoint 3.1\n");
 
 
                             /*
@@ -786,7 +770,6 @@
 
 
 
-                        printf ("checkpoint 3.2 desc_count = %ld syrk_count = %ld gemm_count = %ld\n", desc_count, syrk_count, gemm_count);
 
 
                             /*
@@ -809,7 +792,6 @@
 
                                 double *C = (double *)desc[i].C;
 
-                        printf ("checkpoint 3.2.0 psx = %ld pdi1 = %ld ndrow1 = %ld ndrow2 = %ld\n", psx, pdi1, ndrow1, ndrow2);
 
 #pragma omp parallel for private ( j, ii, px, q ) num_threads(numThreads1) if (ndrow1 > 64 )
                                 for (j = 0 ; j < ndrow1 ; j++)
@@ -821,11 +803,8 @@
                                         L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
                                     }
                                 }
-                        printf ("checkpoint 3.2.1\n");
                             } /* end loop over descendants */
-                        printf ("checkpoint 3.3\n");
                         }
-                        printf ("checkpoint 4\n");
 
                         nvtxRangeEnd(id2);
 

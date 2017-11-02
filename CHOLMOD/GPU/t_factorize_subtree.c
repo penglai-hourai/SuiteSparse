@@ -516,7 +516,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         {
 
             d = dlarge;
-            if (d < 0 || d >= L->nsuper) printf ("checkpoint init d error: s = %ld d = %ld idescendant = %ld ndescendants = %ld\n", s, d, idescendant, ndescendants[s]);
             dlarge = Next[dlarge];
 
           /* get descendant dimensions */
@@ -558,7 +557,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
               if (dancestor != EMPTY && Lpos[d] < ndrow)
               {
-            if (dancestor < 0 || dancestor >= L->nsuper) printf ("checkpoint init dancestor error 1: s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", s, d, dancestor, idescendant, ndescendants[s]);
 #pragma omp critical (head_next)
                   {
                       Next [d] = Head [dancestor] ;
@@ -637,7 +635,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
           if (Lpos [d] < ndrow) {
               dancestor = SuperMap [Ls [pdi2]] ;
-            if (dancestor < 0 || dancestor >= L->nsuper) printf ("checkpoint init dancestor error 0: s = %ld d = %ld dancestor = %ld idescendant = %ld ndescendants = %ld\n", s, d, dancestor, idescendant, ndescendants[s]);
 #pragma omp critical (head_next)
               {
                   Next [d] = Head [dancestor] ;
@@ -657,7 +654,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         if(nsrow2 > 0) {
           Lpos [s] = nscol;
           sparent = SuperMap [Ls [psi + nscol]] ;
-            if (s < 0 || s >= L->nsuper || sparent < 0 || sparent >= L->nsuper) printf ("checkpoint init s error: s = %ld sparent = %ld idescendant = %ld ndescendants = %ld\n", s, sparent, idescendant, ndescendants[s]);
 #pragma omp critical (head_next)
           {
               Next [s] = Head [sparent] ;
@@ -977,9 +973,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
-    printf ("checkpoint subtree 0\n");
-    cudaDeviceSynchronize();
-    printf ("checkpoint subtree 1\n");
+    cudaDeviceSynchronize();//checkpoint
 
       /*
        *  Supernode Assembly - BATCHED
