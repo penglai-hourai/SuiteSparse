@@ -235,7 +235,7 @@
 
 
                 /* local variables */
-                int i, j, k;
+                Int i, j, k;
                 Int px, pk, pf, p, q, d, s, ss, ndrow, ndrow1, ndrow2, ndrow3, ndcol, nsrow, nsrow2, nscol, nscol2, nscol3,
                     kd1, kd2, k1, k2, psx, psi, pdx, pdx1, pdi, pdi1, pdi2, pdend, psend, pfend, pend, dancestor, sparent, imap,
                     idescendant, ndescendants, dlarge, iHostBuff, iDevBuff, iDevCBuff, dsmall, tail, info = 0,
@@ -246,9 +246,9 @@
                 cudaError_t cuErrDev;
 #endif
 
-                int desc_count;
-                int syrk_count;
-                int gemm_count;
+                Int desc_count;
+                Int syrk_count;
+                Int gemm_count;
                 Int counter;
 
                 struct cholmod_desc_t desc[Common->ompNumThreads];
@@ -312,14 +312,18 @@
 
 //#pragma omp critical (head_next)
                 {
+                        printf ("checkpoint -4.0\n");
                     /* reorder descendants in supernode by descreasing size */
                     TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))(Common, gpu_p, k1, k2, Ls, Lpi, Lpos, Super, Head, &tail, Next, Previous, &ndescendants, &mapCreatedOnGpu, s, gpuid );
+                        printf ("checkpoint -4.1\n");
 
                     for ( d=Head[s]; d!=EMPTY; d=Next[d] ){
                         Next_local[d] = Next[d];
                         Previous_local[d] = Previous[d];
                         Lpos_local[d] = Lpos[d];
+                        if (Lpos_local[d] > 10000) printf ("checkpoint lpos error: d = %ld lpos = %ld lpos_local = %ld\n", d, Lpos[d], Lpos_local[d]);
                     }
+                        printf ("checkpoint -4.2 EMPTY = %ld sizeof(int) = %ld sizeof(SuiteSparse_long) = %ld sizeof(Int) = %ld\n", EMPTY, sizeof(int), sizeof(SuiteSparse_long), sizeof(Int));
 
                     for ( d = Head[s]; d != EMPTY; d = Next_local[d] ) {
 
@@ -341,6 +345,7 @@
                         }
 
                     }
+                        printf ("checkpoint -4.3\n");
 
                     /* prepare next supernode */
                     /* Lpos [s] is offset of first row of s affecting its parent */
@@ -355,6 +360,7 @@
                         }
                         //Head[s] = EMPTY;
                     }
+                        printf ("checkpoint -4.4\n");
 
                 } /* end pragma omp critical */
 
@@ -483,8 +489,10 @@
                     if ( idescendant > 0 ) {
 
                         cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        //cuErrHost = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
 #ifdef QUERY_LX_EVENTS
                         cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        //cuErrDev = cudaEventSynchronize ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
                         while ( (cuErrHost != cudaSuccess
 #ifdef QUERY_LX_EVENTS
@@ -520,7 +528,8 @@
                             GPUavailable = 1;
 
                         }
-                        else {
+                        else
+                        {
                             d = dsmall;
                             dsmall = Previous_local[dsmall];
                             GPUavailable = 0;
@@ -562,7 +571,7 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        printf ("checkpoint 0\n");
+                        printf ("checkpoint 0 s = %ld d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld idescendant = %ld ndescendants = %ld\n", s, d, p, pdi, pdi1, pdend, idescendant, ndescendants);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         printf ("checkpoint 1\n");
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
@@ -571,7 +580,7 @@
                     else if ( GPUavailable == 0 )
                     {
 
-                        int tid;
+                        Int tid;
 
                         nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
@@ -594,58 +603,58 @@
                                     dsmall = Previous_local[dsmall];
                                 }
 
+
+                                /* get descendant dimensions */
+                                kd1 = Super [d] ;
+                                kd2 = Super [d+1] ;
+                                ndcol = kd2 - kd1 ;
+                                pdi = Lpi [d] ;
+                                pdx = Lpx [d] ;
+                                pdend = Lpi [d+1] ;
+                                ndrow = pdend - pdi ;
+
+                                p = Lpos_local [d] ;
+                                pdi1 = pdi + p ;
+                                pdx1 = pdx + p ;
+
+                                for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++);
+                                ndrow1 = pdi2 - pdi1 ;
+                                ndrow2 = pdend - pdi1 ;
+                                ndrow3 = ndrow2 - ndrow1 ;
+
+                        printf ("checkpoint counter = %ld ndrow1 = %ld ndrow2 = %ld Common->devBuffSize = %ld\n", counter, ndrow1, ndrow2, Common->devBuffSize);
+                                /* ensure there is sufficient C buffer space to hold Schur complement update */
+                                if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
                                 {
 
-                                    /* get descendant dimensions */
-                                    kd1 = Super [d] ;
-                                    kd2 = Super [d+1] ;
-                                    ndcol = kd2 - kd1 ;
-                                    pdi = Lpi [d] ;
-                                    pdx = Lpx [d] ;
-                                    pdend = Lpi [d+1] ;
-                                    ndrow = pdend - pdi ;
+                                    idescendant++;
 
-                                    p = Lpos_local [d] ;
-                                    pdi1 = pdi + p ;
-                                    pdx1 = pdx + p ;
+                                    Int m   = ndrow2-ndrow1;
+                                    Int n   = ndrow1;
+                                    Int k   = ndcol;
+                                    Int lda = ndrow;
+                                    Int ldb = ndrow;
+                                    Int ldc = ndrow2;
+                                    printf ("checkpoint d = %ld kd1 = %ld kd2 = %ld ndcol = %ld lpos = %ld pdi = %ld pdi1 = %ld pdx = %ld pdx1 = %ld m = %ld n = %ld k = %ld lda = %ld ldb = %ld ldc = %ld\n", d, kd1, kd2, ndcol, p, pdi, pdi1, pdx, pdx1, m, n, k, lda, ldb, ldc);
 
-                                    for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; (pdi2)++);
-                                    ndrow1 = pdi2 - pdi1 ;
-                                    ndrow2 = pdend - pdi1 ;
-                                    ndrow3 = ndrow2 - ndrow1 ;
+                                    /* store descendant dimensions */
+                                    desc[desc_count].pdi1   = pdi1;
+                                    desc[desc_count].ndrow1 = ndrow1;
+                                    desc[desc_count].ndrow2 = ndrow2;
+                                    desc[desc_count].C      = (double *)&C1[counter];
+                                    desc_count++;
 
-                                    /* ensure there is sufficient C buffer space to hold Schur complement update */
-                                    if ( sizeof(double) * L_ENTRY * (counter + ndrow1*ndrow2) <= Common->devBuffSize )
+                                    /* store syrk dimensions & pointers */
+                                    syrk[syrk_count].n     = n;
+                                    syrk[syrk_count].k     = k;
+                                    syrk[syrk_count].lda   = lda;
+                                    syrk[syrk_count].ldc   = ldc;
+                                    syrk[syrk_count].A     = (double *)(Lx + L_ENTRY*pdx1);
+                                    syrk[syrk_count].C     = (double *)&C1[counter];
+                                    syrk_count++;
+
+                                    if (m > 0)
                                     {
-
-                                        idescendant++;
-
-                                        Int m   = ndrow2-ndrow1;
-                                        Int n   = ndrow1;
-                                        Int k   = ndcol;
-                                        Int lda = ndrow;
-                                        Int ldb = ndrow;
-                                        Int ldc = ndrow2;
-                                        printf ("checkpoint d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdx = %ld pdx1 = %ld m = %ld n = %ld k = %ld lda = %ld ldb = %ld ldc = %ld\n", d, p, pdi, pdi1, pdx, pdx1, m, n, k, lda, ldb, ldc);
-
-                                        /* store descendant dimensions */
-                                        desc[desc_count].pdi1   = pdi1;
-                                        desc[desc_count].ndrow1 = ndrow1;
-                                        desc[desc_count].ndrow2 = ndrow2;
-                                        desc[desc_count].C      = (double *)&C1[counter];
-                                        desc_count++;
-
-                                        /* store syrk dimensions & pointers */
-                                        syrk[syrk_count].n     = n;
-                                        syrk[syrk_count].k     = k;
-                                        syrk[syrk_count].lda   = lda;
-                                        syrk[syrk_count].ldc   = ldc;
-                                        syrk[syrk_count].A     = (double *)(Lx + L_ENTRY*pdx1);
-                                        syrk[syrk_count].C     = (double *)&C1[counter];
-                                        syrk_count++;
-
-                                        if (m > 0)
-                                        {
                                         /* store gemm dimensions & pointers */
                                         gemm[gemm_count].m     = m;
                                         gemm[gemm_count].n     = n;
@@ -657,24 +666,29 @@
                                         gemm[gemm_count].B     = (double *)(Lx + L_ENTRY*pdx1);
                                         gemm[gemm_count].C     = (double *)(&C1[counter] + L_ENTRY*n);
                                         gemm_count++;
-                                        }
-
-                                        /* increment pointer to C buff */
-                                        counter += L_ENTRY*n*ldc;
-
                                     }
-                                    else
-                                    {
-                                        dsmall = d;
-                                        tid = nthreads; // ends the loop
-                                    }
+
+                                    /* increment pointer to C buff */
+                                    counter += L_ENTRY*n*ldc;
+
                                 }
+                                else
+                                {
+                                    dsmall = d;
+                                    tid = nthreads; // ends the loop
+                                }
+                            }
+                            else
+                            {
+                                dsmall = d;
+                                tid = nthreads; // ends the loop
                             }
                         } /* end loop over parallel descendants (threads) */
 
                         printf ("checkpoint 3\n");
                         {
-                            int i;
+                            Int i;
+                        printf ("checkpoint 3.0\n");
                             /*
                              *  DSYRK
                              *
@@ -718,6 +732,7 @@
 
 
 
+                        printf ("checkpoint 3.1\n");
 
 
                             /*
@@ -771,6 +786,7 @@
 
 
 
+                        printf ("checkpoint 3.2 desc_count = %ld syrk_count = %ld gemm_count = %ld\n", desc_count, syrk_count, gemm_count);
 
 
                             /*
@@ -793,6 +809,7 @@
 
                                 double *C = (double *)desc[i].C;
 
+                        printf ("checkpoint 3.2.0 psx = %ld pdi1 = %ld ndrow1 = %ld ndrow2 = %ld\n", psx, pdi1, ndrow1, ndrow2);
 
 #pragma omp parallel for private ( j, ii, px, q ) num_threads(numThreads1) if (ndrow1 > 64 )
                                 for (j = 0 ; j < ndrow1 ; j++)
@@ -804,7 +821,9 @@
                                         L_ASSEMBLESUB (Lx,q, C, ii+ndrow2*j) ;
                                     }
                                 }
+                        printf ("checkpoint 3.2.1\n");
                             } /* end loop over descendants */
+                        printf ("checkpoint 3.3\n");
                         }
                         printf ("checkpoint 4\n");
 

@@ -669,7 +669,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         {
               tree_p->factorized[s] = -2;
         }
-        Head [s] = EMPTY ;
+        //Head [s] = EMPTY ;
 
 
       } /* end loop over supernodes */
@@ -977,6 +977,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
+    printf ("checkpoint subtree 0\n");
+    cudaDeviceSynchronize();
+    printf ("checkpoint subtree 1\n");
 
       /*
        *  Supernode Assembly - BATCHED

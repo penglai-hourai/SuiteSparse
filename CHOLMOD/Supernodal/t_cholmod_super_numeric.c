@@ -22,6 +22,7 @@
 
 /* include */
 
+#include "cholmod_internal.h"
 #include "cholmod_template.h"
 #define TDEBUG
 

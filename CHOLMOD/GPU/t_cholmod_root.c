@@ -194,7 +194,7 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
 {
   /* local variables */
   Int d, k, p, kd1, kd2, ndcol, ndrow1, ndrow2, pdi, pdend, pdi1, pdi2, nextd, dnext, n_descendant = 0;
-  int previousd, nreverse = 1, numThreads;
+  Int previousd, nreverse = 1, numThreads;
   double score;
 
   /* store GPU-eligible descendants in h_Lx[0] */
@@ -443,7 +443,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
    )
 {
   /* local variables */
-  int icol, irow, numThreads;
+  Int icol, irow, numThreads;
   Int ndrow3;
   double alpha, beta;
   double *devPtrLx, *devPtrC;
@@ -469,6 +469,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCBuffersFree[gpuid][iHostBuff], 0 ) ;
 
 
+  printf ("checkpoint 0.0\n");
   /*
    * Copy Lx to the device:
    * First copy to pinned buffer, then to the device for
@@ -484,6 +485,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
+  printf ("checkpoint 0.1\n");
 
   /* make the current stream wait for kernels in previous streams */
 #ifndef QUERY_LX_EVENTS
@@ -491,6 +493,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
+  printf ("checkpoint 0.2 ndcol = %ld ndrow2 = %ld\n", ndcol, ndrow2);
 
   /* copy pinned buffer to device */
   cudaErr = cudaMemcpyAsync (
@@ -505,6 +508,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     CHOLMOD_HANDLE_CUDA_ERROR(cudaErr,"cudaMemcpyAsync H-D");
     return (0);
   }
+  printf ("checkpoint 0.3\n");
 
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
@@ -512,6 +516,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
   cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
+  printf ("checkpoint 0.4 pdi1 = %ld ndrow2 = %ld\n", pdi1, ndrow2);
 
   /* create relative map for the descendant */
   createRelativeMapOnDevice (
@@ -528,6 +533,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   }
 
 
+  printf ("checkpoint 0.5\n");
 
   /* set cuBlas stream  */
   cublasStatus = cublasSetStream (Common->cublasHandle[gpuid / Common->numGPU_parallel], Common->gpuStream[gpuid][iDevBuff]) ;
@@ -545,6 +551,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   beta   = 0.0 ;
 
 #ifdef REAL
+  printf ("checkpoint 0.6\n");
   cublasStatus = cublasDsyrk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
           CUBLAS_FILL_MODE_LOWER,
@@ -557,6 +564,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           &beta,          				/* BETA:   0 */
           devPtrC,
           ndrow2) ;       				/* C, LDC: C1 */
+  printf ("checkpoint 0.7\n");
 #else
   cublasStatus = cublasZherk (
           Common->cublasHandle[gpuid / Common->numGPU_parallel],
@@ -580,6 +588,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
 
+  printf ("checkpoint 0.8 ndrow3 = %ld\n", ndrow3);
 
   /*
    * Perform DSYRK on GPU for current descendant
@@ -631,6 +640,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     }
 
   }
+  printf ("checkpoint 0.9\n");
 
   cudaEventRecord (Common->updateCDevBuffersFree[gpuid][iDevBuff], Common->gpuStream[gpuid][iDevBuff]);
 
@@ -643,6 +653,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
     cudaErr = cudaStreamWaitEvent (Common->gpuStream[gpuid][iDevBuff], Common->cublasEventPotrf[gpuid][0], 0) ;
 #endif
 #ifdef REAL
+  printf ("checkpoint 0.10\n");
   addUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
           devPtrC,
@@ -651,6 +662,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
           ndrow2,
           nsrow,
           &(Common->gpuStream[gpuid][iDevBuff]));
+  printf ("checkpoint 0.11 ndrow1 = %ld ndrow2 = %ld sizeof(int) = %d sizeof(SuiteSparse_long) = %d sizeof(Int) = %d\n", ndrow1, ndrow2, sizeof(int), sizeof(SuiteSparse_long), sizeof(Int));
 #else
   addComplexUpdateOnDevice (
           gpu_p->d_A_root[gpuid][0],
@@ -666,6 +678,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 #endif
 
 
+  printf ("checkpoint 0.12\n");
 
   cudaErr = cudaGetLastError();
   if (cudaErr) {
@@ -681,6 +694,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cudaEventRecord (Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
 
 
+  printf ("checkpoint 0.13\n");
 
   return (1) ;
 }
@@ -851,8 +865,6 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
   double *devPtrA, *devPtrB, *A;
   cudaError_t cudaErr ;
   cublasStatus_t cublasStatus ;
-
-  int worksize;
 
   //cudaSetDevice(gpuid / Common->numGPU_parallel);
 

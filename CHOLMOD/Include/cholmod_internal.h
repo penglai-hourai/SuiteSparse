@@ -90,7 +90,7 @@
  * normally non-negative.  FLIP (EMPTY) is EMPTY.  FLIP of a number > EMPTY
  * is negative, and FLIP of a number < EMTPY is positive.  FLIP (FLIP (i)) = i
  * for all integers i.  UNFLIP (i) is >= EMPTY. */
-#define EMPTY (-1)
+#define EMPTY (-1ll)
 #define FLIP(i) (-(i)-2)
 #define UNFLIP(i) (((i) < EMPTY) ? FLIP (i) : (i))
 
