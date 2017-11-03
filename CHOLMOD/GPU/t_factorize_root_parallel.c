@@ -177,9 +177,9 @@
         start_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]];
         end_global = supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]];
 
-        Int *Next_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
-        Int *Previous_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
-        Int *Lpos_local = (Int*) malloc ( (end_global+1)*sizeof(Int) );
+        Int *Next_local     = cpu_p->Next_local;
+        Int *Previous_local = cpu_p->Previous_local;
+        Int *Lpos_local     = cpu_p->Lpos_local;
 
         /* create two vectors - one with the supernode id and one with a counter to synchronize supernodes */
         Int event_len = end_global - start_global;
@@ -326,9 +326,6 @@
                         pdend = Lpi [d+1] ;     	 	/* pointer just past last row of d in Ls */
                         for (pdi2 = pdi1 ; pdi2 < pdend && Ls [pdi2] < k2 ; pdi2++) ;
                         ndrow = pdend - pdi ;   	 	/* # rows in all of d */
-                        printf ("checkpoint init d = %ld Next[d] = %ld Next_local[d] = %ld lpos = %ld pdi = %ld pdi1 = %ld pdi2 = %ld pdend = %ld ndrow = %ld\n", d, Next[d], Next_local[d], p, pdi, pdi1, pdi2, pdend, ndrow);
-                        printf ("checkpoint init d = %ld lpos-2 = %ld lpos-1 = %ld lpos = %ld lpos+1 = %ld lpos+2 = %ld\n", d, Lpos_local[d-2], Lpos_local[d-1], Lpos_local[d], Lpos_local[d+1], Lpos_local[d+2]);
-                        printf ("checkpoint init d = %ld lpi-2 = %ld lpi-1 = %ld lpi = %ld lpi+1 = %ld lpi+2 = %ld\n", d, Lpi[d-2], Lpi[d-1], Lpi[d], Lpi[d+1], Lpi[d+2]);
                         Lpos [d] = pdi2 - pdi ;
 
                         if (Lpos [d] < ndrow) {
@@ -560,9 +557,6 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-                        printf ("checkpoint 0 s = %ld d = %ld lpos = %ld pdi = %ld pdi1 = %ld pdend = %ld ndrow = %ld ndrow1 = %ld ndrow2 = %ld ndrow3 = %ld idescendant = %ld ndescendants = %ld\n", s, d, p, pdi, pdi1, pdend, ndrow, ndrow1, ndrow2, ndrow3, idescendant, ndescendants);
-                        printf ("checkpoint 0 s = %ld d = %ld lpos-2 = %ld lpos-1 = %ld lpos = %ld lpos+1 = %ld lpos+2 = %ld\n", s, d, Lpos_local[d-2], Lpos_local[d-1], Lpos_local[d], Lpos_local[d+1], Lpos_local[d+2]);
-                        printf ("checkpoint 0 s = %ld d = %ld lpi-2 = %ld lpi-1 = %ld lpi = %ld lpi+1 = %ld lpi+2 = %ld\n", s, d, Lpi[d-2], Lpi[d-1], Lpi[d], Lpi[d+1], Lpi[d+2]);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
@@ -1057,8 +1051,6 @@
             } /* end loop over supenodes */
         }
 
-        free ( Next_local );
-        free ( Lpos_local );
 
         free ( pending );
         free ( leaves );

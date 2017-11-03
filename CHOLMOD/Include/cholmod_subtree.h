@@ -256,6 +256,9 @@ typedef struct cholmod_cpu_pointers
     Int *Previous;
     Int *Next_save;
     Int *Lpos_save;
+    Int *Next_local;
+    Int *Previous_local;
+    Int *Lpos_local;
     double *Lx;
     double *Ax;
     double *Az;
