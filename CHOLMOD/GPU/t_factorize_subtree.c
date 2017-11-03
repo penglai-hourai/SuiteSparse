@@ -917,8 +917,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             psend = Lpi[s+1];
             nsrow = psend - psi;
 
-            p 	= Lpos[d] ;
-            pdi1 	= pdi + p ;
+            p 	    = Lpos[d] ;
+            pdi1    = pdi + p ;
 
             for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < k2; pdi2++) ;
             ndrow1 = pdi2 - pdi1 ;
@@ -944,7 +944,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                     ndrow0,
                     &beta,
                     d_C,
-                    ndrow0);
+                    ndrow2);
             if (ndrow3 > 0)
             {
                 cublasDgemm (
@@ -958,12 +958,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         ndrow0,
                         &beta,
                         d_D,
-                        ndrow0);
+                        ndrow2);
             }
-            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
-            cudaDeviceSynchronize();//checkpoint
 
             /* prepare for next descendant */
             Lpos [d] = pdi2 - pdi ;
@@ -975,7 +974,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
-    cudaDeviceSynchronize();//checkpoint
 
       /*
        *  Supernode Assembly - BATCHED
