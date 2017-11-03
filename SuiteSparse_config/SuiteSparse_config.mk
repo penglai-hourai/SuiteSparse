@@ -61,7 +61,7 @@ SUITESPARSE_VERSION = 4.5.5
     # optimization level
     #---------------------------------------------------------------------------
 
-    OPTIMIZATION ?= -O0
+    OPTIMIZATION ?= -O3
 
     #---------------------------------------------------------------------------
     # statement coverage for */Tcov
@@ -226,7 +226,7 @@ SUITESPARSE_VERSION = 4.5.5
         CUDA_INC_PATH = $(CUDA_PATH)/include/
         CUDA_INC      = -I$(CUDA_INC_PATH)
         NVCC          = $(CUDA_PATH)/bin/nvcc
-        NVCCFLAGS     = -Xcompiler -fPIC -O0 \
+        NVCCFLAGS     = -Xcompiler -fPIC -O3 \
                             -gencode=arch=compute_30,code=sm_30 \
                             -gencode=arch=compute_35,code=sm_35 \
                             -gencode=arch=compute_50,code=sm_50 \
