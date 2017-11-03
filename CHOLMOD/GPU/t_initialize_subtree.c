@@ -263,6 +263,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     {
         LpxSub[s] = -1;
     }
+    gb_p->LxSizeFactorized = 0;
     /* loop over subtrees */
     for(subtree = 0; subtree < gb_p->numSubtree; subtree++) {
 
@@ -1359,7 +1360,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
    * memory needed for batching them.
    */
 
-    gb_p->LxSizeFactorized = 0;
 
     for(i=0; i < numSuper; i++) {
       s = supernode_subtree[supernode_subtree_ptrs[subtree] + i];

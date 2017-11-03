@@ -437,7 +437,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
     for (loop = 0; loop < 2; loop++)
     {
-        printf ("checkpoint loop = %d\n", loop);
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
 #endif

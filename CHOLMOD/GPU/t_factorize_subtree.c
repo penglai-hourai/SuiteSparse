@@ -899,6 +899,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
+        if (sizeof(double) * ndcol * ndrow0 > gb_p->LxSizeFactorized) printf ("checkpoint ndcol = %lx ndrow0 = %lx size = %lx max size = %lx\n", ndcol, ndrow0, sizeof(double) * ndcol * ndrow0, gb_p->LxSizeFactorized);
         cudaMemsetAsync (d_Lx, 0, sizeof(double) * ndcol * ndrow0, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         createMapOnDevice_factorized (d_Map, d_Ls, ndrow0, d_attributes, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
@@ -910,16 +911,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         {
             Int k1, k2, psi, psend, nsrow;
 
-            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
-
-            p 	= Lpos[d] ;
-            pdi1 	= pdi + p ;
-
-            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < Super[s+1]; pdi2++) ;
-            ndrow1 = pdi2 - pdi1 ;
-            ndrow2 = pdend - pdi1 ;
-            ndrow3 = ndrow2 - ndrow1 ;
-
             k1 = Super[s];
             k2 = Super[s+1];
             psi = Lpi[s];
@@ -927,10 +918,20 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             psend = Lpi[s+1];
             nsrow = psend - psi;
 
+            p 	= Lpos[d] ;
+            pdi1 	= pdi + p ;
+
+            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < k2; pdi2++) ;
+            ndrow1 = pdi2 - pdi1 ;
+            ndrow2 = pdend - pdi1 ;
+            ndrow3 = ndrow2 - ndrow1 ;
+
             d_A = d_Lx + (pdi1 - pdi0);
             d_B = d_A + ndrow1;
             d_C = gpu_p->d_C[gpuid];
             d_D = d_C + ndrow1;
+
+            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cublasDsyrk (
