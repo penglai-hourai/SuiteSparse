@@ -756,11 +756,11 @@ void TEMPLATE2 (CHOLMOD (initialize_cpu))
 
 
   /* clear Lx factor (supernodes used for root alg.) */
-  Int *lpx = L->px;
+  Int *Lpx = L->px;
   #pragma omp parallel for num_threads(numThreads) private(i, s)
   for(i=supernode_subtree_ptrs[numSubtreeProper]; i<supernode_subtree_ptrs[numSubtree]; i++) {
     s = supernode_subtree[i];
-    double *ps = (double *)&cpu_p->Lx[lpx[s]];
+    double *ps = (double *)&cpu_p->Lx[Lpx[s]];
     memset(ps, 0, sizeof(double));
   }
 

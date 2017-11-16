@@ -275,7 +275,7 @@ static int TEMPLATE (cholmod_super_numeric)
   cpu_p->Head 	= Common->Head ;
   cpu_p->Ls 	= L->s ;
   cpu_p->Lpi 	= L->pi ;
-  cpu_p->Lpx 	= LpxSub;
+  cpu_p->Lpx 	= L->px;
   cpu_p->Super 	= L->super ;
   cpu_p->Lx 	= L->x ;
   cpu_p->stype 	= A->stype ;

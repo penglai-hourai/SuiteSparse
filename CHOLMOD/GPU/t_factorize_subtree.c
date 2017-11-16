@@ -310,7 +310,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         k2 	= Super [s+1] ;
         nscol 	= k2 - k1 ;
         psi 	= Lpi [s] ;
-        psx 	= Lpx [s] ;
+        psx 	= LpxSub [s] ;
         psend 	= Lpi [s+1] ;
         nsrow 	= psend - psi ;
         nsrow2  = nsrow - nscol ;
@@ -523,7 +523,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           kd2 	= Super [d+1] ;
           ndcol = kd2 - kd1 ;
           pdi 	= Lpi [d] ;
-          pdx 	= Lpx [d] ;
+          pdx 	= LpxSub [d] ;
           pdend = Lpi [d+1] ;
           ndrow = pdend - pdi ;
 
@@ -854,7 +854,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         double *d_Ax, *d_Lx;
         struct desc_attributes h_attributes, *d_attributes;
 
-        const double alpha = 1, beta = 0;
+        const double alpha = -1.0;
+        const double beta = 0.0;
         double *d_A, *d_B, *d_C, *d_D;
 
         iBuff = Common->ibuffer[gpuid] % 2;
@@ -913,7 +914,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             k1 = Super[s];
             k2 = Super[s+1];
             psi = Lpi[s];
-            psx = Lpx[s];
+            psx = LpxSub[s];
             psend = Lpi[s+1];
             nsrow = psend - psi;
 
