@@ -932,36 +932,34 @@ extern "C" {
     __global__ void kernelCreateMap_factorized
         ( Int *Map,		/* map on device */
           Int *Ls,    		/* Ls on device */
-          struct desc_attributes *attributes )
+          Int pdi,
+          Int ndrow )
         {
             /* set global thread indices */
             int ix = blockIdx.x * blockDim.x + threadIdx.x;
 
-            Int pdi0 = attributes->pdi0;
-            Int ndrow0 = attributes->ndrow0;
-
             /* loop over batch (supernodes) */
             /* loop over rows */
-            if(ix < ndrow0) {
-                Map[Ls[pdi0+ix]] = (Int) ix;       	/* set map */
+            if(ix < ndrow) {
+                Map[Ls[pdi+ix]] = (Int) ix;       	/* set map */
             }
         }
 
     void createMapOnDevice_factorized
         ( Int *d_Map,    	   	/* map on device */
           Int *d_Ls,	   	/* Ls on device */
-          Int ndrow0,
-          struct desc_attributes *d_attributes,
+          Int pdi,
+          Int ndrow,
           cudaStream_t stream ) 	/* cuda stream */
         {
             /* set blocks & grids */
             dim3 grids;
             dim3 blocks(32,32);
 
-            grids.x = (ndrow0 + blocks.x - 1)/blocks.x;
+            grids.x = (ndrow + blocks.x - 1)/blocks.x;
 
             /* call kernel */
-            kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, d_attributes );
+            kernelCreateMap_factorized <<<grids, blocks, 0, stream>>> ( d_Map, d_Ls, pdi, ndrow );
 
         }
 
@@ -991,19 +989,20 @@ extern "C" {
 
                     /* loop over.. */
                     if(idy < pend-pstart) {
+                        Int ndrow = attributes->ndrow;	/* supernode dimensions */
                         Int ndrow0 = attributes->ndrow0;	/* supernode dimensions */
                         Int p = idy+pstart;
                         Int i = Ai[p];
 
                         /* check for triangular part */
                         if (i >= k) {
-                            Int imap = Map [i] ; 	/* map to use (different for each supernode) */
+                            Int imap = Map [i] - (ndrow - ndrow0) ; 	/* map to use (different for each supernode) */
 
                             /* only for map's for the current supernode */
                             if (imap >= 0 && imap < ndrow0) {
                                 Int id;
                                 Int pdx0 = attributes->pdx0;
-                                id = imap+(pdx0+(k-kd1)*ndrow0);
+                                id = imap+((k-kd1)*ndrow0);
                                 Lx[id] = Ax[p];
                             }
                         }
@@ -1043,6 +1042,7 @@ extern "C" {
         ( double *d_A,
           double *d_C, /* list of schur complements */
           Int *d_Ls,	    /* Ls on device */
+          Int *d_Map,
           Int d_k1,
           Int d_k2,
           Int d_psi,        /* psi */
@@ -1073,13 +1073,11 @@ extern "C" {
                 Int isrow;
 
                 iscol = 0;
-                while ((iscol < k2 - k1) && (d_Ls[psi+iscol] != d_Ls[pdi1+idcol])) iscol++;
+                iscol = d_Map[d_Ls[pdi1+idcol]];
                 if (iscol < k2 - k1)
                 {
-                    isrow = iscol;
-                    while ((isrow < psend - psi) && (d_Ls[psi+isrow] != d_Ls[pdi1+idrow])) isrow++;
-
-                    if ((isrow < psend - psi))
+                    isrow = d_Map[d_Ls[pdi1+idrow]];
+                    if (isrow < psend - psi)
                     {
                         /* check for triangular part */
                         if(isrow >= iscol) {
@@ -1095,6 +1093,7 @@ extern "C" {
         ( double *d_A,
           double *d_C,
           Int *d_Ls,		/* Ls on device */
+          Int *d_Map,
           Int k1,
           Int k2,
           Int psi,
@@ -1113,7 +1112,7 @@ extern "C" {
             grids.y = (ndrow1 + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2 );
+            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, d_Map, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2 );
 
         }
 

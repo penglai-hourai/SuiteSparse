@@ -1273,9 +1273,12 @@ struct desc_attributes
     Int kd1;
     Int kd2;
     Int ndcol;
-    Int ndrow0;
+    Int pdi;
+    Int pdx;
+    Int ndrow;
     Int pdi0;
     Int pdx0;
+    Int ndrow0;
 };
 
 /* structures for holding syrk,gemm,potrf,trsm parameters */
