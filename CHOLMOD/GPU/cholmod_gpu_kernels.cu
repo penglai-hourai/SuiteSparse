@@ -943,6 +943,9 @@ extern "C" {
             if(ix < ndrow) {
                 Map[Ls[pdi+ix]] = (Int) ix;       	/* set map */
             }
+
+            /* synchronize threads */
+            __syncthreads();
         }
 
     void createMapOnDevice_factorized
@@ -954,7 +957,7 @@ extern "C" {
         {
             /* set blocks & grids */
             dim3 grids;
-            dim3 blocks(32,32);
+            dim3 blocks(32);
 
             grids.x = (ndrow + blocks.x - 1)/blocks.x;
 
@@ -980,6 +983,8 @@ extern "C" {
 
                 Int kd1 = attributes->kd1;
                 Int kd2 = attributes->kd2;
+                Int ndrow = attributes->ndrow;	/* supernode dimensions */
+                Int ndrow0 = attributes->ndrow0;	/* supernode dimensions */
 
                 /* loop over columns */
                 if(idx < (kd2-kd1)) {
@@ -989,8 +994,6 @@ extern "C" {
 
                     /* loop over.. */
                     if(idy < pend-pstart) {
-                        Int ndrow = attributes->ndrow;	/* supernode dimensions */
-                        Int ndrow0 = attributes->ndrow0;	/* supernode dimensions */
                         Int p = idy+pstart;
                         Int i = Ai[p];
 
@@ -1001,7 +1004,6 @@ extern "C" {
                             /* only for map's for the current supernode */
                             if (imap >= 0 && imap < ndrow0) {
                                 Int id;
-                                Int pdx0 = attributes->pdx0;
                                 id = imap+((k-kd1)*ndrow0);
                                 Lx[id] = Ax[p];
                             }
@@ -1072,21 +1074,24 @@ extern "C" {
                 Int iscol;
                 Int isrow;
 
-                iscol = 0;
                 iscol = d_Map[d_Ls[pdi1+idcol]];
-                if (iscol < k2 - k1)
+                if (iscol >= 0 && iscol < k2 - k1)
                 {
                     isrow = d_Map[d_Ls[pdi1+idrow]];
-                    if (isrow < psend - psi)
+                    if (isrow >= 0 && isrow < psend - psi)
                     {
                         /* check for triangular part */
                         if(isrow >= iscol) {
                             Int idx = isrow + iscol * nsrow;  			 /* mapping index */
-                            d_A[idx] += d_C[idrow+ndrow2*idcol]; 	 /* add schur complement to supernode */
+                            d_A[idx] += d_C[idrow+idcol*ndrow2]; 	 /* add schur complement to supernode */
+                            //atomicAdd(&d_A[idx], d_C[idrow+idcol*ndrow2]);	/* add schur complement to supernode */
                         }
                     }
                 }
             }
+
+            /* synchronize threads */
+            __syncthreads();
         }
 
     void addUpdateOnDevice_factorized

@@ -835,6 +835,7 @@
                  *
                  */
                 nscol2 = (repeat_supernode) ? (nscol3) : (nscol) ;
+            //printf ("checkpoint factorize s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld\n", s, k1, k2, psi, nsrow);
                 if ( !(supernodeUsedGPU) || !TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))(Common, gpu_p, Lx, &info, nscol2, nsrow, psx, gpuid))
                 {
 
