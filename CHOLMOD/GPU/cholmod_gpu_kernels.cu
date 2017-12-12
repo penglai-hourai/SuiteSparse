@@ -972,49 +972,42 @@ extern "C" {
         Int *Ap,		/* Ap on device */
         Int *Ai,		/* Ai on device */
         Int *Map,       	/* map on device */
-        struct desc_attributes *attributes )
+        Int kd1,
+        Int kd2,
+        Int ndrow,
+        Int ndrow0 )
         {
             /* set global thread index */
             int idx = blockIdx.x * blockDim.x + threadIdx.x;
             int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-            /* loop over supernodes  */
-            {
+            /* loop over columns */
+            if(idx < (kd2-kd1)) {
+                Int k = idx + kd1;
+                Int pstart = Ap[k];
+                Int pend = Ap[k+1];
 
-                Int kd1 = attributes->kd1;
-                Int kd2 = attributes->kd2;
-                Int ndrow = attributes->ndrow;	/* supernode dimensions */
-                Int ndrow0 = attributes->ndrow0;	/* supernode dimensions */
+                /* loop over.. */
+                if(idy < pend-pstart) {
+                    Int p = idy+pstart;
+                    Int i = Ai[p];
 
-                /* loop over columns */
-                if(idx < (kd2-kd1)) {
-                    Int k = idx + kd1;
-                    Int pstart = Ap[k];
-                    Int pend = Ap[k+1];
+                    /* check for triangular part */
+                    if (i >= k) {
+                        Int imap = Map [i] - (ndrow - ndrow0) ; 	/* map to use (different for each supernode) */
 
-                    /* loop over.. */
-                    if(idy < pend-pstart) {
-                        Int p = idy+pstart;
-                        Int i = Ai[p];
-
-                        /* check for triangular part */
-                        if (i >= k) {
-                            Int imap = Map [i] - (ndrow - ndrow0) ; 	/* map to use (different for each supernode) */
-
-                            /* only for map's for the current supernode */
-                            if (imap >= 0 && imap < ndrow0) {
-                                Int id;
-                                id = imap+((k-kd1)*ndrow0);
-                                Lx[id] = Ax[p];
-                            }
+                        /* only for map's for the current supernode */
+                        if (imap >= 0 && imap < ndrow0) {
+                            Int id;
+                            id = imap+((k-kd1)*ndrow0);
+                            Lx[id] = Ax[p];
                         }
-                    } /* end loop over.. */
-                } /* end loop over columns */
+                    }
+                } /* end loop over.. */
+            } /* end loop over columns */
 
-                /* synchronize threads */
-                __syncthreads();
-
-            } /* end loop over supernodes */
+            /* synchronize threads */
+            __syncthreads();
         }
 
     void initLxOnDevice_factorized
@@ -1023,8 +1016,11 @@ extern "C" {
           Int *d_Ap,          	/* Ap on device */
           Int *d_Ai,          	/* Ai on device */
           Int *d_Map,         	/* map on device */
+          Int kd1,
+          Int kd2,
           Int ndcol,
-          struct desc_attributes *d_attributes,
+          Int ndrow,
+          Int ndrow0,
           Int nzmax,
           cudaStream_t stream )  	/* cuda stream */
         {
@@ -1036,7 +1032,7 @@ extern "C" {
             grids.y = (nzmax + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, d_attributes );
+            kernelSetLx_factorized <<<grids, blocks, 0, stream>>> ( d_Lx, d_Ax, d_Ap, d_Ai, d_Map, kd1, kd2, ndrow, ndrow0 );
 
         }
 
@@ -1071,22 +1067,14 @@ extern "C" {
             /* loop over rows & cols */
             if( idcol < ndrow1 && idrow < ndrow2 ) {
 
-                Int iscol;
-                Int isrow;
+                Int iscol = d_Map[d_Ls[pdi1+idcol]];
+                Int isrow = d_Map[d_Ls[pdi1+idrow]];
 
-                iscol = d_Map[d_Ls[pdi1+idcol]];
-                if (iscol >= 0 && iscol < k2 - k1)
-                {
-                    isrow = d_Map[d_Ls[pdi1+idrow]];
-                    if (isrow >= 0 && isrow < psend - psi)
-                    {
-                        /* check for triangular part */
-                        if(isrow >= iscol) {
-                            Int idx = isrow + iscol * nsrow;  			 /* mapping index */
-                            d_A[idx] += d_C[idrow+idcol*ndrow2]; 	 /* add schur complement to supernode */
-                            //atomicAdd(&d_A[idx], d_C[idrow+idcol*ndrow2]);	/* add schur complement to supernode */
-                        }
-                    }
+                /* check for triangular part */
+                if(isrow >= iscol) {
+                    Int idx = isrow + iscol * nsrow;  			 /* mapping index */
+                    d_A[idx] += d_C[idrow+idcol*ndrow2]; 	 /* add schur complement to supernode */
+                    //atomicAdd(&d_A[idx], d_C[idrow+idcol*ndrow2]);	/* add schur complement to supernode */
                 }
             }
 

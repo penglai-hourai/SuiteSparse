@@ -84,18 +84,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* type (double *) */
 
-    gpu_p->d_LxFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
-
-    gpu_p->d_LxFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
-
-    gpu_p->d_MapFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
-
-    gpu_p->d_MapFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
-
     /* pointers to supernode matrices */
     gpu_p->d_ptrSuper[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 3*gb_p->ptrSuperSize;
@@ -136,6 +124,19 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->d_Map[gpuid] 		 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= gb_p->MapSize;
 
+    gpu_p->d_LxFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
+
+    gpu_p->d_LxFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->LxSizeFactorized;
+
+    gpu_p->d_MapFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+
+    gpu_p->d_MapFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
+    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+    //printf ("checkpoint LxSizeFactorized = %ld MapSizeFactorized = %ld\n", gb_p->LxSizeFactorized, gb_p->MapSizeFactorized);
+
     /* type (int) */
 
     /* dimensions of supernode matrices */
@@ -153,12 +154,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     /* devSync memory for custom cusolverDnDpotrf */
     gpu_p->d_devSync[gpuid] 	 = gpu_p->gpuPtr[gpuid];
     gpu_p->gpuPtr[gpuid] 		+= 2*sizeof(int)*gb_p->maxbatch;
-
-    gpu_p->d_attributes[gpuid][0] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
-
-    gpu_p->d_attributes[gpuid][1] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += sizeof(struct desc_attributes);
 
     /* cuSolver Cholesky initialization (get workspace size) */
     cusolverErr = cusolverDnDpotrf_bufferSize(Common->cusolverHandle[gpuid], CUBLAS_FILL_MODE_LOWER, gb_p->maxnscol, gpu_p->d_C[gpuid], gb_p->maxnsrow, &gb_p->work_size);

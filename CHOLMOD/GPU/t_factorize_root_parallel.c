@@ -557,7 +557,7 @@
                      */
                     if ( GPUavailable == 1 )
                     {
-            //printf ("checkpoint updates s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld d = %ld kd1 = %ld kd2 = %ld pdi1 = %ld ndrow = %ld\n", s, k1, k2, psi, nsrow, d, kd1, kd2, pdi1, ndrow);
+            //printf ("checkpoint updates s = %ld d = %ld pdi1 = %ld pdi2 = %ld\n", s, d, pdi1, pdi2);
                         TEMPLATE2 (CHOLMOD (gpu_updateC_root)) (Common, gpu_p, Lx, ndrow1, ndrow2, ndrow, ndcol, nsrow, pdx1, pdi1, iHostBuff, iDevBuff, iDevCBuff, gpuid);
                         supernodeUsedGPU = 1;   				/* GPU was used for this supernode*/
                         idescendant++;
@@ -619,7 +619,7 @@
                                     Int ldb = ndrow;
                                     Int ldc = ndrow2;
 
-            //printf ("checkpoint updates s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld d = %ld kd1 = %ld kd2 = %ld pdi1 = %ld ndrow = %ld\n", s, k1, k2, psi, nsrow, d, kd1, kd2, pdi1, ndrow);
+            //printf ("checkpoint updates s = %ld d = %ld pdi1 = %ld pdi2 = %ld\n", s, d, pdi1, pdi2);
                                     /* store descendant dimensions */
                                     desc[desc_count].pdi1   = pdi1;
                                     desc[desc_count].ndrow1 = ndrow1;
@@ -835,7 +835,7 @@
                  *
                  */
                 nscol2 = (repeat_supernode) ? (nscol3) : (nscol) ;
-            //printf ("checkpoint factorize s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld\n", s, k1, k2, psi, nsrow);
+            //printf ("checkpoint factorize s = %ld\n", s);
                 if ( !(supernodeUsedGPU) || !TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))(Common, gpu_p, Lx, &info, nscol2, nsrow, psx, gpuid))
                 {
 

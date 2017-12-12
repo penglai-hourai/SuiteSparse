@@ -341,12 +341,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
 
     /* total amount of GPU memory needed */
-    gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized + 2 * sizeof(struct desc_attributes)
+    gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
         + gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize))
         + 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized + 2 * sizeof(struct desc_attributes)
+    cpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
         + gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */
@@ -1382,7 +1382,10 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           LxSizeFactorizedMax = sizeof(double) * ndcol * ndrow2;
 
           if (gb_p->LxSizeFactorized < LxSizeFactorizedMax)
+          {
               gb_p->LxSizeFactorized = LxSizeFactorizedMax;
+              //printf ("checkpoint d = %ld ndcol = %ld ndrow2 = %ld LxSizeFactorized = %ld dev_mempool_size = %ld\n", d, ndcol, ndrow2, gb_p->LxSizeFactorized, Common->dev_mempool_size);
+          }
       }
       if (tree_p->factorized[s])
       {
@@ -1581,10 +1584,11 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized + 2 * sizeof(struct desc_attributes)
+        gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
             + LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize
             + 14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize
             + 2*nbatch*sizeof(Int) + sizeof(Int);
+        //printf ("checkpoint gpu_memtot = %ld\n", gpu_memtot);
 
 
         /* case if exceed GPU memory */

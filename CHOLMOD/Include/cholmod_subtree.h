@@ -342,8 +342,6 @@ typedef struct cholmod_gpu_pointers
     Int *d_Ls_root[CHOLMOD_MAX_NUM_GPUS];
     Int *d_Map_root[CHOLMOD_MAX_NUM_GPUS];
     Int *d_RelativeMap_root[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_LX_BUFFERS];
-
-    struct desc_attributes *d_attributes[CHOLMOD_MAX_NUM_PGPUS][2];
 } cholmod_gpu_pointers ;
 
 

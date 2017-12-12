@@ -328,7 +328,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           if(Apdiff > maxnz) maxnz = Apdiff;
         }
 
-            //printf ("checkpoint factorize s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld\n", s, k1, k2, psi, nsrow);
+            //printf ("checkpoint factorize s = %ld\n", s);
 
         Int m   = nsrow - nscol ;
         Int n   = nscol;
@@ -597,7 +597,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
           Int ldb = ndrow;
           Int ldc = ndrow2;
 
-            //printf ("checkpoint updates s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld d = %ld kd1 = %ld kd2 = %ld pdi1 = %ld ndrow = %ld\n", s, h_super->k1[i], k2, psi, h_super->nsrow[i], d, kd1, kd2, pdi1, ndrow);
+            //printf ("checkpoint updates s = %ld d = %ld pdi1 = %ld pdi2 = %ld\n", s, d, pdi1, pdi2);
           /* store descendant dimensions & pointers (for addUpdate) */
           desc[desc_count].score 	= (double)(ndrow1*ndrow2);
           desc[desc_count].s 		= i;
@@ -857,7 +857,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int pdi0, pdx0, ndrow0;
         Int *d_Ls, *d_MapFactorized, *d_Ap, *d_Ai, Apdiff;
         double *d_Ax, *d_LxFactorized;
-        struct desc_attributes h_attributes, *d_attributes;
 
         iBuff = Common->ibuffer[gpuid] % 2;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % 2;
@@ -868,7 +867,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         d_Ai = gpu_p->d_Ai[gpuid];
         d_Ax = gpu_p->d_Ax[gpuid];
         d_LxFactorized = gpu_p->d_LxFactorized[gpuid][iBuff];
-        d_attributes = gpu_p->d_attributes[gpuid][iBuff];
 
         d = update_factorized[d_itr];
 
@@ -890,19 +888,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             if (nzmax < Apdiff) nzmax = Apdiff;
         }
 
-        h_attributes.kd1 = kd1;
-        h_attributes.kd2 = kd2;
-        h_attributes.ndcol = ndcol;
-        h_attributes.pdi = pdi;
-        h_attributes.pdx = pdx;
-        h_attributes.ndrow = ndrow;
-        h_attributes.pdi0 = pdi0;
-        h_attributes.pdx0 = pdx0;
-        h_attributes.ndrow0 = ndrow0;
-
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
-
-        cudaMemcpyAsync (d_attributes, &h_attributes, sizeof (struct desc_attributes), cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         cudaMemsetAsync (d_MapFactorized, -1, sizeof(Int) * L->n, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
@@ -910,7 +896,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaMemsetAsync (d_LxFactorized, 0, sizeof(double) * ndcol * ndrow0, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
-        initLxOnDevice_factorized (d_LxFactorized, d_Ax, d_Ap, d_Ai, d_MapFactorized, ndcol, d_attributes, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        initLxOnDevice_factorized (d_LxFactorized, d_Ax, d_Ap, d_Ai, d_MapFactorized, kd1, kd2, ndcol, ndrow, ndrow0, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         s = SuperMap [Ls [pdi + Lpos_save[d]]];
         while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
@@ -939,7 +925,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d_C = gpu_p->d_C[gpuid];
             d_D = d_C + ndrow1;
 
-            //printf ("checkpoint updates s = %ld k1 = %ld k2 = %ld psi = %ld nsrow = %ld d = %ld kd1 = %ld kd2 = %ld pdi1 = %ld ndrow = %ld\n", s, k1, k2, psi, nsrow, d, kd1, kd2, pdi1, ndrow);
+            //printf ("checkpoint updates s = %ld d = %ld pdi1 = %ld pdi2 = %ld\n", s, d, pdi1, pdi2);
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);

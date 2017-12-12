@@ -1268,19 +1268,6 @@ typedef struct cholmod_sparse_struct
 
 
 
-struct desc_attributes
-{
-    Int kd1;
-    Int kd2;
-    Int ndcol;
-    Int pdi;
-    Int pdx;
-    Int ndrow;
-    Int pdi0;
-    Int pdx0;
-    Int ndrow0;
-};
-
 /* structures for holding syrk,gemm,potrf,trsm parameters */
 typedef struct cholmod_syrk_t {
   double score;
