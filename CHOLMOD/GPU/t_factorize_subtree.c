@@ -853,9 +853,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         const int stype = cpu_p->stype;
 
-        Int i, j, k, p, pend, nzmax, imap;
+        Int i, j, k, p, pend, imap;
         Int pdi0, pdx0, ndrow0;
-        Int *d_Ls, *d_MapFactorized, *d_Ap, *d_Ai, Apdiff;
+        Int *d_Ls, *d_MapFactorized, *d_Ap, *d_Ai;
         double *d_Ax, *d_LxFactorized;
 
         iBuff = Common->ibuffer[gpuid] % 2;
@@ -881,22 +881,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         ndrow = pdend - pdi ;
         ndrow0 = pdend - pdi0 ;
 
-        nzmax = 0;
-        for (k = kd1; k < kd2; k++)
-        {
-            Apdiff = Ap[k+1] - Ap[k];
-            if (nzmax < Apdiff) nzmax = Apdiff;
-        }
-
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
 
-        cudaMemsetAsync (d_MapFactorized, -1, sizeof(Int) * L->n, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        createMapOnDevice_factorized (d_MapFactorized, d_Ls, pdi, ndrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        cudaMemsetAsync (d_LxFactorized, 0, sizeof(double) * ndcol * ndrow0, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-        initLxOnDevice_factorized (d_LxFactorized, d_Ax, d_Ap, d_Ai, d_MapFactorized, kd1, kd2, ndcol, ndrow, ndrow0, nzmax, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        cudaMemcpy2DAsync (
+                d_LxFactorized, sizeof(double) * ndrow0,
+                (void *) (L->x) + sizeof(double) * pdx0, sizeof(double) * ndrow,
+                sizeof(double) * ndrow0, ndcol,
+                cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
         s = SuperMap [Ls [pdi + Lpos_save[d]]];
         while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
