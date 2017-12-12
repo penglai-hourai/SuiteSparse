@@ -856,7 +856,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int i, j, k, p, pend, imap;
         Int pdi0, pdx0, ndrow0;
         Int *d_Ls, *d_MapFactorized, *d_Ap, *d_Ai;
-        double *d_Ax, *d_LxFactorized;
+        double *d_Ax, *h_LxFactorized, *d_LxFactorized;
 
         iBuff = Common->ibuffer[gpuid] % 2;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % 2;
@@ -866,6 +866,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         d_Ap = gpu_p->d_Ap[gpuid];
         d_Ai = gpu_p->d_Ai[gpuid];
         d_Ax = gpu_p->d_Ax[gpuid];
+        h_LxFactorized = gpu_p->h_LxFactorized[gpuid][iBuff];
         d_LxFactorized = gpu_p->d_LxFactorized[gpuid][iBuff];
 
         d = update_factorized[d_itr];
@@ -881,13 +882,32 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         ndrow = pdend - pdi ;
         ndrow0 = pdend - pdi0 ;
 
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+#if 1
+        cudaEventSynchronize(Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff]);
 
+#pragma omp parallel for num_threads (Common->ompNumThreads) private (i, j) if (ndcol > 32)
+        for (j = 0; j < ndcol; j++)
+        {
+            for (i = 0; i < ndrow0; i++)
+            {
+                h_LxFactorized[i+j*ndrow0] = ((double *) (L->x) + pdx0)[i+j*ndrow];
+            }
+        }
+
+        cudaMemcpyAsync (
+                d_LxFactorized, h_LxFactorized,
+                sizeof(double) * ndcol * ndrow0,
+                cudaMemcpyHostToDevice,
+                Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+        cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+#else
         cudaMemcpy2DAsync (
                 d_LxFactorized, sizeof(double) * ndrow0,
                 (void *) (L->x) + sizeof(double) * pdx0, sizeof(double) * ndrow,
                 sizeof(double) * ndrow0, ndcol,
                 cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+#endif
 
         s = SuperMap [Ls [pdi + Lpos_save[d]]];
         while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
@@ -959,8 +979,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
             s = SuperMap [Ls [pdi + Lpos_save[d]]];
         }
-
-        cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
