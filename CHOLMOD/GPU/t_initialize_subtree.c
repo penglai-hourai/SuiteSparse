@@ -1384,7 +1384,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
           if (gb_p->LxSizeFactorized < LxSizeFactorizedMax)
           {
               gb_p->LxSizeFactorized = LxSizeFactorizedMax;
-              //printf ("checkpoint d = %ld ndcol = %ld ndrow2 = %ld LxSizeFactorized = %ld dev_mempool_size = %ld\n", d, ndcol, ndrow2, gb_p->LxSizeFactorized, Common->dev_mempool_size);
           }
       }
       if (tree_p->factorized[s])
@@ -1588,7 +1587,6 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
             + LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize
             + 14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize
             + 2*nbatch*sizeof(Int) + sizeof(Int);
-        //printf ("checkpoint gpu_memtot = %ld\n", gpu_memtot);
 
 
         /* case if exceed GPU memory */
