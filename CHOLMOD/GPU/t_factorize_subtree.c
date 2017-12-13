@@ -25,7 +25,7 @@
 #include <string.h>
 #include <time.h>
 
-
+#define INTEGRATED_MEMCPY
 
 /*
  * Function:
@@ -920,6 +920,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaEventSynchronize(Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff]);
 
+#ifndef INTEGRATED_MEMCPY
         if (pdi2 < pdend)
         {
 #pragma omp parallel for num_threads (Common->ompNumThreads) private (i, j) if (ndcol > 32)
@@ -942,6 +943,27 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
             cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
         }
+#else
+#pragma omp parallel for num_threads (Common->ompNumThreads) private (i, j) if (ndcol > 32)
+            for (j = 0; j < ndcol; j++)
+            {
+                for (i = 0; i < ndrow0; i++)
+                {
+                    h_LxFactorized[i+j*ndrow0] = ((double *) (L->x) + pdx0)[i+j*ndrow];
+                }
+            }
+
+            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+
+            cudaMemcpyAsync (
+                    d_LxFactorized,
+                    h_LxFactorized,
+                    sizeof(double) * ndrow0 * ndcol,
+                    cudaMemcpyHostToDevice,
+                    Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+            cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+#endif
 
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff_shift], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
 
@@ -972,6 +994,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d_C = gpu_p->d_C[gpuid];
             d_D = d_C + ndrow1;
 
+#ifndef INTEGRATED_MEMCPY
 #pragma omp parallel for num_threads (Common->ompNumThreads) private (i, j) if (ndcol > 32)
             for (j = 0; j < ndcol; j++)
             {
@@ -991,6 +1014,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff_shift]);
 
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+#endif
 
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
@@ -1222,7 +1246,4 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 }
 
-
-
-
-
+#undef INTEGRATED_MEMCPY
