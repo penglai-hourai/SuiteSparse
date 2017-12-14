@@ -435,7 +435,8 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    for (loop = 0; loop < 2; loop++)
+    gb_p->has_root = TRUE;
+    while (gb_p->has_root == TRUE)
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
