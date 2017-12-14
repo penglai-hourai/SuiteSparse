@@ -280,8 +280,6 @@ typedef struct cholmod_cpu_pointers
 /* struct for GPU */
 typedef struct cholmod_gpu_pointers
 {
-    int	   gpuid;
-
     /* device & pinned buffers */
     void   *gpuPtr[CHOLMOD_MAX_NUM_PGPUS];
     void   *hostPtr[CHOLMOD_MAX_NUM_PGPUS];

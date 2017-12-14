@@ -117,7 +117,6 @@
     n	 		= L->n;
     numThreads		= Common->ompNumThreads;
     numThreads1		= (Common->ompNumThreads + Common->numGPU - 1)/Common->numGPU;
-    gpu_p->gpuid 		= 0;
     devBuffSize		= ((size_t)(Common->devBuffSize))/sizeof(double);
     Apacked               = cpu_p->Apacked;
     Fpacked               = cpu_p->Fpacked;

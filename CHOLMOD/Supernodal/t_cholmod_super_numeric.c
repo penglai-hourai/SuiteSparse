@@ -580,7 +580,6 @@ static int TEMPLATE (cholmod_super_numeric)
 
       /* set variables */
       deviceid = omp_get_thread_num();				/* set device id*/
-      gpu_p->gpuid = deviceid;					/* gpuid (for GPU algorithm) */
       numSubtreePerDevice = (int)(lb_p->numSubtreePerDevice[deviceid]);
 
 
