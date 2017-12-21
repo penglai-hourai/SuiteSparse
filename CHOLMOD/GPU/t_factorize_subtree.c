@@ -81,12 +81,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
   Int d_itr;
   Int update_count_factorized;
-  Int *update_factorized = cpu_p->Next_save;
+  Int *update_factorized = gpu_p->h_darray[deviceid];
 
   const double alpha = -1.0;
   const double beta = 0.0;
 
 
+  cudaSetDevice(deviceid);
 
 
   /*
@@ -865,7 +866,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % iBuff_loopSize;
         iBuff_shift = iBuff + iBuff_loopSize;
 
-        p_array = gpu_p->h_MapFactorized[gpuid][iBuff];
+        p_array = gpu_p->h_sarray[gpuid][iBuff];
 
         d_Ls = gpu_p->d_Ls[gpuid];
         d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff];
@@ -941,7 +942,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff_shift], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
 
-        do
+        while (p_index > 0)
         {
             p = p_array[--p_index];
 
@@ -967,6 +968,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d_B = d_A + ndrow1;
             d_C = gpu_p->d_C[gpuid];
             d_D = d_C + ndrow1;
+
 
             cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
@@ -1006,7 +1008,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
             cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
         }
-        while (p_index > 0);
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);

@@ -333,20 +333,18 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     gb_p->dimSuperSize  = sizeof(Int)*(gb_p->maxbatch);       		/* size of dimension arrays for super. */
     gb_p->ptrSuperSize  = sizeof(double *)*(gb_p->maxbatch);     	/* size of pointer arrays for super. */
 
-    gb_p->MapSizeFactorized = sizeof(Int) * n;
-
     /* size of Ap, Ai, Ax buffers (0 if GPU subtrees not used) */
     if(gb_p->runType != 1 && gb_p->runType != 3) size_A = gb_p->ApSize + gb_p->AiSize + gb_p->AxSize;    	/* if not root and not CPU only */
     else	  				 size_A = 0;
 
 
     /* total amount of GPU memory needed */
-    gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
+    gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
         + gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize))
         + 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
+    cpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
         + gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */
@@ -674,10 +672,12 @@ void TEMPLATE2 (CHOLMOD (initialize_gpu))
   /* initialize GPU (set pointers, copy memory, etc.)
    * only if there are GPU subtrees  */
   if(runType != 1 && runType != 3) {
-    #pragma omp parallel num_threads(numGPU_physical)
+      int gpuid;
+    #pragma omp parallel for num_threads(numGPU_physical) private(gpuid)
+      for (gpuid = 0; gpuid < numGPU_physical; gpuid++)
     {
       /* get GPU id (omp thread id) */
-      int gpuid = omp_get_thread_num();
+      //int gpuid = omp_get_thread_num();
 
       /* set GPU device */
       cudaSetDevice(gpuid);
@@ -1583,7 +1583,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = 2 * gb_p->LxSizeFactorized + 2 * gb_p->MapSizeFactorized
+        gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
             + LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize
             + 14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize
             + 2*nbatch*sizeof(Int) + sizeof(Int);

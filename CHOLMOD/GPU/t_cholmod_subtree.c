@@ -115,10 +115,10 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     /* type (Int) */
 
     gpu_p->d_MapFactorized[gpuid][0] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+    gpu_p->gpuPtr[gpuid] += sizeof(Int) * L->n;
 
     gpu_p->d_MapFactorized[gpuid][1] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+    gpu_p->gpuPtr[gpuid] += sizeof(Int) * L->n;
 
     /* Ap */
     gpu_p->d_Ap[gpuid] 		 = gpu_p->gpuPtr[gpuid];
@@ -261,11 +261,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* type (Int) */
 
-    gpu_p->h_MapFactorized[gpuid][0] = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
+    gpu_p->h_darray[gpuid] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += sizeof(Int) * L->n;
 
-    gpu_p->h_MapFactorized[gpuid][1] = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
+    gpu_p->h_sarray[gpuid][0] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += sizeof(Int) * L->n;
+
+    gpu_p->h_sarray[gpuid][1] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += sizeof(Int) * L->n;
 
     /* type (int) */
 

@@ -435,8 +435,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
-    gb_p->has_root = TRUE;
-    while (gb_p->has_root == TRUE)
+    do
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
@@ -573,13 +572,16 @@ static int TEMPLATE (cholmod_super_numeric)
         subtree_factorize_time = SuiteSparse_time();
 #endif
     /* loop over all devices (GPU,CPU) */
-    #pragma omp parallel num_threads(gb_p->numDevice)
+      int deviceid;
+#pragma omp parallel for num_threads(gb_p->numDevice) private(deviceid)
+      for (deviceid = 0; deviceid < gb_p->numDevice; deviceid++)
+//#pragma omp parallel num_threads(gb_p->numDevice)
     {
       /* local variables */
-      int deviceid, subtreeid, numSubtreePerDevice, check = 0;
+      int subtreeid, numSubtreePerDevice, check = 0;
 
       /* set variables */
-      deviceid = omp_get_thread_num();				/* set device id*/
+      //deviceid = omp_get_thread_num();				/* set device id*/
       numSubtreePerDevice = (int)(lb_p->numSubtreePerDevice[deviceid]);
 
 
@@ -693,6 +695,7 @@ static int TEMPLATE (cholmod_super_numeric)
         printf ("subtree factorize time = %lf\n", SuiteSparse_time() - subtree_factorize_time);
 #endif
     }
+    while (gb_p->numSubtree > 1 && gb_p->has_root == TRUE);
 
 
 

@@ -3,8 +3,8 @@
  *   cholmod_gpu
  *
  * Description:
- *   Contains functions for initializing 
- *   the GPU. 
+ *   Contains functions for initializing
+ *   the GPU.
  *
  */
 
@@ -26,16 +26,16 @@
 
 
 
-/* 
+/*
  *  Function:
  *    poll_gpu
  *
  *  Description:
  *    Ensures a GPU is available. Returns true if it
- *    available, and false otherwise. 
+ *    available, and false otherwise.
  *
  */
-static int poll_gpu (size_t s)          
+static int poll_gpu (size_t s)
 {
 #ifdef SUITESPARSE_CUDA
     /* local variables */
@@ -75,11 +75,11 @@ static int poll_gpu (size_t s)
  *     Determine the amount of free memory on the current GPU.  To use another
  *     GPU, use cudaSetDevice (k) prior to calling this routine, where k is an
  *     integer in the range 0 to the number of devices-1.   If the free size is
- *     less than 64 MB, then a size of 1 is returned. Function returns GPU 
- *     memory size available. 
- *     
+ *     less than 64 MB, then a size of 1 is returned. Function returns GPU
+ *     memory size available.
+ *
  */
-int CHOLMOD(gpu_memorysize)      
+int CHOLMOD(gpu_memorysize)
 (
     size_t         *total_mem,
     size_t         *available_mem,
@@ -122,7 +122,7 @@ int CHOLMOD(gpu_memorysize)
     /* early exit (not even 64MB, return failure code)  */
     if (total_free < MINSIZE)
     {
-        return (1) ;                    
+        return (1) ;
     }
 
 
@@ -131,14 +131,14 @@ int CHOLMOD(gpu_memorysize)
     if (poll_gpu (s))
     {
         *available_mem = s;
-        return (0) ;  
+        return (0) ;
     }
 
 
     /* eary exit (not even 64MB, returnfailute code) */
     if (!poll_gpu (MINSIZE))
     {
-        return (1) ;                    
+        return (1) ;
     }
 
 
@@ -163,7 +163,7 @@ int CHOLMOD(gpu_memorysize)
 
 #endif
 
-    return (0) ; 
+    return (0) ;
 }
 
 
@@ -221,11 +221,11 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
     {
       Common->numGPU_physical = ngpus;
     }
-    
+
 
 
     /* if default selected (no numGPUs set) */
-    if (Common->numGPU_physical == -1) 
+    if (Common->numGPU_physical == -1)
     {
 
       /* set GPU 0, fetch GPU 0, fetch GPU 0 properties */
@@ -245,21 +245,21 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
         if(gpuProp.major == gpuProp0.major) {
           count++;
         }
-                  
-      }       
+
+      }
 
       /* set # GPUs */
       Common->numGPU_physical = count;
 
     }
     /* if numGPUs set */
-    else if (Common->numGPU_physical > 0) 
+    else if (Common->numGPU_physical > 0)
     {
 
       /* loop over available gpus */
-      for(gpuid = 0; gpuid < ngpus; gpuid++) 
+      for(gpuid = 0; gpuid < ngpus; gpuid++)
       {
-        
+
         /* set GPU, fetch GPU, fetch GPU properties  */
         cudaSetDevice ( gpuid );
         cudaGetDevice ( &idevice );
@@ -270,14 +270,14 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
          *   1. compute capability > 1
          *   2. > 1GB device memory */
         if ( gpuProp.major > 1 && 1.0e-9*gpuProp.totalGlobalMem > 1.0 )
-            count++;				/* increment # qualified GPUs */        
+            count++;				/* increment # qualified GPUs */
 
       }
 
       /* reset # GPUs to # compatible devices */
       if(count < Common->numGPU_physical)
         Common->numGPU_physical = count;
-            
+
     }
 
 
@@ -288,7 +288,7 @@ int CHOLMOD(gpu_probe) ( cholmod_common *Common )
 
 
     /* no GPU is available */
-    return 0;  
+    return 0;
 }
 
 
@@ -350,7 +350,7 @@ int CHOLMOD(gpu_deallocate)
     Common->host_pinned_mempool_size = 0;
 
 
-  
+
     /* gpu end */
     CHOLMOD (gpu_end) (Common) ;
 #endif
@@ -367,12 +367,12 @@ int CHOLMOD(gpu_deallocate)
 
 
 
-/* 
+/*
  *  Function:
  *    gpu_end
  *
  *  Description:
- *    free GPU handles & streams  
+ *    free GPU handles & streams
  *
  */
 void CHOLMOD(gpu_end)
@@ -386,10 +386,10 @@ void CHOLMOD(gpu_end)
     int j, k;
 
 
-    /* 
-     * destroy cuBlas/cuSolver handles  
+    /*
+     * destroy cuBlas/cuSolver handles
      */
-    for(k = 0; k < Common->numGPU_physical; k++) 
+    for(k = 0; k < Common->numGPU_physical; k++)
     {
 
       /* cuBlas handle */
@@ -412,19 +412,19 @@ void CHOLMOD(gpu_end)
 
 
 
-    /* 
-     * destroy CUDA streams 
+    /*
+     * destroy CUDA streams
      */
-    for(k = 0; k < Common->numGPU * Common->numGPU_subtree_parallel; k++) 
+    for(k = 0; k < Common->numGPU * Common->numGPU_subtree_parallel; k++)
     {
-      for(j = 0; j <= CHOLMOD_DEVICE_STREAMS+1; j++) 
+      for(j = 0; j <= CHOLMOD_DEVICE_STREAMS+1; j++)
       {
 
         /* CUDA streams */
         if (Common->gpuStream[k][j])
         {
             cudaStreamDestroy (Common->gpuStream[k][j]) ;
-            Common->gpuStream[k][j] = NULL ;        
+            Common->gpuStream[k][j] = NULL ;
         }
 
       }
@@ -433,8 +433,8 @@ void CHOLMOD(gpu_end)
 
 
 
-    /* 
-     * destroy CUDA events 
+    /*
+     * destroy CUDA events
      */
     for(k = 0; k < Common->numGPU; k++)
     {
@@ -514,7 +514,7 @@ void CHOLMOD(gpu_end)
 
 
 /*
- *  Function: 
+ *  Function:
  *    gpu_allocate
  *
  *  Description:
@@ -524,9 +524,9 @@ void CHOLMOD(gpu_end)
  *
  */
 
-int CHOLMOD(gpu_allocate) 
-( 
-  cholmod_common *Common 
+int CHOLMOD(gpu_allocate)
+(
+  cholmod_common *Common
 )
 {
 
@@ -559,21 +559,21 @@ int CHOLMOD(gpu_allocate)
 
 
 
-    /* 
+    /*
      * Fetch total available device memory
      */
     fdm = 0;
     for(k = 0; k < Common->numGPU_physical; k++) {
 
-      cudaSetDevice(k); 
+      cudaSetDevice(k);
       CHOLMOD_HANDLE_CUDA_ERROR (CHOLMOD(gpu_memorysize) (&tdm,&tfdm[k],Common), "gpu_memorysize");
 
-      /* get minimum amount of memory avialble across the 4 devices. Amount allocated for each 
+      /* get minimum amount of memory avialble across the 4 devices. Amount allocated for each
        * device must be the same. */
       if(!k) fdm = tfdm[k];
       else {
         if(tfdm[k] < fdm) fdm = tfdm[k];
-      }     
+      }
 
     }
 
@@ -581,9 +581,9 @@ int CHOLMOD(gpu_allocate)
 
 
 
-    /* 
-     * Compute the amount of device & host memory available: 
-     * Always leave 50 MB free for driver use. 
+    /*
+     * Compute the amount of device & host memory available:
+     * Always leave 50 MB free for driver use.
      */
     availableDeviceMemory = fdm + Common->dev_mempool_size - 1024ll*1024ll*50ll;
     availableHostMemory = availableDeviceMemory;
@@ -593,7 +593,7 @@ int CHOLMOD(gpu_allocate)
 
 
     /* if memory requested larger than total memory available or no specific memory requested */
-    if ( maxGpuMemBytes > availableDeviceMemory || maxGpuMemBytes == 0 ) {		
+    if ( maxGpuMemBytes > availableDeviceMemory || maxGpuMemBytes == 0 ) {
        maxGpuMemBytes = availableDeviceMemory;
     }
 
@@ -601,7 +601,7 @@ int CHOLMOD(gpu_allocate)
 
 
 
-    /* 
+    /*
      * Compute the amount of device & host memory requested
      */
     requestedDeviceMemory = maxGpuMemBytes;
@@ -638,7 +638,7 @@ int CHOLMOD(gpu_allocate)
       cudaSetDevice(k);
 
       /* allocate pinned memory */
-      cudaErr = cudaHostAlloc ((void**)&(Common->host_pinned_mempool[k]), requestedHostMemory, cudaHostAllocMapped);    
+      cudaErr = cudaHostAlloc ((void**)&(Common->host_pinned_mempool[k]), requestedHostMemory, cudaHostAllocMapped);
 
       /* clear pinned memory */
       memset(Common->host_pinned_mempool[k],0,requestedHostMemory);
@@ -679,7 +679,7 @@ int CHOLMOD(gpu_allocate)
 
 
 
-    /* print GPU info */    
+    /* print GPU info */
     PRINTF("\n\nGPU allocate..\n");
     PRINTFV("numGPU: %d\t",Common->numGPU);
     PRINTFV("maxGpuMemBytes: %ld\n",maxGpuMemBytes);
