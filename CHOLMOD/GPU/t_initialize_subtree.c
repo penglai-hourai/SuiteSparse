@@ -263,6 +263,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     {
         LpxSub[s] = -1;
     }
+    gb_p->MapSizeFactorized = sizeof(Int) * L->n;
     gb_p->LxSizeFactorized = 0;
     /* loop over subtrees */
     for(subtree = 0; subtree < gb_p->numSubtree; subtree++) {
@@ -339,12 +340,12 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
 
 
     /* total amount of GPU memory needed */
-    gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
+    gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * gb_p->MapSizeFactorized
         + gb_p->LxSize + gb_p->CSize + gb_p->LsSize + gb_p->MapSize + size_A + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize))
         + 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
+    cpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * gb_p->MapSizeFactorized
         + gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */
@@ -497,14 +498,7 @@ void TEMPLATE2 (CHOLMOD (loadbalance_gpu))
 
 
   /* issue less GPUs if not sufficient subtrees */
-  if(numSubtreeProper < Common->numGPU_physical)
-  {
-    gb_p->numGPU = numSubtreeProper;
-  }
-  else
-  {
-    gb_p->numGPU = Common->numGPU_physical;
-  }
+  gb_p->numGPU = Common->numGPU_physical;
 
 
 
@@ -1583,7 +1577,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * sizeof(Int) * n
+        gpu_memtot = 2 * gb_p->LxSizeFactorized + 3 * gb_p->MapSizeFactorized
             + LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize
             + 14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize
             + 2*nbatch*sizeof(Int) + sizeof(Int);

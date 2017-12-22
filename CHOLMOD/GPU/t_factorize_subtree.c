@@ -847,7 +847,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
      const iBuff_loopSize = 2;
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
-        int iBuff, iBuff_shift; 
+        int iBuff; 
 
         const int stype = cpu_p->stype;
 
@@ -864,7 +864,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         iBuff = Common->ibuffer[gpuid] % iBuff_loopSize;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % iBuff_loopSize;
-        iBuff_shift = iBuff + iBuff_loopSize;
 
         p_array = gpu_p->h_sarray[gpuid][iBuff];
 
@@ -940,7 +939,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff_shift], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
 
         while (p_index > 0)
         {
