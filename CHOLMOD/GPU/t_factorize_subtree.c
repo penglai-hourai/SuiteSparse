@@ -1157,6 +1157,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
    *  Ony for last level.
    *
    */
+  if (supernode_num_levels[subtree] > 0)
   TEMPLATE2 (CHOLMOD(gpu_copy_supernode))(
           Common,
           gpu_p,

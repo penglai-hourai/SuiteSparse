@@ -1174,7 +1174,7 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
       s = tree_p->supernode_levels[start_local + i];
       nscol = cpu_p->Super [s+1] - cpu_p->Super [s] ;
       nsrow = cpu_p->Lpi[s+1] - cpu_p->Lpi[s] ;
-      const Int ssize = nscol*nsrow;
+      const Int ssize = nscol * nsrow;
 
       offset1 = ((Int*)Lpx)[s];
       offset2 = LpxSub[s];

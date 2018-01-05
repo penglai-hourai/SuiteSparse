@@ -435,6 +435,7 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+    int has_subtree;
     do
     {
 #ifdef TDEBUG
@@ -566,8 +567,16 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
 
 
+        int subtree_idx;
+        has_subtree = 0;
+        for (subtree_idx = 0; subtree_idx < gb_p->numSubtreeProper; subtree_idx++)
+        {
+            has_subtree += tree_p->supernode_num_levels[subtree_idx];
+        }
 
 
+        if (has_subtree)
+        {
 #ifdef TDEBUG
         subtree_factorize_time = SuiteSparse_time();
 #endif
@@ -610,6 +619,7 @@ static int TEMPLATE (cholmod_super_numeric)
         {
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
+          if (tree_p->supernode_num_levels[subtree] == 0) continue;
 #ifdef TDEBUG
           //double loop_time;
 #endif
@@ -694,8 +704,9 @@ static int TEMPLATE (cholmod_super_numeric)
 #ifdef TDEBUG
         printf ("subtree factorize time = %lf\n", SuiteSparse_time() - subtree_factorize_time);
 #endif
+        }
     }
-    while (gb_p->numSubtree > 1 && gb_p->has_root == TRUE);
+    while (has_subtree && gb_p->has_root == TRUE);
 
 
 
