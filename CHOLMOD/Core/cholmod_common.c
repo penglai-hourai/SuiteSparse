@@ -194,6 +194,7 @@ int CHOLMOD(start)
     }
     for(gpuid = 0; gpuid < CHOLMOD_MAX_NUM_GPUS; gpuid ++) {
       Common->updateCKernelsComplete[gpuid] = NULL;
+      Common->updateCCopybackBuffered[gpuid] = NULL;
       for(k = 0; k < CHOLMOD_DEVICE_LX_BUFFERS; k++) {
         Common->updateCDevBuffersFree[gpuid][k] = NULL ;
       }

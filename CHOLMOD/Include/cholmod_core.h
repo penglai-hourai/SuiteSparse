@@ -1034,6 +1034,8 @@ typedef struct cholmod_common_struct
     CHOLMOD_CUDAEVENT     updateCDevCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_DEVICE_C_BUFFERS];
     CHOLMOD_CUDAEVENT     updateCBuffersFree[CHOLMOD_MAX_NUM_GPUS][CHOLMOD_HOST_SUPERNODE_BUFFERS];
 
+    CHOLMOD_CUDAEVENT     updateCCopybackBuffered[CHOLMOD_MAX_NUM_GPUS];
+
     /* device memory buffer & size */
     void *dev_mempool[CHOLMOD_MAX_NUM_PGPUS];    	/* pointer to single allocation of device memory */
     size_t dev_mempool_size;
