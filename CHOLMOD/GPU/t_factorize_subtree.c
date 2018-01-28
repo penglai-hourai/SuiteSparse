@@ -844,7 +844,8 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               gpuid);
      TIMER_END(tstart,tend,3);
 
-     const iBuff_loopSize = 2;
+     const int iBuff_loopSize = 2;
+     Common->ibuffer[gpuid] = 0;
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
         int iBuff; 
