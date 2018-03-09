@@ -508,8 +508,8 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
   cudaEventRecord ( Common->updateCBuffersFree[gpuid][iHostBuff], Common->gpuStream[gpuid][iDevBuff] );
 
   /* make the current stream wait for kernels in previous streams */
-  //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
-  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
+  cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCKernelsComplete[gpuid], 0 ) ;
+  //cudaStreamWaitEvent ( Common->gpuStream[gpuid][iDevBuff], Common->updateCDevCBuffersFree[gpuid][iDevCBuff], 0 ) ;
 
 
   /* create relative map for the descendant */
@@ -675,7 +675,7 @@ int TEMPLATE2 (CHOLMOD (gpu_updateC_root))
 
 
   /* record event indicating that kernels for descendant are complete */
-  cudaEventRecord (Common->updateCDevCBuffersFree[gpuid][iDevCBuff], Common->gpuStream[gpuid][iDevBuff]);
+  //cudaEventRecord (Common->updateCDevCBuffersFree[gpuid][iDevCBuff], Common->gpuStream[gpuid][iDevBuff]);
   cudaEventRecord (Common->updateCKernelsComplete[gpuid], Common->gpuStream[gpuid][iDevBuff]);
 
 

@@ -474,12 +474,13 @@
                     /* get next descendant */
                     if ( idescendant > 0 ) {
 
-                        //cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
-                        cuErrHost = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        cuErrHost = cudaEventQuery ( Common->updateCBuffersFree[gpuid][iHostBuff] );
+                        //cuErrHost = cudaEventSynchronize ( Common->updateCBuffersFree[gpuid][iHostBuff] );
 #ifdef QUERY_LX_EVENTS
-                        //cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
-                        cuErrDev = cudaEventSynchronize ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
+                        //cuErrDev = cudaEventSynchronize ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
+#if 0
                         while ( (cuErrHost != cudaSuccess
 #ifdef QUERY_LX_EVENTS
                                     || cuErrDev != cudaSuccess
@@ -498,6 +499,7 @@
                             cuErrDev = cudaEventQuery ( Common->updateCDevBuffersFree[gpuid][iDevBuff] );
 #endif
                         }
+#endif
 
                     }
 
