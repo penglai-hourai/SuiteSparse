@@ -68,10 +68,8 @@ else
 	( cd ../../CAMD ; $(MAKE) library )
 endif
 
-metis: ../../include/metis.h
-
-../../include/metis.h:
-	- ( cd ../.. && $(MAKE) metis )
+metis: 
+	- ( $(MAKE) ../../include/metis.h )
 
 #-------------------------------------------------------------------------------
 

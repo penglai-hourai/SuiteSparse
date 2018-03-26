@@ -282,9 +282,9 @@
 
 
 /* header files for GPU processing */
-  #ifdef SUITESPARSE_CUDA
-  #include <cublas_v2.h>
-  #include <cusolverDn.h>
+#ifdef SUITESPARSE_CUDA
+#include <cublas_v2.h>
+#include <cusolverDn.h>
 #endif
 
 
