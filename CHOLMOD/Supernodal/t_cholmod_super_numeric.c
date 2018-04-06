@@ -435,8 +435,11 @@ static int TEMPLATE (cholmod_super_numeric)
 
 
 
+#define SUBTREE_ONLY
     int has_subtree;
+#ifdef SUBTREE_ONLY
     do
+#endif
     {
 #ifdef TDEBUG
         subtree_process_time = SuiteSparse_time();
@@ -706,7 +709,9 @@ static int TEMPLATE (cholmod_super_numeric)
 #endif
         }
     }
+#ifdef SUBTREE_ONLY
     while (has_subtree && gb_p->has_root == TRUE);
+#endif
 
 
 
