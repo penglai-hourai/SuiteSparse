@@ -164,6 +164,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
 
 
+  printf ("# nodes in subtree = %ld\n", supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]+supernode_num_levels[subtree]] - supernode_levels_ptrs[supernode_levels_subtree_ptrs[subtree]]);
   /* loop over levels in subtree */
   for(level = 0; level < supernode_num_levels[subtree]; level++) {
 
