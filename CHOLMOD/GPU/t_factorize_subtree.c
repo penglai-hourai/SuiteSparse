@@ -930,8 +930,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             }
         }
 
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
-
         cudaMemcpyAsync (
                 d_LxFactorized,
                 h_LxFactorized,
@@ -998,8 +996,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         d_D,
                         ndrow2);
             }
-
-            cudaEventRecord (Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
             createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
