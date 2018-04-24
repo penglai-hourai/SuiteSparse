@@ -845,7 +845,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               gpuid);
      TIMER_END(tstart,tend,3);
 
-     const int iBuff_loopSize = 2;
+     const int iBuff_loopSize = IBUFF_LOOPSIZE;
      Common->ibuffer[gpuid] = 0;
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
@@ -941,7 +941,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 
-        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCDevBuffersFree[gpuid * Common->numGPU_parallel][iBuff], 0);
+        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
         while (p_index > 0)
         {
@@ -969,9 +969,6 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             d_B = d_A + ndrow1;
             d_C = gpu_p->d_C[gpuid];
             d_D = d_C + ndrow1;
-
-
-            cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
             cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             cublasDsyrk (
@@ -1006,9 +1003,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
             createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-
-            cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
         }
+
+        cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
     }
 
     cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);

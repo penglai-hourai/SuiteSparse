@@ -43,6 +43,7 @@
 #define CHOLMOD_POTRF_LIMIT  512  			/* required cols for POTRF & TRSM on GPU */
 #define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */
 
+#define IBUFF_LOOPSIZE 2 // must be no greater than CHOLMOD_DEVICE_LX_BUFFERS
 
 
 
@@ -296,12 +297,12 @@ typedef struct cholmod_gpu_pointers
     int    *d_devSync[CHOLMOD_MAX_NUM_PGPUS]; 			/* devSync in device (potrf) */
 
     Int *h_darray[CHOLMOD_MAX_NUM_PGPUS];
-    Int *h_sarray[CHOLMOD_MAX_NUM_PGPUS][2];
+    Int *h_sarray[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
-    Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
+    Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
-    double *h_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
-    double *d_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][2];
+    double *h_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
+    double *d_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
     /* lists for batching supernodes */
     Int    *h_dimSuper[CHOLMOD_MAX_NUM_PGPUS];			/* ptr to supernode dim. in pinned */
