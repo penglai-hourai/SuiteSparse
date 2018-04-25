@@ -263,6 +263,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
     {
         LpxSub[s] = -1;
     }
+    gb_p->ScoreSizeFactorized = sizeof(struct cholmod_descendant_score_t) * L->n;
     gb_p->MapSizeFactorized = sizeof(Int) * L->n;
     gb_p->LxSizeFactorized = 0;
     /* loop over subtrees */
@@ -345,7 +346,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
         + 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = IBUFF_LOOPSIZE * (gb_p->LxSizeFactorized + gb_p->MapSizeFactorized) + gb_p->MapSizeFactorized
+    cpu_memtot = IBUFF_LOOPSIZE * (gb_p->LxSizeFactorized + gb_p->MapSizeFactorized) + gb_p->ScoreSizeFactorized
         + gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */
@@ -1577,7 +1578,7 @@ void TEMPLATE2 (CHOLMOD (process_subtree))
 
         /* compute total amount of GPU memory needed */
         gpu_memtot_prev = gpu_memtot;
-        gpu_memtot = IBUFF_LOOPSIZE * (gb_p->LxSizeFactorized + gb_p->MapSizeFactorized) + gb_p->MapSizeFactorized
+        gpu_memtot = IBUFF_LOOPSIZE * (gb_p->LxSizeFactorized + gb_p->MapSizeFactorized)
             + LxSize + CSize + LsSize + MapSize + ApSize + AiSize + AxSize
             + 14*dimDescSize + 6*ptrDescSize + 13*dimSuperSize + 3*ptrSuperSize
             + 2*nbatch*sizeof(Int) + sizeof(Int);

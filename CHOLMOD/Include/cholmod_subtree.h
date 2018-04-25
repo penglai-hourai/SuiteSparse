@@ -133,6 +133,7 @@ typedef struct cholmod_global_pointers
     size_t dimSuperSize;		/* size of dimensions array for super	(GPU) */
     size_t ptrSuperSize;		/* size of pointers array for super	(GPU) */
 
+    size_t ScoreSizeFactorized;
     size_t MapSizeFactorized;
     size_t LxSizeFactorized;
 
@@ -296,7 +297,7 @@ typedef struct cholmod_gpu_pointers
     int    *d_info[CHOLMOD_MAX_NUM_PGPUS];			/* info in device (potrf) */
     int    *d_devSync[CHOLMOD_MAX_NUM_PGPUS]; 			/* devSync in device (potrf) */
 
-    Int *h_darray[CHOLMOD_MAX_NUM_PGPUS];
+    struct cholmod_descendant_score_t *h_darray[CHOLMOD_MAX_NUM_PGPUS];
     Int *h_sarray[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
     Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];

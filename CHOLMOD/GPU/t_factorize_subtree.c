@@ -81,7 +81,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
   Int d_itr;
   Int update_count_factorized;
-  Int *update_factorized = gpu_p->h_darray[deviceid];
+  struct cholmod_descendant_score_t *update_factorized = gpu_p->h_darray[deviceid];
 
   const double alpha = -1.0;
   const double beta = 0.0;
@@ -575,7 +575,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
               //Lpos[d] = Lpos_save[d];
 
-              update_factorized[update_count_factorized++] = d;
+              update_factorized[update_count_factorized].d = d;
+              update_factorized[update_count_factorized].score = ndcol * (pdend - (pdi + Lpos_save[d]));
+              update_count_factorized++;
           }
           else
           {
@@ -689,6 +691,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       */
 
 
+    qsort (update_factorized, update_count_factorized, sizeof(struct cholmod_descendant_score_t), (__compar_fn_t) CHOLMOD(score_comp));
 
 
       /*
@@ -877,7 +880,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         h_LxFactorized = gpu_p->h_LxFactorized[gpuid][iBuff];
         d_LxFactorized = gpu_p->d_LxFactorized[gpuid][iBuff];
 
-        d = update_factorized[d_itr];
+        d = update_factorized[d_itr].d;
 
         /* get descendant dimensions */
         kd1 	= Super [d] ;
@@ -933,7 +936,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         cudaMemcpyAsync (
                 d_LxFactorized,
                 h_LxFactorized,
-                sizeof(double) * ndrow0 * ndcol,
+                sizeof(double) * ndcol * ndrow0,
                 cudaMemcpyHostToDevice,
                 Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
 

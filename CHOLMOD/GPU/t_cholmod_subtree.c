@@ -264,14 +264,14 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     /* type (Int) */
 
+    gpu_p->h_darray[gpuid] = gpu_p->hostPtr[gpuid];
+    gpu_p->hostPtr[gpuid] += gb_p->ScoreSizeFactorized;
+
     for (idx = 0; idx < IBUFF_LOOPSIZE; idx++)
     {
     gpu_p->h_sarray[gpuid][idx] = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
     }
-
-    gpu_p->h_darray[gpuid] = gpu_p->hostPtr[gpuid];
-    gpu_p->hostPtr[gpuid] += gb_p->MapSizeFactorized;
 
     /* type (int) */
 

@@ -231,11 +231,11 @@ void TEMPLATE2 (CHOLMOD (gpu_reorder_descendants_root))
 #if 1
       if ( (L_ENTRY * ndcol >= CHOLMOD_ND_COL_LIMIT) && (L_ENTRY * ndrow2 >= CHOLMOD_ND_ROW_LIMIT) )
       {
-          score = ndcol * ndrow1 * ndrow2;
+          score = ndcol * ndrow2;
       }
       else
       {
-          score = - ndcol * ndrow1 * ndrow2;
+          score = - ndcol * ndrow2;
       }
 #else
           score = ndcol * ndrow1 * ndrow2;
