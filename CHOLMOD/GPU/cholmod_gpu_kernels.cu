@@ -1047,6 +1047,7 @@ extern "C" {
           Int d_psend,      /* psend */
           Int d_nsrow,      /* nsrow */
           Int d_pdi1,       /* pdi1 (for current descendant) */
+          Int d_ndrow0,     /* ndrow0 */
           Int d_ndrow1,     /* ndrow1 */
           Int d_ndrow2 )    /* ndrow2 */
         {
@@ -1061,6 +1062,7 @@ extern "C" {
             Int psend = d_psend;
             Int nsrow = d_nsrow;
             Int pdi1 = d_pdi1;
+            Int ndrow0 = d_ndrow0;
             Int ndrow1 = d_ndrow1;
             Int ndrow2 = d_ndrow2;
 
@@ -1073,8 +1075,8 @@ extern "C" {
                 /* check for triangular part */
                 if(isrow >= iscol) {
                     Int idx = isrow + iscol * nsrow;  			 /* mapping index */
-                    d_A[idx] += d_C[idrow+idcol*ndrow2]; 	 /* add schur complement to supernode */
-                    //atomicAdd(&d_A[idx], d_C[idrow+idcol*ndrow2]);	/* add schur complement to supernode */
+                    d_A[idx] += d_C[idrow+idcol*ndrow0]; 	 /* add schur complement to supernode */
+                    //atomicAdd(&d_A[idx], d_C[idrow+idcol*ndrow0]);	/* add schur complement to supernode */
                 }
             }
 
@@ -1093,6 +1095,7 @@ extern "C" {
           Int psend,
           Int nsrow,
           Int pdi1,
+          Int ndrow0,
           Int ndrow1,
           Int ndrow2,
           cudaStream_t stream )/* cuda stream */
@@ -1105,7 +1108,7 @@ extern "C" {
             grids.y = (ndrow1 + blocks.y - 1)/blocks.y;
 
             /* call kernel */
-            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, d_Map, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2 );
+            kernelAddUpdate_factorized <<<grids, blocks, 0, stream>>> ( d_A, d_C, d_Ls, d_Map, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2 );
 
         }
 

@@ -944,6 +944,46 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
+        {
+            ndrow1 = pdi2 - pdi0;
+            ndrow2 = pdend - pdi0;
+            ndrow3 = ndrow2 - ndrow1;
+
+            d_A = d_LxFactorized;
+            d_B = d_A + ndrow1;
+            d_C = gpu_p->d_C[gpuid];
+            d_D = d_C + ndrow1;
+
+            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            cublasDsyrk (
+                    Common->cublasHandle[gpuid],
+                    CUBLAS_FILL_MODE_LOWER,
+                    CUBLAS_OP_N,
+                    ndrow1,
+                    ndcol,
+                    &alpha,
+                    d_A,
+                    ndrow0,
+                    &beta,
+                    d_C,
+                    ndrow0);
+            if (ndrow3 > 0)
+            {
+                cublasDgemm (
+                        Common->cublasHandle[gpuid],
+                        CUBLAS_OP_N, CUBLAS_OP_T,
+                        ndrow3, ndrow1, ndcol,
+                        &alpha,
+                        d_B,
+                        ndrow0,
+                        d_A,
+                        ndrow0,
+                        &beta,
+                        d_D,
+                        ndrow0);
+            }
+        }
+
         while (p_index > 0)
         {
             p = p_array[--p_index];
@@ -966,42 +1006,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             ndrow2 = pdend - pdi1 ;
             ndrow3 = ndrow2 - ndrow1 ;
 
-            d_A = d_LxFactorized + (pdi1 - pdi0);
-            d_B = d_A + ndrow1;
-            d_C = gpu_p->d_C[gpuid];
+            d_C = gpu_p->d_C[gpuid] + ndrow0 * (pdi1 - pdi0) + (pdi1 - pdi0);
             d_D = d_C + ndrow1;
 
-            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            cublasDsyrk (
-                    Common->cublasHandle[gpuid],
-                    CUBLAS_FILL_MODE_LOWER,
-                    CUBLAS_OP_N,
-                    ndrow1,
-                    ndcol,
-                    &alpha,
-                    d_A,
-                    ndrow0,
-                    &beta,
-                    d_C,
-                    ndrow2);
-            if (ndrow3 > 0)
-            {
-                cublasDgemm (
-                        Common->cublasHandle[gpuid],
-                        CUBLAS_OP_N, CUBLAS_OP_T,
-                        ndrow3, ndrow1, ndcol,
-                        &alpha,
-                        d_B,
-                        ndrow0,
-                        d_A,
-                        ndrow0,
-                        &beta,
-                        d_D,
-                        ndrow2);
-            }
-
             createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
         }
 
         cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
