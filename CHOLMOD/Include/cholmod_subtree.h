@@ -44,7 +44,7 @@
 #define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */
 
 #define IBUFF_LOOPSIZE 2 // must not be greater than either (CHOLMOD_DEVICE_STREAMS / 2) or CHOLMOD_HOST_SUPERNODE_BUFFERS
-#define MAP_CACHESIZE 4
+#define MAP_CACHESIZE 1
 
 
 

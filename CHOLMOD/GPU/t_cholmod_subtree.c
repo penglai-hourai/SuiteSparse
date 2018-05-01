@@ -1100,8 +1100,8 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
               cudaMemcpyDeviceToHost,
               Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
   }
-  //cudaEventRecord (Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
-  cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
+  cudaEventRecord (Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
+  //cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
 
 }
 
@@ -1156,8 +1156,8 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
   numThreads = Common->ompNumThreads;
 
 
-  //cudaEventSynchronize(Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel]);
-  cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
+  cudaEventSynchronize(Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel]);
+  //cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
 
 
   /* case 1: copy all supernodes up to last level */

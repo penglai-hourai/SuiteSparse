@@ -576,7 +576,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               //Lpos[d] = Lpos_save[d];
 
               update_factorized[update_count_factorized].d = d;
-              update_factorized[update_count_factorized].score = ndcol * (pdend - (pdi + Lpos_save[d]));
+              update_factorized[update_count_factorized].score = - ndcol * (pdend - (pdi + Lpos_save[d]));
               update_count_factorized++;
           }
           else
