@@ -61,7 +61,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
    )
 {
   /* local variables */
-  int idx;
+  int idx, cache_idx;
 
   Int i, LsDim, ApDim, AiDim, AxDim;
   Int *h_Ls, *h_Ap, *h_Ai, *Ls, *Ap, *Ai;
@@ -118,8 +118,11 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
 
     for (idx = 0; idx < IBUFF_LOOPSIZE; idx++)
     {
-    gpu_p->d_MapFactorized[gpuid][idx] = gpu_p->gpuPtr[gpuid];
-    gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+        for (cache_idx = 0; cache_idx < MAP_CACHESIZE; cache_idx++)
+        {
+            gpu_p->d_MapFactorized[gpuid][idx][cache_idx] = gpu_p->gpuPtr[gpuid];
+            gpu_p->gpuPtr[gpuid] += gb_p->MapSizeFactorized;
+        }
     }
 
     /* Ap */
@@ -249,7 +252,6 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
     gpu_p->h_LxFactorized[gpuid][idx] = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
     }
-    gpu_p->hostPtr[gpuid] += gb_p->LxSizeFactorized;
 
     gpu_p->h_ptrSuper[gpuid] 	 = gpu_p->hostPtr[gpuid];
     gpu_p->hostPtr[gpuid] 	+= 3*gb_p->ptrSuperSize;

@@ -848,8 +848,19 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
               gpuid);
      TIMER_END(tstart,tend,3);
 
-     const int iBuff_loopSize = IBUFF_LOOPSIZE;
      Common->ibuffer[gpuid] = 0;
+     int Map_idx_next[IBUFF_LOOPSIZE];
+     Int s_MapCached[IBUFF_LOOPSIZE][MAP_CACHESIZE];
+
+     for (int buff_itr = 0; buff_itr < IBUFF_LOOPSIZE; buff_itr++)
+     {
+         Map_idx_next[buff_itr] = 0;
+         for (int cache_itr = 0; cache_itr < MAP_CACHESIZE; cache_itr++)
+         {
+             s_MapCached[buff_itr][cache_itr] = EMPTY;
+         }
+     }
+
     for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
     {
         int iBuff; 
@@ -859,7 +870,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int s, d;
         Int i, j, k, p, pend, imap;
         Int pdi0, pdx0, ndrow0;
-        Int *d_Ls, *d_MapFactorized, *d_Ap, *d_Ai;
+        Int *d_Ls, *d_Ap, *d_Ai;
         double *d_Ax, *h_LxFactorized, *d_LxFactorized;
 
         Int p_index, *p_array;
@@ -867,13 +878,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int k1, k2, psi, psend, psx, nsrow;
         double *d_A, *d_B, *d_C, *d_D;
 
-        iBuff = Common->ibuffer[gpuid] % iBuff_loopSize;
-        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % iBuff_loopSize;
+        iBuff = Common->ibuffer[gpuid] % IBUFF_LOOPSIZE;
+        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % IBUFF_LOOPSIZE;
 
         p_array = gpu_p->h_sarray[gpuid][iBuff];
 
         d_Ls = gpu_p->d_Ls[gpuid];
-        d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff];
         d_Ap = gpu_p->d_Ap[gpuid];
         d_Ai = gpu_p->d_Ai[gpuid];
         d_Ax = gpu_p->d_Ax[gpuid];
@@ -944,6 +954,9 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
+//#define COMBINED_MULTIPLICATION
+
+#ifdef COMBINED_MULTIPLICATION
         {
             ndrow1 = pdi2 - pdi0;
             ndrow2 = pdend - pdi0;
@@ -983,9 +996,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                         ndrow0);
             }
         }
+#endif
 
         while (p_index > 0)
         {
+            int cache_itr;
+            Int *d_MapFactorized;
+
             p = p_array[--p_index];
 
             s = SuperMap [Ls [pdi + p]];
@@ -1006,10 +1023,57 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             ndrow2 = pdend - pdi1 ;
             ndrow3 = ndrow2 - ndrow1 ;
 
+            d_A = d_LxFactorized + (pdi1 - pdi0);
+            d_B = d_A + ndrow1;
             d_C = gpu_p->d_C[gpuid] + ndrow0 * (pdi1 - pdi0) + (pdi1 - pdi0);
             d_D = d_C + ndrow1;
 
-            createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+#ifndef COMBINED_MULTIPLICATION
+            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            cublasDsyrk (
+                    Common->cublasHandle[gpuid],
+                    CUBLAS_FILL_MODE_LOWER,
+                    CUBLAS_OP_N,
+                    ndrow1,
+                    ndcol,
+                    &alpha,
+                    d_A,
+                    ndrow0,
+                    &beta,
+                    d_C,
+                    ndrow0);
+            if (ndrow3 > 0)
+            {
+                cublasDgemm (
+                        Common->cublasHandle[gpuid],
+                        CUBLAS_OP_N, CUBLAS_OP_T,
+                        ndrow3, ndrow1, ndcol,
+                        &alpha,
+                        d_B,
+                        ndrow0,
+                        d_A,
+                        ndrow0,
+                        &beta,
+                        d_D,
+                        ndrow0);
+            }
+#endif
+
+            for (cache_itr = 0; cache_itr < MAP_CACHESIZE && s_MapCached[iBuff][cache_itr] != s; cache_itr++);
+
+            if (cache_itr >= MAP_CACHESIZE)
+            {
+                cache_itr = Map_idx_next[iBuff];
+                Map_idx_next[iBuff] = (cache_itr + 1) % MAP_CACHESIZE;
+                s_MapCached[iBuff][cache_itr] = s;
+                d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff][cache_itr];
+                createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            }
+            else
+            {
+                d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff][cache_itr];
+            }
+
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
         }
 

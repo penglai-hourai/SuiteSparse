@@ -44,6 +44,7 @@
 #define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */
 
 #define IBUFF_LOOPSIZE 2 // must not be greater than either (CHOLMOD_DEVICE_STREAMS / 2) or CHOLMOD_HOST_SUPERNODE_BUFFERS
+#define MAP_CACHESIZE 4
 
 
 
@@ -300,7 +301,7 @@ typedef struct cholmod_gpu_pointers
     struct cholmod_descendant_score_t *h_darray[CHOLMOD_MAX_NUM_PGPUS];
     Int *h_sarray[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
-    Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
+    Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE][MAP_CACHESIZE];
 
     double *h_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
     double *d_LxFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
