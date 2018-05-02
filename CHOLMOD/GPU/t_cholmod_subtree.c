@@ -568,6 +568,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   &beta,
                   h_syrk->C[i],
                   h_syrk->ldc[i]);
+  //cudaEventRecord(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[vgpuid][j]);
   }
 
   /* check if any syrk's left for batching */
@@ -587,6 +588,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                                       &d_syrk->C[syrk_count],
                                       &d_syrk->ldc[syrk_count],
                                       nbatch-syrk_count);
+  //cudaEventRecord(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]);
   }
 
   TIMER_END1(tstart1,syrk_time,0);
@@ -632,6 +634,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
                   &beta,
                   h_gemm->C[i],
                   h_gemm->ldc[i]);
+  //cudaEventRecord(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[vgpuid][j]);
   }
 
 
@@ -655,10 +658,12 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
             &d_gemm->C[gemm_count],
             &d_gemm->ldc[gemm_count],
             nbatch-gemm_count);
+  //cudaEventRecord(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[vgpuid][CHOLMOD_DEVICE_STREAMS]);
   }
 
   TIMER_END1(tstart1,gemm_time,0);
   TIMER_END1(tstart1,gemm_time,1);
+
 
   /* copy supernode from pinned to regular memory - only at last level */
   //if ( level == tree_p->supernode_num_levels[subtree]-1 )
@@ -681,13 +686,13 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           Lpx);
   }
 
-
   /* synchronize streams */
   for(i = 0; i < CHOLMOD_DEVICE_STREAMS; i++){
       for (k = 0; k < Common->numGPU_subtree_parallel; k++)
       {
           for (vgpuid = k * Common->numGPU + gpuid * Common->numGPU_parallel; vgpuid < k * Common->numGPU + (gpuid+1) * Common->numGPU_parallel; vgpuid++)
           {
+              //cudaStat = cudaStreamWaitEvent (Common->gpuStream[vgpuid][i], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
               cudaStat = cudaStreamSynchronize (Common->gpuStream[vgpuid][i]) ;
               if (cudaStat) {
                   printf("error: %s\n",cudaGetErrorString(cudaStat));
@@ -696,6 +701,7 @@ void TEMPLATE2 (CHOLMOD (gpu_updateC_batch))
           }
       }
   }
+  //cudaStat = cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
   cudaStat = cudaStreamSynchronize (Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS]);
 
 
@@ -1101,7 +1107,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode2))
               Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
   }
   cudaEventRecord (Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
-  //cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][CHOLMOD_DEVICE_STREAMS+1]);
 
 }
 
@@ -1157,7 +1162,6 @@ void TEMPLATE2 (CHOLMOD (gpu_copy_supernode))
 
 
   cudaEventSynchronize(Common->updateCCopybackBuffered[gpuid * Common->numGPU_parallel]);
-  //cudaEventSynchronize(Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel]);
 
 
   /* case 1: copy all supernodes up to last level */
