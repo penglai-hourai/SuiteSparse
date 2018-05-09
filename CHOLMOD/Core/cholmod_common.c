@@ -763,15 +763,38 @@ int CHOLMOD(subtree_comp) (struct cholmod_subtree_order_t *a, struct cholmod_sub
 
 
 /* function for sorting descendants with qsort */
-int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j)
+int CHOLMOD(d_comp) (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j)
 {
-  if ((*i).score < (*j).score)
+    if ((*i).d < (*j).d)
     {
         return (1) ;
     }
     else
     {
         return (-1) ;
+    }
+}
+int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j)
+{
+    if ((*i).score < (*j).score)
+    {
+        return (1) ;
+    }
+    else if ((*i).score > (*j).score)
+    {
+        return (-1) ;
+    }
+    else if ((*i).d < (*j).d)
+    {
+        return (-1) ;
+    }
+    else if ((*i).d > (*j).d)
+    {
+        return (-1) ;
+    }
+    else
+    {
+        return (0);
     }
 }
 

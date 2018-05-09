@@ -80,7 +80,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
   int vgpuid;
 
   Int d_itr;
-  Int update_count_factorized;
+  Int update_count_factorized, update_count_factorized_small;
   struct cholmod_descendant_score_t *update_factorized = gpu_p->h_darray[deviceid];
 
   const double alpha = -1.0;
@@ -501,6 +501,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       devPtrC = (double *)(d_C);
 
       update_count_factorized = 0;
+      update_count_factorized_small = 0;
 
       /* loop over batch of supernodes */
       for(i = 0; i < nbatch; i++) {
@@ -573,11 +574,20 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
                   tree_p->factorized[d] = -1;
               }
 
-              //Lpos[d] = Lpos_save[d];
-
-              update_factorized[update_count_factorized].d = d;
-              update_factorized[update_count_factorized].score = - ndcol * (pdend - (pdi + Lpos_save[d]));
-              update_count_factorized++;
+              if (pdend - (pdi + Lpos_save[d])> 0)
+              {
+                  update_factorized[update_count_factorized].d = d;
+                  if (ndcol <= UPDATE_BATCH_DIMENSION && (pdend - (pdi + Lpos_save[d])) <= UPDATE_BATCH_DIMENSION)
+                  {
+                      update_factorized[update_count_factorized].score = - ndcol * (pdend - (pdi + Lpos_save[d]));
+                      update_count_factorized_small++;
+                  }
+                  else
+                  {
+                      update_factorized[update_count_factorized].score = - ndcol * (pdend - (pdi + Lpos_save[d]));
+                  }
+                  update_count_factorized++;
+              }
           }
           else
           {
@@ -691,7 +701,32 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       */
 
 
-    qsort (update_factorized, update_count_factorized, sizeof(struct cholmod_descendant_score_t), (__compar_fn_t) CHOLMOD(score_comp));
+    if (update_count_factorized > 0)
+    {
+        qsort (update_factorized, update_count_factorized, sizeof(struct cholmod_descendant_score_t), (__compar_fn_t) CHOLMOD(score_comp));
+        {
+            Int idx_l, idx_h;
+            idx_l = 0;
+            idx_h = 1;
+            while (idx_h < update_count_factorized)
+            {
+                while (idx_h < update_count_factorized && update_factorized[idx_l].d == update_factorized[idx_h].d)
+                    idx_h++;
+                if (idx_h < update_count_factorized)
+                {
+                    idx_l++;
+                    if (idx_l < idx_h)
+                        update_factorized[idx_l] = update_factorized[idx_h];
+                }
+            }
+            idx_l++;
+            update_count_factorized = idx_l;
+            update_count_factorized_small = 0;
+            for (idx_h = 0; idx_h < update_count_factorized; idx_h++)
+                if (update_factorized[idx_h].score > 0)
+                    update_count_factorized_small++;
+        }
+    }
 
 
       /*
@@ -861,7 +896,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
          }
      }
 
-    for (d_itr = 0; d_itr < update_count_factorized; d_itr++)
+    for (d_itr = update_count_factorized_small; d_itr < update_count_factorized; d_itr++)
     {
         int iBuff; 
 
@@ -873,15 +908,18 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         Int *d_Ls, *d_Ap, *d_Ai;
         double *d_Ax, *h_LxFactorized, *d_LxFactorized;
 
-        Int p_index, *p_array;
+#undef COMBINED_MULTIPLICATION
+//#define COMBINED_MULTIPLICATION
+
+#ifdef COMBINED_MULTIPLICATION
+        Int lpos_save;
+#endif
 
         Int k1, k2, psi, psend, psx, nsrow;
         double *d_A, *d_B, *d_C, *d_D;
 
         iBuff = Common->ibuffer[gpuid] % IBUFF_LOOPSIZE;
         Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % IBUFF_LOOPSIZE;
-
-        p_array = gpu_p->h_sarray[gpuid][iBuff];
 
         d_Ls = gpu_p->d_Ls[gpuid];
         d_Ap = gpu_p->d_Ap[gpuid];
@@ -903,12 +941,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
         ndrow = pdend - pdi ;
         ndrow0 = pdend - pdi0 ;
 
-        p_index = 0;
-        s = SuperMap [Ls [pdi + Lpos_save[d]]];
-        while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
+#ifdef COMBINED_MULTIPLICATION
+        lpos_save = Lpos_save[d];
+        s = SuperMap [Ls [pdi + lpos_save]];
+        while (s != EMPTY && LpxSub[s] >= 0 && lpos_save < ndrow)
         {
-            p_array[p_index++] = Lpos_save[d];
-
             k1 = Super[s];
             k2 = Super[s+1];
             psi = Lpi[s];
@@ -916,7 +953,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             psx = LpxSub[s];
             nsrow = psend - psi;
 
-            p 	    = Lpos_save[d] ;
+            p 	    = lpos_save ;
             pdi1    = pdi + p ;
             pdx1    = pdx + p ;
 
@@ -927,10 +964,11 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             ndrow3 = ndrow2 - ndrow1 ;
 
             /* prepare for next descendant */
-            Lpos_save [d] = pdi2 - pdi ;
+            lpos_save = pdi2 - pdi ;
 
-            s = SuperMap [Ls [pdi + Lpos_save[d]]];
+            s = SuperMap [Ls [pdi + lpos_save]];
         }
+#endif
 
         cudaEventSynchronize(Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff]);
 
@@ -954,58 +992,51 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
 
         cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
 
-//#define COMBINED_MULTIPLICATION
-
 #ifdef COMBINED_MULTIPLICATION
+        ndrow1 = pdi2 - pdi0;
+        ndrow2 = pdend - pdi0;
+        ndrow3 = ndrow2 - ndrow1;
+
+        d_A = d_LxFactorized;
+        d_B = d_A + ndrow1;
+        d_C = gpu_p->d_C[gpuid];
+        d_D = d_C + ndrow1;
+
+        cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        cublasDsyrk (
+                Common->cublasHandle[gpuid],
+                CUBLAS_FILL_MODE_LOWER,
+                CUBLAS_OP_N,
+                ndrow1,
+                ndcol,
+                &alpha,
+                d_A,
+                ndrow0,
+                &beta,
+                d_C,
+                ndrow0);
+        if (ndrow3 > 0)
         {
-            ndrow1 = pdi2 - pdi0;
-            ndrow2 = pdend - pdi0;
-            ndrow3 = ndrow2 - ndrow1;
-
-            d_A = d_LxFactorized;
-            d_B = d_A + ndrow1;
-            d_C = gpu_p->d_C[gpuid];
-            d_D = d_C + ndrow1;
-
-            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
-            cublasDsyrk (
+            cublasDgemm (
                     Common->cublasHandle[gpuid],
-                    CUBLAS_FILL_MODE_LOWER,
-                    CUBLAS_OP_N,
-                    ndrow1,
-                    ndcol,
+                    CUBLAS_OP_N, CUBLAS_OP_T,
+                    ndrow3, ndrow1, ndcol,
                     &alpha,
+                    d_B,
+                    ndrow0,
                     d_A,
                     ndrow0,
                     &beta,
-                    d_C,
+                    d_D,
                     ndrow0);
-            if (ndrow3 > 0)
-            {
-                cublasDgemm (
-                        Common->cublasHandle[gpuid],
-                        CUBLAS_OP_N, CUBLAS_OP_T,
-                        ndrow3, ndrow1, ndcol,
-                        &alpha,
-                        d_B,
-                        ndrow0,
-                        d_A,
-                        ndrow0,
-                        &beta,
-                        d_D,
-                        ndrow0);
-            }
         }
 #endif
 
-        while (p_index > 0)
+        s = SuperMap [Ls [pdi + Lpos_save[d]]];
+        while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
         {
             int cache_itr;
             Int *d_MapFactorized;
-
-            p = p_array[--p_index];
-
-            s = SuperMap [Ls [pdi + p]];
 
             k1 = Super[s];
             k2 = Super[s+1];
@@ -1014,6 +1045,7 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             psx = LpxSub[s];
             nsrow = psend - psi;
 
+            p = Lpos_save[d];
             pdi1    = pdi + p ;
             pdx1    = pdx + p ;
 
@@ -1075,6 +1107,226 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
             }
 
             addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, ndrow0, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+            /* prepare for next descendant */
+            Lpos_save[d] = pdi2 - pdi ;
+
+            s = SuperMap [Ls [pdi + Lpos_save[d]]];
+        }
+
+        cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+    }
+
+    const size_t batch_size = sizeof(double) * UPDATE_BATCH_SIZE;
+    Int max_batch_count;
+    max_batch_count = UPDATE_MAX_BATCH_COUNT;
+    if (max_batch_count > gb_p->CSize / (batch_size + sizeof(double*)))
+        max_batch_count = gb_p->CSize / (batch_size + sizeof(double*));
+    if (max_batch_count > gb_p->LxSizeFactorized / (batch_size + sizeof(double*)))
+        max_batch_count = gb_p->LxSizeFactorized / (batch_size + sizeof(double*));
+
+    for (d_itr = 0; d_itr < update_count_factorized_small; d_itr += max_batch_count)
+    {
+        int iBuff; 
+        Int batch_count;
+        Int d_itr_offset;
+
+        const int stype = cpu_p->stype;
+
+        Int s, d;
+        Int i, j, k, p, pend, imap;
+        Int pdi0, pdx0, ndrow0;
+        Int *d_Ls, *d_Ap, *d_Ai;
+        double *d_Ax, *h_LxFactorized, *d_LxFactorized;
+
+        Int k1, k2, psi, psend, psx, nsrow;
+        double *d_A, *d_B, *d_C, *d_D;
+        double **h_A_array, **h_C_array;
+        double **d_A_array, **d_C_array;
+
+        batch_count = MIN (max_batch_count, (update_count_factorized_small - d_itr));
+
+        iBuff = Common->ibuffer[gpuid] % IBUFF_LOOPSIZE;
+        Common->ibuffer[gpuid] = (Common->ibuffer[gpuid] + 1) % IBUFF_LOOPSIZE;
+
+        d_Ls = gpu_p->d_Ls[gpuid];
+        d_Ap = gpu_p->d_Ap[gpuid];
+        d_Ai = gpu_p->d_Ai[gpuid];
+        d_Ax = gpu_p->d_Ax[gpuid];
+        h_LxFactorized = gpu_p->h_LxFactorized[gpuid][iBuff];
+        d_LxFactorized = gpu_p->d_LxFactorized[gpuid][iBuff];
+
+        cudaMemsetAsync (d_LxFactorized, 0, batch_count * batch_size, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+        cudaEventSynchronize(Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff]);
+
+        for (d_itr_offset = 0; d_itr_offset < batch_count; d_itr_offset++)
+        {
+        d = update_factorized[d_itr + d_itr_offset].d;
+
+        /* get descendant dimensions */
+        kd1 	= Super [d] ;
+        kd2 	= Super [d+1] ;
+        ndcol = kd2 - kd1 ;
+        pdi 	= Lpi [d] ;
+        pdi0 = pdi + Lpos_save[d];
+        pdend = Lpi [d+1] ;
+        pdx0 	= Lpx [d] + Lpos_save[d] ;
+        ndrow = pdend - pdi ;
+        ndrow0 = pdend - pdi0 ;
+
+#pragma omp parallel for num_threads (Common->ompNumThreads) private (i, j) if (ndcol > 32)
+        for (j = 0; j < ndcol; j++)
+        {
+            for (i = 0; i < ndrow0; i++)
+            {
+                (h_LxFactorized + d_itr_offset * UPDATE_BATCH_SIZE)[i+j*ndrow0] = ((double *) (L->x) + pdx0)[i+j*ndrow];
+            }
+        }
+
+        cudaMemcpy2DAsync (
+                d_LxFactorized + d_itr_offset * UPDATE_BATCH_SIZE,
+                sizeof(double) * UPDATE_BATCH_DIMENSION,
+                h_LxFactorized + d_itr_offset * UPDATE_BATCH_SIZE,
+                sizeof(double) * ndrow0,
+                sizeof(double) * ndrow0,
+                ndcol,
+                cudaMemcpyHostToDevice,
+                Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        }
+
+        cudaEventRecord (Common->updateCBuffersFree[gpuid * Common->numGPU_parallel][iBuff], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+        cudaStreamWaitEvent (Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff], Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], 0);
+
+#undef COMBINED_MULTIPLICATION
+#define COMBINED_MULTIPLICATION
+
+#ifdef COMBINED_MULTIPLICATION
+        h_A_array = h_LxFactorized + UPDATE_MAX_BATCH_COUNT * UPDATE_BATCH_SIZE;
+        h_C_array = h_A_array + UPDATE_MAX_BATCH_COUNT;
+        d_A_array = d_LxFactorized + UPDATE_MAX_BATCH_COUNT * UPDATE_BATCH_SIZE;
+        d_C_array = d_A_array + UPDATE_MAX_BATCH_COUNT;
+        for (d_itr_offset = 0; d_itr_offset < batch_count; d_itr_offset++)
+        {
+            h_A_array[d_itr_offset] = d_LxFactorized + d_itr_offset * UPDATE_BATCH_SIZE;
+            h_C_array[d_itr_offset] = gpu_p->d_C[gpuid] + d_itr_offset * UPDATE_BATCH_SIZE;
+        }
+        cudaMemcpyAsync (d_A_array, h_A_array, sizeof (double *) * batch_count, cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        cudaMemcpyAsync (d_C_array, h_C_array, sizeof (double *) * batch_count, cudaMemcpyHostToDevice, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+        cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+        cublasDgemmBatched (
+                Common->cublasHandle[gpuid],
+                CUBLAS_OP_N, CUBLAS_OP_T,
+                UPDATE_BATCH_DIMENSION, UPDATE_BATCH_DIMENSION, UPDATE_BATCH_DIMENSION,
+                &alpha,
+                d_A_array,
+                UPDATE_BATCH_DIMENSION,
+                d_A_array,
+                UPDATE_BATCH_DIMENSION,
+                &beta,
+                d_C_array,
+                UPDATE_BATCH_DIMENSION,
+                batch_count);
+#endif
+
+        for (d_itr_offset = 0; d_itr_offset < batch_count; d_itr_offset++)
+        {
+        d = update_factorized[d_itr + d_itr_offset].d;
+
+        /* get descendant dimensions */
+        kd1 	= Super [d] ;
+        kd2 	= Super [d+1] ;
+        ndcol = kd2 - kd1 ;
+        pdi 	= Lpi [d] ;
+        pdi0 = pdi + Lpos_save[d];
+        pdend = Lpi [d+1] ;
+        pdx0 	= Lpx [d] + Lpos_save[d] ;
+        ndrow = pdend - pdi ;
+        ndrow0 = pdend - pdi0 ;
+
+        s = SuperMap [Ls [pdi + Lpos_save[d]]];
+        while (s != EMPTY && LpxSub[s] >= 0 && Lpos_save[d] < ndrow)
+        {
+            int cache_itr;
+            Int *d_MapFactorized;
+
+            k1 = Super[s];
+            k2 = Super[s+1];
+            psi = Lpi[s];
+            psend = Lpi[s+1];
+            psx = LpxSub[s];
+            nsrow = psend - psi;
+
+            p = Lpos_save[d];
+            pdi1    = pdi + p ;
+            pdx1    = pdx + p ;
+
+            for (pdi2 = pdi1; pdi2 < pdend && Ls [pdi2] < k2; pdi2++) ;
+
+            ndrow1 = pdi2 - pdi1 ;
+            ndrow2 = pdend - pdi1 ;
+            ndrow3 = ndrow2 - ndrow1 ;
+
+            d_A = d_LxFactorized + d_itr_offset * UPDATE_BATCH_SIZE + (pdi1 - pdi0);
+            d_B = d_A + ndrow1;
+            d_C = gpu_p->d_C[gpuid] + d_itr_offset * UPDATE_BATCH_SIZE + (pdi1 - pdi0) * UPDATE_BATCH_DIMENSION + (pdi1 - pdi0);
+            d_D = d_C + ndrow1;
+
+#ifndef COMBINED_MULTIPLICATION
+            cublasSetStream (Common->cublasHandle[gpuid], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            cublasDsyrk (
+                    Common->cublasHandle[gpuid],
+                    CUBLAS_FILL_MODE_LOWER,
+                    CUBLAS_OP_N,
+                    ndrow1,
+                    ndcol,
+                    &alpha,
+                    d_A,
+                    UPDATE_BATCH_DIMENSION,
+                    &beta,
+                    d_C,
+                    UPDATE_BATCH_DIMENSION);
+            if (ndrow3 > 0)
+            {
+                cublasDgemm (
+                        Common->cublasHandle[gpuid],
+                        CUBLAS_OP_N, CUBLAS_OP_T,
+                        ndrow3, ndrow1, ndcol,
+                        &alpha,
+                        d_B,
+                        UPDATE_BATCH_DIMENSION,
+                        d_A,
+                        UPDATE_BATCH_DIMENSION,
+                        &beta,
+                        d_D,
+                        UPDATE_BATCH_DIMENSION);
+            }
+#endif
+
+            for (cache_itr = 0; cache_itr < MAP_CACHESIZE && s_MapCached[iBuff][cache_itr] != s; cache_itr++);
+
+            if (cache_itr >= MAP_CACHESIZE)
+            {
+                cache_itr = Map_idx_next[iBuff];
+                Map_idx_next[iBuff] = (cache_itr + 1) % MAP_CACHESIZE;
+                s_MapCached[iBuff][cache_itr] = s;
+                d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff][cache_itr];
+                createMapOnDevice_factorized (d_MapFactorized, d_Ls, psi, nsrow, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+            }
+            else
+            {
+                d_MapFactorized = gpu_p->d_MapFactorized[gpuid][iBuff][cache_itr];
+            }
+
+            addUpdateOnDevice_factorized (gpu_p->d_Lx[gpuid] + psx, d_C, gpu_p->d_Ls[gpuid], d_MapFactorized, k1, k2, psi, psend, nsrow, pdi1, UPDATE_BATCH_DIMENSION, ndrow1, ndrow2, Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);
+
+            /* prepare for next descendant */
+            Lpos_save[d] = pdi2 - pdi ;
+
+            s = SuperMap [Ls [pdi + Lpos_save[d]]];
+        }
         }
 
         cudaEventRecord (Common->updateCKernelsComplete[gpuid * Common->numGPU_parallel], Common->gpuStream[gpuid * Common->numGPU_parallel][iBuff]);

@@ -46,6 +46,9 @@
 #define IBUFF_LOOPSIZE 2 // must not be greater than either (CHOLMOD_DEVICE_STREAMS / 2) or CHOLMOD_HOST_SUPERNODE_BUFFERS
 #define MAP_CACHESIZE 1
 
+#define UPDATE_MAX_BATCH_COUNT 32
+#define UPDATE_BATCH_DIMENSION (32)
+#define UPDATE_BATCH_SIZE (UPDATE_BATCH_DIMENSION * UPDATE_BATCH_DIMENSION)
 
 
 /* if verbose, enable prints & timers */
@@ -299,7 +302,6 @@ typedef struct cholmod_gpu_pointers
     int    *d_devSync[CHOLMOD_MAX_NUM_PGPUS]; 			/* devSync in device (potrf) */
 
     struct cholmod_descendant_score_t *h_darray[CHOLMOD_MAX_NUM_PGPUS];
-    Int *h_sarray[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE];
 
     Int *d_MapFactorized[CHOLMOD_MAX_NUM_PGPUS][IBUFF_LOOPSIZE][MAP_CACHESIZE];
 

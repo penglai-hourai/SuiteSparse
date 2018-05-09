@@ -346,7 +346,7 @@ void TEMPLATE2 (CHOLMOD (binarysearch_tree))
         + 2*(gb_p->maxbatch)*sizeof(Int) + sizeof(Int);
 
     /* total amount of CPU memory needed (pinned memory) */
-    cpu_memtot = IBUFF_LOOPSIZE * (gb_p->LxSizeFactorized + gb_p->MapSizeFactorized) + gb_p->ScoreSizeFactorized
+    cpu_memtot = IBUFF_LOOPSIZE * gb_p->LxSizeFactorized + gb_p->ScoreSizeFactorized
         + gb_p->LxSize + (14*(gb_p->dimDescSize) + 6*(gb_p->ptrDescSize) + 13*(gb_p->dimSuperSize) + 3*(gb_p->ptrSuperSize));
 
     /* print memory info */

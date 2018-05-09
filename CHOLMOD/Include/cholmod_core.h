@@ -1414,6 +1414,8 @@ int cholmod_l_subtree_comp (struct cholmod_subtree_order_t *a, struct cholmod_su
 
 
 /* function to sort descendants with qsort */
+int cholmod_d_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
+int cholmod_l_d_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
 int cholmod_score_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
 int cholmod_l_score_comp (struct cholmod_descendant_score_t *i, struct cholmod_descendant_score_t *j);
 
