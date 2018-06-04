@@ -34,68 +34,8 @@ V =
 # V = valgrind --quiet
 
 all: library qrdemo qrsimple qrsimplec gpu
-	- $(V) ./qrsimple < ../Matrix/ash219.mtx
-	- $(V) ./qrsimplec < ../Matrix/ash219.mtx
-	- $(V) ./qrsimple < ../Matrix/west0067.mtx
-	- $(V) ./qrsimplec < ../Matrix/west0067.mtx
-	- $(V) ./qrdemo < ../Matrix/a2.mtx
-	- $(V) ./qrdemo < ../Matrix/r2.mtx
-	- $(V) ./qrdemo < ../Matrix/a04.mtx
-	- $(V) ./qrdemo < ../Matrix/a2.mtx
-	- $(V) ./qrdemo < ../Matrix/west0067.mtx
-	- $(V) ./qrdemo < ../Matrix/c2.mtx
-	- $(V) ./qrdemo < ../Matrix/a0.mtx
-	- $(V) ./qrdemo < ../Matrix/lfat5b.mtx
-	- $(V) ./qrdemo < ../Matrix/bfwa62.mtx
-	- $(V) ./qrdemo < ../Matrix/LFAT5.mtx
-	- $(V) ./qrdemo < ../Matrix/b1_ss.mtx
-	- $(V) ./qrdemo < ../Matrix/bcspwr01.mtx
-	- $(V) ./qrdemo < ../Matrix/lpi_galenet.mtx
-	- $(V) ./qrdemo < ../Matrix/lpi_itest6.mtx
-	- $(V) ./qrdemo < ../Matrix/ash219.mtx
-	- $(V) ./qrdemo < ../Matrix/a4.mtx
-	- $(V) ./qrdemo < ../Matrix/s32.mtx
-	- $(V) ./qrdemo < ../Matrix/c32.mtx
-	- $(V) ./qrdemo < ../Matrix/lp_share1b.mtx
-	- $(V) ./qrdemo < ../Matrix/a1.mtx
-	- $(V) ./qrdemo < ../Matrix/GD06_theory.mtx
-	- $(V) ./qrdemo < ../Matrix/GD01_b.mtx
-	- $(V) ./qrdemo < ../Matrix/Tina_AskCal_perm.mtx
-	- $(V) ./qrdemo < ../Matrix/Tina_AskCal.mtx
-	- $(V) ./qrdemo < ../Matrix/GD98_a.mtx
-	- $(V) ./qrdemo < ../Matrix/Ragusa16.mtx
-	- $(V) ./qrdemo < ../Matrix/young1c.mtx
-	- $(V) ./qrdemo < ../Matrix/lp_e226_transposed.mtx
 
 cdemo: qrdemoc
-	- $(V) ./qrdemoc < ../Matrix/a2.mtx
-	- $(V) ./qrdemoc < ../Matrix/r2.mtx
-	- $(V) ./qrdemoc < ../Matrix/a04.mtx
-	- $(V) ./qrdemoc < ../Matrix/a2.mtx
-	- $(V) ./qrdemoc < ../Matrix/west0067.mtx
-	- $(V) ./qrdemoc < ../Matrix/c2.mtx
-	- $(V) ./qrdemoc < ../Matrix/a0.mtx
-	- $(V) ./qrdemoc < ../Matrix/lfat5b.mtx
-	- $(V) ./qrdemoc < ../Matrix/bfwa62.mtx
-	- $(V) ./qrdemoc < ../Matrix/LFAT5.mtx
-	- $(V) ./qrdemoc < ../Matrix/b1_ss.mtx
-	- $(V) ./qrdemoc < ../Matrix/bcspwr01.mtx
-	- $(V) ./qrdemoc < ../Matrix/lpi_galenet.mtx
-	- $(V) ./qrdemoc < ../Matrix/lpi_itest6.mtx
-	- $(V) ./qrdemoc < ../Matrix/ash219.mtx
-	- $(V) ./qrdemoc < ../Matrix/a4.mtx
-	- $(V) ./qrdemoc < ../Matrix/s32.mtx
-	- $(V) ./qrdemoc < ../Matrix/c32.mtx
-	- $(V) ./qrdemoc < ../Matrix/lp_share1b.mtx
-	- $(V) ./qrdemoc < ../Matrix/a1.mtx
-	- $(V) ./qrdemoc < ../Matrix/GD06_theory.mtx
-	- $(V) ./qrdemoc < ../Matrix/GD01_b.mtx
-	- $(V) ./qrdemoc < ../Matrix/Tina_AskCal_perm.mtx
-	- $(V) ./qrdemoc < ../Matrix/Tina_AskCal.mtx
-	- $(V) ./qrdemoc < ../Matrix/GD98_a.mtx
-	- $(V) ./qrdemoc < ../Matrix/Ragusa16.mtx
-	- $(V) ./qrdemoc < ../Matrix/young1c.mtx
-	- $(V) ./qrdemoc < ../Matrix/lp_e226_transposed.mtx
 
 ifneq ($(GPU_CONFIG),)
 GPU_DEMOS = gpu2 gpu3 gpu4 gpu1
@@ -106,23 +46,12 @@ endif
 gpu: $(GPU_DEMOS)
 
 gpu1: qrdemo_gpu
-	- $(V) ./qrdemo_gpu  ../Matrix/west0067.mtx 2
-	- $(V) ./qrdemo_gpu  ../Matrix/lp_e226_transposed.mtx 2
-	- $(V) ./qrdemo_gpu  ../Matrix/lp_e226_transposed.mtx 6
 
 gpu2: qrdemo_gpu2
-	- $(V) ./qrdemo_gpu2 ../Matrix/west0067.mtx 2
-	- $(V) ./qrdemo_gpu2 ../Matrix/lp_e226_transposed.mtx 2
-	- $(V) ./qrdemo_gpu2 ../Matrix/lp_e226_transposed.mtx 6
 
 gpu3: qrdemo_gpu3
-	- $(V) ./qrdemo_gpu3 ../Matrix/west0067.mtx 2
-	- $(V) ./qrdemo_gpu3 ../Matrix/lp_e226_transposed.mtx 2
-	- $(V) ./qrdemo_gpu3 ../Matrix/lp_e226_transposed.mtx 6
 
 gpu4: qrdemo_gpu
-	- $(V) ./qrdemo_gpu  ../Matrix/Groebner_id2003_aug.mtx 6
-	- $(V) ./qrdemo_gpu  ../Matrix/Franz6_id1959_aug.mtx 6
 
 library: metis
 	( cd ../Lib ; $(MAKE) )
