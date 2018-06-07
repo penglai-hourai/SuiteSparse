@@ -28,8 +28,9 @@ int main (int argc, char **argv)
     cc = &Common ;
     cholmod_l_start (cc) ;
 
-    /* A = mread (stdin) ; read in the sparse matrix A */
-    A = (cholmod_sparse *) cholmod_l_read_matrix (stdin, 1, &mtype, cc) ;
+    FILE *file = (argc < 2 ? stdin : fopen(argv[1], "r"));
+    A = (cholmod_sparse *) cholmod_l_read_matrix (file, 1, &mtype, cc) ;
+    fclose(file);
     if (mtype != CHOLMOD_SPARSE)
     {
         printf ("input matrix must be sparse\n") ;

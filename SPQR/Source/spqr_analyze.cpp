@@ -119,8 +119,7 @@ spqr_symbolic *spqr_analyze
 
     // Disable the GPU if the Householder vectors are requested, if we're
     // using TBB, if rank detection is requested, or if A is not real
-    if (keepH || do_parallel_analysis || do_rank_detection ||
-        A->xtype != CHOLMOD_REAL)
+    if (keepH || do_parallel_analysis || do_rank_detection || A->xtype != CHOLMOD_REAL)
     {
         useGPU = FALSE ;
     }

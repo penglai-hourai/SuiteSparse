@@ -980,8 +980,7 @@ template <typename Entry> Long SuiteSparseQR
 
     double t3 = SuiteSparse_time ( ) ;
     double total_time = t3 - t0 ;
-    cc->SPQR_solve_time =
-        total_time - cc->SPQR_analyze_time - cc->SPQR_factorize_time ;
+    cc->SPQR_solve_time = total_time - cc->SPQR_analyze_time - cc->SPQR_factorize_time ;
 
     return (rank) ;
 }

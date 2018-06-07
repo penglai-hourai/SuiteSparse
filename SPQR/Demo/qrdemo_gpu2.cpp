@@ -40,12 +40,9 @@ int main (int argc, char **argv)
     {
         printf ("no GPU available\n") ;
     }
-    printf ("available GPU memory: %g MB, warmup time: %g\n",
-        (double) (cc->gpuMemorySize) / (1024 * 1024), t) ;
+    printf ("available GPU memory: %g MB, warmup time: %g\n", (double) (cc->gpuMemorySize) / (1024 * 1024), t) ;
 
-    // A = mread (stdin) ; read in the sparse matrix A
-    const char *filename = argv[1];
-    FILE *file = fopen(filename, "r");
+    FILE *file = (argc < 2 ? stdin : fopen(argv[1], "r"));
     A = (cholmod_sparse *) cholmod_l_read_matrix (file, 1, &mtype, cc) ;
     fclose(file);
     if (mtype != CHOLMOD_SPARSE)
@@ -60,8 +57,7 @@ int main (int argc, char **argv)
 
     long ordering = (argc < 3 ? SPQR_ORDERING_DEFAULT : atoi(argv[2]));
 
-    printf ("Matrix %6ld-by-%-6ld nnz: %6ld\n",
-        m, n, cholmod_l_nnz (A, cc)) ;
+    printf ("Matrix %6ld-by-%-6ld nnz: %6ld\n", m, n, cholmod_l_nnz (A, cc)) ;
 
     // B = ones (m,1), a dense right-hand-side of the same type as A
     B = cholmod_l_ones (m, 1, A->xtype, cc) ;

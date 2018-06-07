@@ -199,16 +199,14 @@ template <typename Entry> SuiteSparseQR_factorization <Entry> *spqr_1factor
     {
         // fixed ordering: find column singletons without permuting columns
         Q1fill = NULL ;
-        spqr_1fixed <Entry> (tol, bncols, A,
-            &R1p, &P1inv, &Y, &n1cols, &n1rows, cc) ;
+        spqr_1fixed <Entry> (tol, bncols, A, &R1p, &P1inv, &Y, &n1cols, &n1rows, cc) ;
     }
     else
     {
         // natural or fill-reducing ordering: find column singletons with
         // column permutations allowed, then permute the pruned submatrix with
         // a fill-reducing ordering if ordering is not SPQR_ORDERING_NATURAL.
-        spqr_1colamd <Entry> (ordering, tol, bncols, A, &Q1fill,
-            &R1p, &P1inv, &Y, &n1cols, &n1rows, cc) ;
+        spqr_1colamd <Entry> (ordering, tol, bncols, A, &Q1fill, &R1p, &P1inv, &Y, &n1cols, &n1rows, cc) ;
         ordering = cc->SPQR_istat [7]  ;
     }
 
@@ -626,16 +624,14 @@ template <typename Entry> SuiteSparseQR_factorization <Entry> *spqr_1factor
     if (noY)
     {
         // factorize A, with fill-reducing ordering already given in Q1fill
-        QRsym = spqr_analyze (A, SPQR_ORDERING_GIVEN, Q1fill,
-            tol >= 0, keepH, cc) ;
+        QRsym = spqr_analyze (A, SPQR_ORDERING_GIVEN, Q1fill, tol >= 0, keepH, cc) ;
         t1 = SuiteSparse_time ( ) ;
         QRnum = spqr_factorize <Entry> (&A, FALSE, tol, n, QRsym, cc) ;
     }
     else
     {
         // fill-reducing ordering is already applied to Y; free Y when loaded
-        QRsym = spqr_analyze (Y, SPQR_ORDERING_FIXED, NULL,
-            tol >= 0, keepH, cc) ;
+        QRsym = spqr_analyze (Y, SPQR_ORDERING_FIXED, NULL, tol >= 0, keepH, cc) ;
         t1 = SuiteSparse_time ( ) ;
         QRnum = spqr_factorize <Entry> (&Y, TRUE, tol, n2, QRsym, cc) ;
         // Y has been freed

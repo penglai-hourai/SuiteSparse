@@ -37,12 +37,9 @@ int main (int argc, char **argv)
     {
         printf ("no GPU available\n") ;
     }
-    printf ("available GPU memory: %g MB, warmup time: %g\n",
-        (double) (cc->gpuMemorySize) / (1024 * 1024), t) ;
+    printf ("available GPU memory: %g MB, warmup time: %g\n", (double) (cc->gpuMemorySize) / (1024 * 1024), t) ;
 
-    // A = mread (stdin) ; read in the sparse matrix A
-    const char *filename = (argc < 2 ? "Problems/2.mtx" : argv[1]);
-    FILE *file = fopen(filename, "r");
+    FILE *file = (argc < 2 ? stdin : fopen(argv[1], "r"));
     A = (cholmod_sparse *) cholmod_l_read_matrix (file, 1, &mtype, cc) ;
     fclose(file);
     if (mtype != CHOLMOD_SPARSE)
@@ -58,8 +55,7 @@ int main (int argc, char **argv)
     long ordering = (argc < 3 ? SPQR_ORDERING_DEFAULT : atoi(argv[2]));
 
 #if 1
-    printf ("Matrix %6ld-by-%-6ld nnz: %6ld\n",
-        m, n, cholmod_l_nnz (A, cc)) ;
+    printf ("Matrix %6ld-by-%-6ld nnz: %6ld\n", m, n, cholmod_l_nnz (A, cc)) ;
 #endif
 
     // anorm = norm (A,1) ;
@@ -78,8 +74,7 @@ int main (int argc, char **argv)
     {
 #if SUPPORTS_COMPLEX
         // A, X, and B are all complex
-        X = SuiteSparseQR < std::complex<double> >
-            (SPQR_ORDERING_DEFAULT, SPQR_NO_TOL, A, B, cc) ;
+        X = SuiteSparseQR < std::complex<double> > (SPQR_ORDERING_DEFAULT, SPQR_NO_TOL, A, B, cc) ;
 #else
         printf("Code doesn't support std::complex<?> types.\n");
 #endif
@@ -110,27 +105,26 @@ int main (int argc, char **argv)
         rnorm /= (anorm * xnorm) ;
     }
     printf ("\nnorm(Ax-b): %8.1e\n", rnorm) ;
-    printf ("norm(A'(Ax-b))         %8.1e rank: %ld of %ld\n", 
-        atrnorm, rnk, (m < n) ? m:n) ;
+    printf ("norm(A'(Ax-b)): %8.1e rank: %ld of %ld\n",  atrnorm, rnk, (m < n) ? m:n) ;
 
     /* Write an info file. */
     FILE *info = fopen("gpu_results.txt", "w");
-    fprintf(info, "%ld\n", cc->SPQR_istat[7]);        // ordering method
-    fprintf(info, "%ld\n", cc->memory_usage);         // memory usage (bytes)
-    fprintf(info, "%30.16e\n", cc->SPQR_flopcount);   // flop count
-    fprintf(info, "%lf\n", cc->SPQR_analyze_time);    // analyze time
-    fprintf(info, "%lf\n", cc->SPQR_factorize_time);  // factorize time
-    fprintf(info, "-1\n") ;                           // cpu memory (bytes)
-    fprintf(info, "-1\n") ;                           // gpu memory (bytes)
-    fprintf(info, "%32.16e\n", rnorm);                // residual
-    fprintf(info, "%ld\n", cholmod_l_nnz (A, cc));    // nnz(A)
-    fprintf(info, "%ld\n", cc->SPQR_istat [0]);       // nnz(R)
-    fprintf(info, "%ld\n", cc->SPQR_istat [2]);       // # of frontal matrices
-    fprintf(info, "%ld\n", cc->SPQR_istat [3]);       // ntasks, for now
-    fprintf(info, "%lf\n", cc->gpuKernelTime);        // kernel time (ms)
-    fprintf(info, "%ld\n", cc->gpuFlops);             // "actual" gpu flops
-    fprintf(info, "%d\n", cc->gpuNumKernelLaunches);  // # of kernel launches
-    fprintf(info, "%32.16e\n", atrnorm) ;             // norm (A'*(Ax-b))
+    fprintf(info, "ordering method = %ld\n", cc->SPQR_istat[7]);            // ordering method
+    fprintf(info, "memory usage (bytes) = %ld\n", cc->memory_usage);        // memory usage (bytes)
+    fprintf(info, "flop count = %.16e\n", cc->SPQR_flopcount);              // flop count
+    fprintf(info, "analyze time = %lf\n", cc->SPQR_analyze_time);           // analyze time
+    fprintf(info, "factorize time = %lf\n", cc->SPQR_factorize_time);       // factorize time
+    fprintf(info, "cpu memory (bytes) = -1\n") ;                            // cpu memory (bytes)
+    fprintf(info, "gpu memory (bytes) = -1\n") ;                            // gpu memory (bytes)
+    fprintf(info, "residual = %.16e\n", rnorm);                             // residual
+    fprintf(info, "nnz(A) = %ld\n", cholmod_l_nnz (A, cc));                 // nnz(A)
+    fprintf(info, "nnz(R) = %ld\n", cc->SPQR_istat [0]);                    // nnz(R)
+    fprintf(info, "# of frontal matrices = %ld\n", cc->SPQR_istat [2]);     // # of frontal matrices
+    fprintf(info, "ntasks, for now = %ld\n", cc->SPQR_istat [3]);           // ntasks, for now
+    fprintf(info, "kernel time (ms) = %lf\n", cc->gpuKernelTime);           // kernel time (ms)
+    fprintf(info, "\"actual\" gpu flops = %ld\n", cc->gpuFlops);            // "actual" gpu flops
+    fprintf(info, "# of kernel launches = %d\n", cc->gpuNumKernelLaunches); // # of kernel launches
+    fprintf(info, "norm (A'*(Ax-b)) = %.16e\n", atrnorm) ;                  // norm (A'*(Ax-b))
 
     fclose(info);
 
