@@ -108,7 +108,8 @@ int main (int argc, char **argv)
     printf ("norm(A'(Ax-b)): %8.1e rank: %ld of %ld\n",  atrnorm, rnk, (m < n) ? m:n) ;
 
     /* Write an info file. */
-    FILE *info = fopen("gpu_results.txt", "w");
+    FILE *info = stdout;
+    //FILE *info = fopen("gpu_results.txt", "w");
     fprintf(info, "ordering method          = %ld\n", cc->SPQR_istat[7]);       // ordering method
     fprintf(info, "memory usage (bytes)     = %ld\n", cc->memory_usage);        // memory usage (bytes)
     fprintf(info, "flop count               = %.16e\n", cc->SPQR_flopcount);    // flop count

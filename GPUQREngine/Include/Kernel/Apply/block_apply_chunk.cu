@@ -271,7 +271,7 @@
     // C=V'*A for the first tile of V, which is lower triangular
     #define FIRST_TILE
     #include "cevta_tile.cu"
-    
+
     // Subsequent tiles of V are square.  Result is in C bitty block.
     for (int t = 1 ; t < ROW_PANELSIZE ; t++)
     {
@@ -308,35 +308,35 @@
     if (CTHREADS == NUMTHREADS || threadIdx.x < CTHREADS)
     {
         #pragma unroll
-        for (int i = 0 ; i < M ; i++)
+        for (int k = 0 ; k < M ; k++)
         {
             #pragma unroll
             for (int ii = 0 ; ii < CBITTYROWS ; ii++)
             {
-                int j = MYCBITTYROW (ii) ;
-                if (i <= j)
+                int i = MYCBITTYROW (ii) ;
+                if (k <= i)
                 {
-                    rrow [ii] = ST (i,j) ;
+                    rrow [ii] = ST (k,i) ;
                 }
             }
             #pragma unroll
             for (int jj = 0 ; jj < CBITTYCOLS ; jj++)
             {
                 int j = MYCBITTYCOL (jj) ;
-                rcol [jj] = shC [i][j] ;
+                rcol [jj] = shC [k][j] ;
             }
             #pragma unroll
             for (int ii = 0 ; ii < CBITTYROWS ; ii++)
             {
-                int j = MYCBITTYROW (ii) ;
-                if (i <= j)
+                int i = MYCBITTYROW (ii) ;
+                if (k <= i)
                 {
                     #pragma unroll
                     for (int jj = 0 ; jj < CBITTYCOLS ; jj++)
                     {
                         rbit [ii][jj] += rrow [ii] * rcol [jj] ;
                     }
-                }                
+                }
             }
         }
     }
@@ -430,9 +430,8 @@
         //----------------------------------------------------------------------
         // A = A - X, which finalizes the computation A = A - V*(T'*(V'*A))
         //----------------------------------------------------------------------
-        
-        #if (COL_PANELSIZE == 2)
-        
+
+
             #pragma unroll
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
@@ -443,35 +442,22 @@
                 {
                     int fj = j1 + MYABITTYCOL (jj) ;
                     if (INSIDE_ROW (fi < fm) && INSIDE_COL (fj < fn))
+                    #if (COL_PANELSIZE == 2)
                     {
                         glF [fi * fn + fj] -= rbit [ii][jj] ;
                     }
-                }
-            }
-
-        #else
-        
-            #pragma unroll
-            for (int ii = 0 ; ii < ABITTYROWS ; ii++)
-            {
-                int i = MYABITTYROW (ii) ;
-                int fi = IFRONT (i / M, i % M) ;
-                #pragma unroll
-                for (int jj = 0 ; jj < ABITTYCOLS ; jj++)
-                {
-                    int fj = j1 + MYABITTYCOL (jj) ;
-                    if (INSIDE_ROW (fi < fm) && INSIDE_COL (fj < fn))
+                    #else
                     {
-                        shV[i][MYABITTYCOL(jj)] = glF[fi*fn+fj] - rbit[ii][jj];
+                        shV[i][MYABITTYCOL(jj)] = glF [fi * fn + fj] - rbit[ii][jj];
                     }
                     else
                     {
                         shV[i][MYABITTYCOL(jj)] = 0.0;
                     }
+                    #endif
                 }
             }
-    
-        #endif
+
     }
 
     //--------------------------------------------------------------------------
