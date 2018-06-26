@@ -25,7 +25,7 @@ void Scheduler::launchKernel
 
     /* Get the kernel streams */
     cudaStream_t thisKernel = kernelStreams[activeSet];
-    cudaStream_t lastKernel = kernelStreams[activeSet^1];
+    cudaStream_t lastKernel = kernelStreams[(activeSet+NUM_WORKQUEUES-1)%NUM_WORKQUEUES];
 
     /* Wait for the last kernel and all H2D memory transfers to finish. */
     cudaStreamSynchronize(lastKernel);

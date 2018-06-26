@@ -36,13 +36,13 @@
     FrontDataPulled = (bool *) SuiteSparse_free(FrontDataPulled); \
     eventFrontDataReady =(cudaEvent_t*) SuiteSparse_free(eventFrontDataReady); \
     eventFrontDataPulled=(cudaEvent_t*) SuiteSparse_free(eventFrontDataPulled);\
-    for(int q=0; q<2; q++) workQueues[q] = Workspace::destroy(workQueues[q]); \
-    if (kernelStreams[0] != NULL) cudaStreamDestroy(kernelStreams[0]); \
-    if (kernelStreams[1] != NULL) cudaStreamDestroy(kernelStreams[1]); \
+    for(int q=0; q<NUM_WORKQUEUES; q++) workQueues[q] = Workspace::destroy(workQueues[q]); \
+    for (int k = 0; k < NUM_WORKQUEUES; k++) \
+    if (kernelStreams[k] != NULL) cudaStreamDestroy(kernelStreams[k]); \
     if (memoryStreamH2D  != NULL) cudaStreamDestroy(memoryStreamH2D); \
     if (memoryStreamD2H  != NULL) cudaStreamDestroy(memoryStreamD2H); \
-    kernelStreams[0] = NULL ; \
-    kernelStreams[1] = NULL ; \
+    for (int k = 0; k < NUM_WORKQUEUES; k++) \
+    kernelStreams[k] = NULL ; \
     memoryStreamH2D = NULL ; \
     memoryStreamD2H = NULL ;
 
@@ -61,13 +61,13 @@ Scheduler::Scheduler
     this->numFronts = numFronts;
     numFrontsCompleted = 0;
 
-    kernelStreams[0] = NULL ;
-    kernelStreams[1] = NULL ;
+    for (int k = 0; k < NUM_WORKQUEUES; k++)
+        kernelStreams[k] = NULL ;
     memoryStreamH2D = NULL ;
     memoryStreamD2H = NULL ;
 
-    workQueues[0] = NULL ;
-    workQueues[1] = NULL ;
+    for (int k = 0; k < NUM_WORKQUEUES; k++)
+        workQueues[k] = NULL ;
 
     /* Allocate scheduler memory, checking for out of memory frequently.
      *  Remark: SuiteSparse_calloc is important to use here for "mongo" memory
@@ -236,17 +236,16 @@ bool Scheduler::initialize
     // determine the size of the work queue
     maxQueueSize = (Int) ssgpu_maxQueueSize (gpuMemorySize) ;
 
-    for(int q=0; q<2; q++)
+    for(int q=0; q<NUM_WORKQUEUES; q++)
     {
         // malloc on both CPU (pagelocked) and GPU
-        workQueues[q] = Workspace::allocate (maxQueueSize,  // CPU and GPU
-            sizeof(TaskDescriptor), false, true, true, true) ;
+        workQueues[q] = Workspace::allocate (maxQueueSize, sizeof(TaskDescriptor), false, true, true, true) ; // CPU and GPU
         if(!workQueues[q]) return false;
         numTasks[q] = 0;
     }
 
-    cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&kernelStreams[0]));
-    cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&kernelStreams[1]));
+    for (int k = 0; k < NUM_WORKQUEUES; k++)
+        cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&kernelStreams[k]));
     cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&memoryStreamH2D));
     cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&memoryStreamD2H));
 

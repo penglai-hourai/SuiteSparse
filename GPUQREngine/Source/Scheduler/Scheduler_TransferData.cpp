@@ -48,8 +48,7 @@ void Scheduler::transferData
     }
 
     /* Sort the tasks in decreasing order by task time. */
-    qsort (wsWorkQueue->cpu(), numTasks[activeSet], sizeof(TaskDescriptor),
-        compareTaskTime);
+    qsort (wsWorkQueue->cpu(), numTasks[activeSet], sizeof(TaskDescriptor), compareTaskTime);
 
     /* Surgically transfer the queue data from the scheduler onto the GPU: */
     Workspace wsQueueSurgical(numTasks[activeSet], sizeof(TaskDescriptor));

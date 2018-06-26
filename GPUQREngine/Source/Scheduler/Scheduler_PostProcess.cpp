@@ -113,17 +113,23 @@ bool Scheduler::postProcess
 //              // R is computed but the contribution block is not.  This
 //              // method is under development and not yet available for
 //              // production use.
-//              if(isSparse && (&bucketLists[f])->IsRReadyEarly()) {
+//              if(isSparse && (&bucketLists[f])->IsRReadyEarly())
+//              {
 //                  /* If we haven't created the event yet, create it. */
-//                  if(eventFrontDataReady[f] == NULL) {
+//                  if(eventFrontDataReady[f] == NULL)
+//                  {
 //                      // Piggyback the synchronization on the next kernel
 //                      // launch.
 //                      cudaEventCreate(&eventFrontDataReady[f]);
-//                      cudaEventRecord(eventFrontDataReady[f],
-//                      kernelStreams[activeSet^1]); }
+//                      cudaEventRecord(eventFrontDataReady[f], kernelStreams[(activeSet+1)%NUM_WORKQUEUES]);
+//                  }
 //                  /* We must have created the event on the last kernel
-//                     launch so try to pull R off the GPU. */ else {
-//                     pullFrontData(f); } }
+//                     launch so try to pull R off the GPU. */
+//                  else
+//                  {
+//                      pullFrontData(f);
+//                  }
+//              }
 
                 break;
 
@@ -135,8 +141,7 @@ bool Scheduler::postProcess
                 {
                     // Piggyback the synchronization on the next kernel launch.
                     cudaEventCreate(&eventFrontDataReady[f]);
-                    cudaEventRecord(eventFrontDataReady[f],
-                        kernelStreams[activeSet^1]);
+                    cudaEventRecord(eventFrontDataReady[f], kernelStreams[(activeSet+1)%NUM_WORKQUEUES]);
                 }
                 /* We must have created the event already during factorize,
                    so instead try to pull R off the GPU. */
