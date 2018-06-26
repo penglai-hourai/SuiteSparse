@@ -467,8 +467,7 @@ void spqrgpu_kernel
                 // only copy the exact CBlock back to the GPU
                 PR (("building child %ld (%ld) with parent %ld (%ld)\n",
                     c, pNextChild, f, frelp));
-                Front *child = new (&fronts[pNextChild])
-                                   Front(pNextChild, frelp, ccm, ccn);
+                Front *child = new (&fronts[pNextChild]) Front(pNextChild, frelp, ccm, ccn);
                 child->fidg = c;
                 child->pidg = f;
 
@@ -487,14 +486,12 @@ void spqrgpu_kernel
                 // the memory layout for children can be right next to
                 // its parent in memory since we're already charging our
                 // staging algorithm for the space of a front and its children
-                child->gpuF = cmeta->gpuC =
-                    GPU_REFERENCE(wsMondoF, double*) + ChildOffset;
+                child->gpuF = cmeta->gpuC = GPU_REFERENCE(wsMondoF, double*) + ChildOffset;
 
                 // surgically copy the data to the GPU asynchronously
                 Workspace *wsLimbo = LimboDirectory[c];
                 wsLimbo->assign(wsLimbo->cpu(), child->gpuF);
-                wsLimbo->transfer(cudaMemcpyHostToDevice, false,
-                    memoryStreamH2D);
+                wsLimbo->transfer(cudaMemcpyHostToDevice, false, memoryStreamH2D);
 
                 // advance the child offset in case we have more children
                 ChildOffset += ccm * ccn;
@@ -505,7 +502,7 @@ void spqrgpu_kernel
         }
 
         // wait for data to go down to the GPU.
-        cudaStreamSynchronize(memoryStreamH2D);
+        //cudaStreamSynchronize(memoryStreamH2D);
 
         // now we can free limbo children
         for(Long p=sStart; p<sEnd; p++)
@@ -529,8 +526,7 @@ void spqrgpu_kernel
         TIC(engine);
 
         QREngineStats stats;
-        GPUQREngine(gpuMemorySize, fronts, numFronts, Parent, Childp, Child,
-            &stats);
+        GPUQREngine(gpuMemorySize, fronts, numFronts, Parent, Childp, Child, &stats);
         cc->gpuKernelTime += stats.kernelTime;
         cc->gpuFlops += stats.flopsActual;
         cc->gpuNumKernelLaunches += stats.numLaunches;
