@@ -479,8 +479,8 @@ __device__ void FACTORIZE ( )
         // lower-triangular part of the first tile (leaving R).
         for (int th=threadIdx.x; th<TILESIZE*TILESIZE; th+=blockDim.x)
         {
-            int i = th / 32;
-            int j = th % 32;
+            int i = th / TILESIZE;
+            int j = th % TILESIZE;
 
             /* The upper triangular part (including diagonal) is T. */
             if(i <= j)

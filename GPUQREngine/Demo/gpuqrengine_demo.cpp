@@ -247,7 +247,7 @@ void experiment2(cholmod_common *cc, int m, int n, int numFronts)
 {
     /* See if this experiment would blow out the memory. */
     size_t threshold = 3.50 * 1024 * 1024 * 1024;
-    size_t memoryReq = (size_t) (numFronts * (CEIL(m, 32) * 32 * 33 + m * n)) ;
+    size_t memoryReq = (size_t) (numFronts * (CEIL(m, TILESIZE) * TILESIZE * (TILESIZE+1) + m * n)) ;
     if(memoryReq * sizeof(double) > threshold) return;
 
     /* Configure problem set. */
@@ -304,7 +304,7 @@ int main(int argn, char **argv)
 
     experiment1(cc, 1, 2, 8, 8);
     experiment1(cc, 2, 2, 12, 8);
-    experiment1(cc, 3, 2, 64, 32);
+    experiment1(cc, 3, 2, 64, TILESIZE);
     experiment1(cc, 4, 1, 100, 200);
 
     printf ("to check results, run 'troll.m' in MATLAB\n") ;

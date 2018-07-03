@@ -27,7 +27,7 @@ __global__ void qrKernel
         case TASKTYPE_FactorizeVT_3x1e: factorize_3_by_1_tile_vt_edge(); return;
         case TASKTYPE_FactorizeVT_2x1e: factorize_2_by_1_tile_vt_edge(); return;
         case TASKTYPE_FactorizeVT_1x1e: factorize_1_by_1_tile_vt_edge(); return;
-        case TASKTYPE_FactorizeVT_3x1w: factorize_96_by_32();            return;
+        case TASKTYPE_FactorizeVT_3x1w: factorize_small_front();            return;
 
         case TASKTYPE_Apply3: block_apply_3(); return;
         case TASKTYPE_Apply2: block_apply_2(); return;

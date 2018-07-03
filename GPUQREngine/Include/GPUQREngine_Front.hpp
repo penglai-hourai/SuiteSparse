@@ -159,7 +159,7 @@ public:
         void
     )
     {
-        return (fm > 96 || fn > 32);
+        return (fm > (PANELSIZE * TILESIZE) || fn > TILESIZE);
     }
 
 };

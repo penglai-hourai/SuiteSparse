@@ -95,7 +95,7 @@ BucketList::BucketList
     /* Initialize VT structure */
     for(int i=0; i<numRowTiles; i++)
     {
-        gpuVT[i] = (double*) wsMongoVT->gpu() + 33*32*i; // base + offset
+        gpuVT[i] = (double*) wsMongoVT->gpu() + (TILESIZE+1)*TILESIZE*i; // base + offset
     }
 }
 
