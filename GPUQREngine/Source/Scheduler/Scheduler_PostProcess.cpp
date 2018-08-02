@@ -220,8 +220,10 @@ bool Scheduler::postProcess
                     Int fm = front->fm;
                     Int fn = front->fn;
                     Int fp = front->fp;
-                    Int frank = front->rank;
+                    Int frank = MIN (front->fm, front->fp);
                     double *cpuF = front->cpuR;
+        if (!(front->isPushOnly())) // not a leftover child
+        {
 #if 1
                     Int k = 0;
                     while (front->col_idx < fn && k < TILESIZE * TILESIZE)
@@ -256,6 +258,7 @@ bool Scheduler::postProcess
                         }
                     }
 #endif
+        }
                     if(finishFront(f))
                     {
                         /* Move to DONE. */
