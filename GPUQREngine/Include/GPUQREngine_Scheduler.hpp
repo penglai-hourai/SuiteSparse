@@ -20,7 +20,7 @@
 #include "GPUQREngine_LLBundle.hpp"
 #include "GPUQREngine_Front.hpp"
 
-#define SSGPU_MINAPPLYGRANULARITY 16
+#define SSGPU_MINAPPLYGRANULARITY 64
 
 size_t ssgpu_maxQueueSize       // return size of scheduler queue
 (

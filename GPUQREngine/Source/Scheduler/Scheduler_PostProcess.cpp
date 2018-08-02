@@ -158,12 +158,14 @@ bool Scheduler::postProcess
                     front->col_idx = 0;
                     front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
+                    p--;
                 }
                 /* Else we're sparse and not staged so it means we have memory
                    to assemble into the parent. */
                 else
                 {
                     nextState = PARENT_WAIT;
+                    p--;
                 }
                 break;
             }
@@ -191,6 +193,7 @@ bool Scheduler::postProcess
                     front->col_idx = 0;
                     front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
+                    p--;
                 }
 
                 break;
@@ -222,43 +225,43 @@ bool Scheduler::postProcess
                     Int fp = front->fp;
                     Int frank = MIN (front->fm, front->fp);
                     double *cpuF = front->cpuR;
-        if (!(front->isPushOnly())) // not a leftover child
-        {
-#if 1
-                    Int k = 0;
-                    while (front->col_idx < fn && k < TILESIZE * TILESIZE)
+                    if (!(front->isPushOnly())) // not a leftover child
                     {
-                        k++;
-                        *((front->Stack_head)++) = cpuF [fn * front->row_idx + front->col_idx] ;
-                        front->row_idx++;
-                        if (front->row_idx >= frank || front->row_idx > front->col_idx)
+#if 1
+                        Int k = 0;
+                        while (front->col_idx < fn && k < TILESIZE * TILESIZE)
                         {
-                            front->row_idx = 0;
-                            front->col_idx++;
+                            k++;
+                            *((front->Stack_head)++) = cpuF [fn * front->row_idx + front->col_idx] ;
+                            front->row_idx++;
+                            if (front->row_idx >= frank || front->row_idx > front->col_idx)
+                            {
+                                front->row_idx = 0;
+                                front->col_idx++;
+                            }
                         }
-                    }
-                    if (front->col_idx < front->fn) break;
+                        if (front->col_idx < front->fn) break;
 #else
 
-                    for (Int j = 0 ; j < frank ; j++)
-                    {
-                        // copy column j of the front from cpuF to R
-                        for (Int i = 0 ; i <= j ; i++)
+                        for (Int j = 0 ; j < frank ; j++)
                         {
-                            *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                            // copy column j of the front from cpuF to R
+                            for (Int i = 0 ; i <= j ; i++)
+                            {
+                                *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                            }
                         }
-                    }
-                    // copy the rectangular part from cpuF to R
-                    for (Int j = frank ; j < fn ; j++)
-                    {
-                        // copy column j of the front from cpuF to R
-                        for (Int i = 0 ; i < frank ; i++)
+                        // copy the rectangular part from cpuF to R
+                        for (Int j = frank ; j < fn ; j++)
                         {
-                            *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                            // copy column j of the front from cpuF to R
+                            for (Int i = 0 ; i < frank ; i++)
+                            {
+                                *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                            }
                         }
-                    }
 #endif
-        }
+                    }
                     if(finishFront(f))
                     {
                         /* Move to DONE. */
