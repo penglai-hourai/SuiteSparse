@@ -36,12 +36,12 @@
     FrontDataPulled = (bool *) SuiteSparse_free(FrontDataPulled); \
     eventFrontDataReady =(cudaEvent_t*) SuiteSparse_free(eventFrontDataReady); \
     eventFrontDataPulled=(cudaEvent_t*) SuiteSparse_free(eventFrontDataPulled);\
-    for(int q=0; q<NUM_WORKQUEUES; q++) workQueues[q] = Workspace::destroy(workQueues[q]); \
-    for (int k = 0; k < NUM_WORKQUEUES; k++) \
+    for(int q=0; q<2; q++) workQueues[q] = Workspace::destroy(workQueues[q]); \
+    for (int k = 0; k < 2; k++) \
     if (kernelStreams[k] != NULL) cudaStreamDestroy(kernelStreams[k]); \
     if (memoryStreamH2D  != NULL) cudaStreamDestroy(memoryStreamH2D); \
     if (memoryStreamD2H  != NULL) cudaStreamDestroy(memoryStreamD2H); \
-    for (int k = 0; k < NUM_WORKQUEUES; k++) \
+    for (int k = 0; k < 2; k++) \
     kernelStreams[k] = NULL ; \
     memoryStreamH2D = NULL ; \
     memoryStreamD2H = NULL ;
@@ -61,12 +61,12 @@ Scheduler::Scheduler
     this->numFronts = numFronts;
     numFrontsCompleted = 0;
 
-    for (int k = 0; k < NUM_WORKQUEUES; k++)
+    for (int k = 0; k < 2; k++)
         kernelStreams[k] = NULL ;
     memoryStreamH2D = NULL ;
     memoryStreamD2H = NULL ;
 
-    for (int k = 0; k < NUM_WORKQUEUES; k++)
+    for (int k = 0; k < 2; k++)
         workQueues[k] = NULL ;
 
     /* Allocate scheduler memory, checking for out of memory frequently.
@@ -236,7 +236,7 @@ bool Scheduler::initialize
     // determine the size of the work queue
     maxQueueSize = (Int) ssgpu_maxQueueSize (gpuMemorySize) ;
 
-    for(int q=0; q<NUM_WORKQUEUES; q++)
+    for(int q=0; q<2; q++)
     {
         // malloc on both CPU (pagelocked) and GPU
         workQueues[q] = Workspace::allocate (maxQueueSize, sizeof(TaskDescriptor), false, true, true, true) ; // CPU and GPU
@@ -244,7 +244,7 @@ bool Scheduler::initialize
         numTasks[q] = 0;
     }
 
-    for (int k = 0; k < NUM_WORKQUEUES; k++)
+    for (int k = 0; k < 2; k++)
         cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&kernelStreams[k]));
     cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&memoryStreamH2D));
     cuda_ok = cuda_ok && (cudaSuccess == cudaStreamCreate(&memoryStreamD2H));

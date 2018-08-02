@@ -54,7 +54,7 @@ void numfronts_in_stage
             if(StageMap[c] < stage) leftoverChildren++;
         }
     }
-    numFronts += leftoverChildren ;
+    //numFronts += leftoverChildren ;
     *p_numFronts = numFronts ;
     *p_leftoverChildren = leftoverChildren ;
 }
@@ -174,22 +174,18 @@ void spqrgpu_kernel
     // semantics: create as needed, destroy after used
     // -------------------------------------------------------------------------
 
-    Workspace **LimboDirectory =
-        (Workspace**) cholmod_l_calloc (nf, sizeof(Workspace*), cc);
+    Workspace **LimboDirectory = (Workspace**) cholmod_l_calloc (nf, sizeof(Workspace*), cc);
 
     // -------------------------------------------------------------------------
     // allocate, construct, and ship S, Rimap, and Rjmap for the entire problem
     // -------------------------------------------------------------------------
 
     // malloc wsMondoS on the CPU (pagelocked), not on the GPU
-    Workspace *wsMondoS = Workspace::allocate (Sp[m],       // CPU pagelocked
-        sizeof(SEntry), false, true, false, true) ;
+    Workspace *wsMondoS = Workspace::allocate (Sp[m], sizeof(SEntry), false, true, false, true) ; // CPU pagelocked
 
     // malloc wsRimap and wsRjmap on both the CPU and GPU (not pagelocked)
-    Workspace *wsRimap  = Workspace::allocate (RimapSize,   // CPU and GPU
-        sizeof(int), false, true, true, false) ;
-    Workspace *wsRjmap  = Workspace::allocate (RjmapSize,   // CPU and GPU
-        sizeof(int), false, true, true, false) ;
+    Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+    Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
 
     // use shared Long workspace (Iwork) for Fmap and InvPost [ [
     // Note that Iwork (0:nf-1) is already in use for Blob.Cm (size nf)
@@ -200,6 +196,7 @@ void spqrgpu_kernel
     Long *Fmap    = Wi + (nf+1) ;       // Fmap is size n
 
     Long numFronts = 0 ;
+    Long leftoverChildren = 0 ;
     Front *fronts = NULL ;
     Workspace *wsMondoF = NULL ;
     Workspace *wsMondoR = NULL ;
@@ -230,22 +227,18 @@ void spqrgpu_kernel
                 } \
             } \
         } \
-        LimboDirectory = (Workspace**) \
-            cholmod_l_free (nf, sizeof(Workspace*), LimboDirectory, cc); \
+        LimboDirectory = (Workspace**) cholmod_l_free (nf, sizeof(Workspace*), LimboDirectory, cc); \
         wsMondoS = Workspace::destroy(wsMondoS); \
         wsRjmap  = Workspace::destroy(wsRjmap); \
         wsRimap  = Workspace::destroy(wsRimap); \
-        fronts = (Front*) \
-            cholmod_l_free (maxfronts_in_stage, sizeof(Front), fronts, cc) ; \
+        fronts = (Front*) cholmod_l_free (maxfronts_in_stage, sizeof(Front), fronts, cc) ; \
         wsMondoF = Workspace::destroy(wsMondoF); \
         wsMondoR = Workspace::destroy(wsMondoR); \
-        if (wsS != NULL) wsS->assign(NULL, wsS->gpu()); \
         wsS = Workspace::destroy(wsS);
 
         // was: Fmap = (Long*) cholmod_l_free (n, sizeof(Long), Fmap, cc);
 
-    if (cc->status < CHOLMOD_OK     // ensures Fmap and InvPost are allocated
-        || !Stair || !LimboDirectory || !wsMondoS || !wsRimap || !wsRjmap)
+    if (cc->status < CHOLMOD_OK || !Stair || !LimboDirectory || !wsMondoS || !wsRimap || !wsRjmap) // ensures Fmap and InvPost are allocated
     {
         // cholmod_l_allocate_work will set cc->status if it fails, but it
         // will "never" fail since the symbolic analysis has already allocated
@@ -294,13 +287,11 @@ void spqrgpu_kernel
     for(Long stage=0; stage<numStages; stage++)
     {
         // find the memory requirements of this stage
-        Long leftoverChildren ;
-        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp,
-            &numFronts, &leftoverChildren) ;
+        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &numFronts, &leftoverChildren) ;
         wsMondoF_size      = MAX (wsMondoF_size,      FSize [stage]) ;
         wsMondoR_size      = MAX (wsMondoR_size,      RSize [stage]) ;
         wsS_size           = MAX (wsS_size,           SSize [stage]) ;
-        maxfronts_in_stage = MAX (maxfronts_in_stage, numFronts) ;
+        maxfronts_in_stage = MAX (maxfronts_in_stage, numFronts+leftoverChildren) ;
     }
 
     // The front listing has fronts in the stage at
@@ -311,16 +302,13 @@ void spqrgpu_kernel
     // to set the first FSize[stage] entries in wsMondoF to zero, for each
     // stage.  So malloc the space on the GPU once, but see cudaMemset below.
     // This workspace is not on the CPU.
-    wsMondoF = Workspace::allocate (wsMondoF_size,      // GPU only
-        sizeof(double), false, false, true, false) ;
+    wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, false) ;    // GPU only
 
     // malloc R for each front on the CPU (not on the GPU)
-    wsMondoR = Workspace::allocate (wsMondoR_size,      // CPU only
-        sizeof(double), false, true, false, false) ;
+    wsMondoR = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, false) ;    // CPU only
 
     // malloc S on the GPU (not on the CPU)
-    wsS = Workspace::allocate (wsS_size,                // GPU only
-        sizeof(SEntry), false, false, true, false) ;
+    wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
 
     if(!fronts || !wsMondoF || !wsMondoR || !wsS)
     {
@@ -347,23 +335,18 @@ void spqrgpu_kernel
 
     for(Long stage=0; stage<numStages; stage++)
     {
-        Long leftoverChildren ;
-
         PR (("Building stage %ld of %ld\n", stage+1, numStages));
 
-        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp,
-            &numFronts, &leftoverChildren) ;
+        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &numFronts, &leftoverChildren) ;
 
         Long sStart = Stagingp[stage];
         Long sEnd = Stagingp[stage+1];
-        Long pNextChild = 0;
+        Long pNextChild = numFronts;
 
-        PR (("# fronts in stage has %ld (%ld regular + %ld leftovers).\n",
-            numFronts, numFronts-leftoverChildren, leftoverChildren));
+        PR (("# fronts in stage has %ld (%ld regular + %ld leftovers).\n", numFronts+leftoverChildren, numFronts, leftoverChildren));
 
         // set fronts on the GPU to all zero
-        cudaMemset (wsMondoF->gpu(), (size_t) 0,
-            FSize [stage] * sizeof (double)) ;
+        cudaMemsetAsync (wsMondoF->gpu(), 0, sizeof (double) * FSize [stage], memoryStreamH2D) ;
 
         // surgically transfer S input values to the GPU
         Workspace surgical_S (SSize [stage], sizeof (SEntry)) ;
@@ -385,9 +368,11 @@ void spqrgpu_kernel
             Long col1 = Super [f] ;             // first global pivot col in F
             Long fp = Super[f+1] - col1 ;       // with fp pivot columns
             Long frank = MIN(fm, fp);
+            Long cm = Cm[f] ;
+            Long cn = fn - fp;
 
             // create the front
-            Long frelp = leftoverChildren + (p - sStart);
+            Long frelp = /*leftoverChildren + */(p - sStart);
             Long pid = Parent[f];
             Long gpid = Parent[pid];
             Long prelp = EMPTY;      // assume that we have no parent in stage
@@ -396,14 +381,16 @@ void spqrgpu_kernel
             if(gpid != EMPTY && StageMap[pid] == stage)
             {
                 Long pp = InvPost [pid] ;
-                prelp = leftoverChildren + (pp - sStart);
+                prelp = /*leftoverChildren + */(pp - sStart);
             }
 
-            PR (("building front %ld (%ld) with parent %ld (%ld)\n",
-                f, frelp, pid, prelp));
+            Rblock [f] = Stack_head ;
+            Stack_head += (frank*fn - (frank*(frank-1))/2);
+
+            PR (("building front %ld (%ld) with parent %ld (%ld)\n", f, frelp, pid, prelp));
 
             // using placement new
-            Front *front = new (&fronts[frelp]) Front(frelp, prelp, fm, fn);
+            Front *front = new (&fronts[frelp]) Front(frelp, prelp, fm, fn, fp);
             front->fidg = f;
             front->pidg = pid;
 
@@ -465,9 +452,8 @@ void spqrgpu_kernel
                 Long ccm = Cm[c];
 
                 // only copy the exact CBlock back to the GPU
-                PR (("building child %ld (%ld) with parent %ld (%ld)\n",
-                    c, pNextChild, f, frelp));
-                Front *child = new (&fronts[pNextChild]) Front(pNextChild, frelp, ccm, ccn);
+                PR (("building child %ld (%ld) with parent %ld (%ld)\n", c, pNextChild, f, frelp));
+                Front *child = new (&fronts[pNextChild]) Front(pNextChild, frelp, ccm, ccn, 0);
                 child->fidg = c;
                 child->pidg = f;
 
@@ -502,7 +488,7 @@ void spqrgpu_kernel
         }
 
         // wait for data to go down to the GPU.
-        //cudaStreamSynchronize(memoryStreamH2D);
+        cudaStreamSynchronize(memoryStreamH2D);
 
         // now we can free limbo children
         for(Long p=sStart; p<sEnd; p++)
@@ -526,7 +512,7 @@ void spqrgpu_kernel
         TIC(engine);
 
         QREngineStats stats;
-        GPUQREngine(gpuMemorySize, fronts, numFronts, Parent, Childp, Child, &stats);
+        GPUQREngine(gpuMemorySize, fronts, numFronts+leftoverChildren, Post + sStart, Rblock, Parent, Childp, Child, &stats);
         cc->gpuKernelTime += stats.kernelTime;
         cc->gpuFlops += stats.flopsActual;
         cc->gpuNumKernelLaunches += stats.numLaunches;
@@ -537,7 +523,7 @@ void spqrgpu_kernel
         for(Long p=sStart; p<sEnd; p++)
         {
             Long f = Post[p];
-            Long relp = leftoverChildren + (p - sStart);
+            Long relp = /*leftoverChildren + */(p - sStart);
 
             Long fm = Fm[f];                     // F has fm rows
             Long fn = Rp [f+1] - Rp [f] ;        // F has fn cols
@@ -545,10 +531,8 @@ void spqrgpu_kernel
             Long frank = MIN(fm, fp);
             double *cpuF = (&fronts[relp])->cpuR;
 
-            PR (("\n --- Front factorized, front %ld fm %ld fn %ld fp %ld frank %ld",
-                f, fm, fn, fp, frank)) ;
-            PR ((" : rows %ld to %ld of R (1-based)\n",
-                1+ Super [f], 1+ Super [f+1]-1)) ;
+            PR (("\n --- Front factorized, front %ld fm %ld fn %ld fp %ld frank %ld", f, fm, fn, fp, frank)) ;
+            PR ((" : rows %ld to %ld of R (1-based)\n", 1+ Super [f], 1+ Super [f+1]-1)) ;
             PR (("     Printing just R part, stored by row:\n")) ;
             for (Long j = 0 ; j < fn ; j++)
             {
@@ -573,7 +557,7 @@ void spqrgpu_kernel
         for(Long p=sStart; p<sEnd; p++)
         {
             Long f = Post[p];
-            Long relp = leftoverChildren + (p - sStart);
+            Long relp = /*leftoverChildren + */(p - sStart);
 
             Long fm = Fm[f];                     // F has fm rows
             Long fn = Rp [f+1] - Rp [f] ;        // F has fn cols
@@ -581,6 +565,7 @@ void spqrgpu_kernel
             Long frank = MIN(fm, fp);
             double *cpuF = (&fronts[relp])->cpuR;
 
+#if 0
             // cpuF for frontal matrix f has been factorized on the GPU and
             // copied to the CPU.  It is (frank+cm)-by-fn, stored by row.  The
             // entries in R for this front f are in the first frank rows, in
@@ -588,7 +573,8 @@ void spqrgpu_kernel
             // stack, R is stored by columns in packed form.
 
             // Record where R is in the Davis stack
-            Rblock [f] = Stack_head ;
+            //Rblock [f] = Stack_head ;
+            Stack_head = Rblock [f];
 
             // copy the leading upper triangular part from cpuF to R
             for (Long j = 0 ; j < frank ; j++)
@@ -610,8 +596,8 @@ void spqrgpu_kernel
             }
 
             // When packed, R has frank*fn - (frank*(frank-1))/2 entries.
-            ASSERT ((Stack_head - Rblock [f]) ==
-                    (frank*fn - (frank*(frank-1))/2)) ;
+            ASSERT ((Stack_head - Rblock [f]) == (frank*fn - (frank*(frank-1))/2)) ;
+#endif
 
             // If the front needs to be staged, copy the CBlock into limbo.
             SparseMeta *meta = &((&fronts[relp])->sparseMeta);
@@ -668,7 +654,6 @@ void spqrgpu_kernel
             front->~Front();
         }
         #endif
-
     }
 
     // -------------------------------------------------------------------------
@@ -694,8 +679,7 @@ void spqrgpu_kernel
         Long col1 = Super [f] ;             // first global pivot col in F
         Long fp = Super[f+1] - col1 ;       // with fp pivot columns
         Long frank = MIN(fm, fp);
-        PR (("cleanup front %ld, %ld by %ld with %ld pivots, frank %ld\n",
-            f, fm, Rp [f+1] - Rp [f], fp, frank)) ;
+        PR (("cleanup front %ld, %ld by %ld with %ld pivots, frank %ld\n", f, fm, Rp [f+1] - Rp [f], fp, frank)) ;
 
         if (fp > fm)
         {

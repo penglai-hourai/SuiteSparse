@@ -55,6 +55,7 @@ struct TaskDescriptor
 {
     /* Put pointers up front to guarantee word-alignment. */
     double *F;                          // Pointer to the frontal matrix
+    double *cpuR;
     double *AuxAddress[4];              // Usage Notes
                                         //   SAssembly:
                                         //     AuxAddress[0]    is SEntry*
@@ -71,6 +72,7 @@ struct TaskDescriptor
     TaskType Type;                      // The TaskType enum described above
     int fm;                             // # Rows in the front
     int fn;                             // # Cols in the front
+    int fp;
 
     int extra[10];                      // Usage Notes
                                         //   SAssembly:

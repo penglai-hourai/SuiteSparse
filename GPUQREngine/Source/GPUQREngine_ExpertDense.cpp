@@ -31,6 +31,8 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,   // The total available GPU memory size in bytes
     Front *userFronts,      // The list of fronts to factorize
     Int numFronts,          // The number of fronts to factorize
+    Int *Post,
+    double **Rblock,
     QREngineStats *stats    // An optional parameter. If present, statistics
                             // are collected and passed back to the caller
                             // via this struct
@@ -51,7 +53,8 @@ QREngineResultCode GPUQREngine
         Front *userFront = &(userFronts[f]);
         Int m = userFront->fm;
         Int n = userFront->fn;
-        Front *front = new (&fronts[f]) Front(f, EMPTY, m, n);
+        Int p = userFront->fp;
+        Front *front = new (&fronts[f]) Front(f, EMPTY, m, n, p);
         FSize += front->getNumFrontValues();
         RSize += front->getNumRValues();
     }
@@ -124,8 +127,7 @@ QREngineResultCode GPUQREngine
     }
 
     /* Do the factorization for this set of fronts. */
-    QREngineResultCode result = GPUQREngine_Internal(gpuMemorySize, fronts,
-        numFronts, NULL, NULL, NULL, stats);
+    QREngineResultCode result = GPUQREngine_Internal(gpuMemorySize, fronts, numFronts, Post, Rblock, NULL, NULL, NULL, stats);
     if(result != QRENGINE_SUCCESS)
     {
         return GPUQREngine_Cleanup (result,

@@ -27,7 +27,12 @@ public:
 
     Int fm;             // # rows
     Int fn;             // # cols
+    Int fp;
     Int rank;           // (derived) MIN(fm, fn)
+    bool parent_active;
+    Int row_idx;
+    Int col_idx;
+    double *Stack_head;
 
     // adv layout options
     bool isColMajor;    // default:F
@@ -54,6 +59,7 @@ public:
         Int pids_arg,                   // the parent identifier
         Int fm_arg,                     // the # of rows in the front
         Int fn_arg,                     // the # of cols in the front
+        Int fp_arg,
         bool isColMajor_arg=false,      // whether the front is col-major
         Int ldn_arg=EMPTY)              // the leading dimension
     {
@@ -64,6 +70,7 @@ public:
 
         fm = fm_arg ;
         fn = fn_arg ;
+        fp = fp_arg ;
         rank = MIN(fm, fn);
 
         isColMajor = isColMajor_arg ;
@@ -93,7 +100,7 @@ public:
         void
     )
     {
-        return gpuF != NULL;
+        return (gpuF != NULL);
     }
 
     bool isDense
@@ -161,7 +168,6 @@ public:
     {
         return (fm > (PANELSIZE * TILESIZE) || fn > TILESIZE);
     }
-
 };
 
 #endif

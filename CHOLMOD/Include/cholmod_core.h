@@ -287,6 +287,9 @@
 #include <cusolverDn.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define NMATRICES 256
 
@@ -2620,6 +2623,10 @@ int cholmod_l_version (int version [3]) ;
 #define CHOLMOD_IS_GT_ZERO(x)	((x) > 0.)
 #define CHOLMOD_IS_LE_ZERO(x)	((x) <= 0.)
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

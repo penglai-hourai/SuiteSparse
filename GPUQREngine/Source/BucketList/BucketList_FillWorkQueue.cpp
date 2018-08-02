@@ -62,7 +62,7 @@ Int BucketList::FillWorkQueue
                 // Resolve the generic type to a specific type.
 
                 // See if we need to consider edge cases.
-                int lastColumn = (TILESIZE * vtOwner) + 31;
+                int lastColumn = (TILESIZE * vtOwner) + (TILESIZE - 1);
                 bool isInternal = IsInternal(bundle, lastColumn);
 
                 switch(bundle.Count)

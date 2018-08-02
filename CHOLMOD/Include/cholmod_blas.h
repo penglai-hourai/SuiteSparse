@@ -19,6 +19,10 @@
 /* === Architecture ========================================================= */
 /* ========================================================================== */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined (__sun) || defined (MSOL2) || defined (ARCH_SOL2)
 #define CHOLMOD_SOL2
 #define CHOLMOD_ARCHITECTURE "Sun Solaris"
@@ -451,5 +455,9 @@ void BLAS_ZGER (BLAS_INT *m, BLAS_INT *n, double *alpha,
 	BLAS_ZGER (&M, &N, alpha, X, &INCX, Y, &INCY, A, &LDA) ; \
     } \
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -300,12 +300,12 @@ void Scheduler::fillTasks
 
         case PUSH_ASSEMBLE:
         {
+            /* Compute the iteration bounds for the task. */
+            Int cm = sparseMeta->cm;
+            Int cn = sparseMeta->cn;
             bool iterDone = false;
             while(!iterDone)
             {
-                /* Compute the iteration bounds for the task. */
-                Int cm = sparseMeta->cm;
-                Int cn = sparseMeta->cn;
                 int cistart = sparseMeta->lastCiStart;
                 int cjstart = sparseMeta->lastCjStart;
                 int ciend = MIN(cistart+PACKASSEMBLY_SHMEM_MAPINTS, cm);
@@ -313,8 +313,7 @@ void Scheduler::fillTasks
 
                 /* Build the pack assembly task */
                 sparseMeta->gpuP = (&frontList[front->pids])->gpuF;
-                queue[qindex++] = buildPackAssemblyTask(front, cistart,
-                    ciend, cjstart, cjend);
+                queue[qindex++] = buildPackAssemblyTask(front, cistart, ciend, cjstart, cjend);
 
                 /* Encode the iteration pattern of (left-right, top-bottom). */
                 bool endOfRow = (cjend == cn);
@@ -353,7 +352,14 @@ void Scheduler::fillTasks
             }
 
             // If we've built all of the packAssembly tasks, advance to CLEANUP.
-            if(iterDone) nextState = CLEANUP;
+            if(iterDone)
+            {
+                front->parent_active = false;
+                front->row_idx = 0;
+                front->col_idx = 0;
+                front->Stack_head = Rblock[Post[f]];
+                nextState = CLEANUP;
+            }
             break;
         }
 
@@ -362,8 +368,7 @@ void Scheduler::fillTasks
 
         /* At this point, the data for the front can be freed.
          * When all fronts are freed, the factorization is complete. */
-        case DONE:
-            break;
+        case DONE: break;
     }
 
 // #ifdef GPUQRENGINE_RENDER
@@ -400,9 +405,11 @@ TaskDescriptor buildSAssemblyTask
     TaskDescriptor returner;
     returner.Type = TASKTYPE_SAssembly;
     returner.F = front->gpuF;
+    returner.cpuR = front->cpuR;
     returner.AuxAddress[0] = (double*) meta->gpuS;
     returner.fm = front->fm;
     returner.fn = front->fn;
+    returner.fp = front->fp;
     returner.extra[0] = meta->Scount;
     returner.extra[1] = pstart;
     returner.extra[2] = pend;
@@ -428,7 +435,9 @@ TaskDescriptor buildPackAssemblyTask
     returner.Type = TASKTYPE_PackAssembly;
     returner.fm = front->fm;
     returner.fn = front->fn;
+    returner.fp = front->fp;
     returner.F = front->gpuF;
+    returner.cpuR = front->cpuR;
     returner.AuxAddress[0] = meta->gpuC;
     returner.AuxAddress[1] = meta->gpuP;
     returner.AuxAddress[2] = (double*) meta->gpuRjmap;
@@ -457,7 +466,9 @@ TaskDescriptor buildSmallQRTask
     TaskDescriptor returner;
     returner.Type = TASKTYPE_FactorizeVT_3x1w;
     returner.F = front->gpuF;
-    returner.fm = (int) front->fm;
-    returner.fn = (int) front->fn;
+    returner.cpuR = front->cpuR;
+    returner.fm = front->fm;
+    returner.fn = front->fn;
+    returner.fp = front->fp;
     return returner;
 }

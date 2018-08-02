@@ -139,11 +139,15 @@ void spqr_mx_get_usage
     cholmod_common *cc
 ) ;
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 extern int spqr_spumoni ;
 void spqr_mx_error (int status, const char *file, int line, const char *msg) ;
 #include <string.h>
+#ifdef __cplusplus
 }
+#endif
 
 void spqr_mx_spumoni
 (

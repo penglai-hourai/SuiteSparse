@@ -24,12 +24,18 @@ void Scheduler::launchKernel
     TaskDescriptor *gpuWorkQueue = GPU_REFERENCE(wsWorkQueue, TaskDescriptor*);
 
     /* Get the kernel streams */
+    int lastSet = activeSet^1;
     cudaStream_t thisKernel = kernelStreams[activeSet];
-    cudaStream_t lastKernel = kernelStreams[(activeSet+NUM_WORKQUEUES-1)%NUM_WORKQUEUES];
 
-    /* Wait for the last kernel and all H2D memory transfers to finish. */
-    cudaStreamSynchronize(lastKernel);
-    cudaStreamSynchronize(memoryStreamH2D);
+    if (numTasks[lastSet] > 0)
+    {
+        numTasks[lastSet] = 0;
+        cudaStream_t lastKernel = kernelStreams[lastSet];
+        /* Wait for the last kernel and all H2D memory transfers to finish. */
+        cudaStreamSynchronize(lastKernel);
+    }
+
+    //cudaStreamSynchronize(memoryStreamH2D);
 
     /* Launch the kernel if we have valid tasks to do. */
     if(numTasks[activeSet] > 0)
@@ -59,5 +65,5 @@ void Scheduler::launchKernel
     }
 
     /* Clear the number of tasks. */
-    numTasks[activeSet] = 0;
+    //numTasks[activeSet] = 0;
 }

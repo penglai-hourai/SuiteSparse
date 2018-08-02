@@ -8,6 +8,7 @@
 #include "SuiteSparseQR.hpp"
 #include "SuiteSparseGPU_Runtime.hpp"
 #include <complex>
+#include "cuda_profiler_api.h"
 
 int main (int argc, char **argv)
 {
@@ -64,6 +65,8 @@ int main (int argc, char **argv)
     // B = ones (m,1), a dense right-hand-side of the same type as A
     B = cholmod_l_ones (m, 1, A->xtype, cc) ;
 
+    cudaProfilerStart();
+
     // X = A\B ; with default ordering and default column 2-norm tolerance
     if (A->xtype == CHOLMOD_REAL)
     {
@@ -79,6 +82,8 @@ int main (int argc, char **argv)
         printf("Code doesn't support std::complex<?> types.\n");
 #endif
     }
+
+    cudaProfilerStop();
 
     // get the rank(A) estimate
     rnk = cc->SPQR_istat [4] ;

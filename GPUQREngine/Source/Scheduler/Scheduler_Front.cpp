@@ -115,7 +115,7 @@ bool Scheduler::pullFrontData
     wsR.assign(NULL, NULL);
 
     /* Record the event to signal when R is off the GPU. */
-    cudaEventRecord(eventFrontDataPulled[f]);
+    cudaEventRecord(eventFrontDataPulled[f], memoryStreamD2H);
 
     /* Save and return that we've initiated the R factor pull. */
     return (FrontDataPulled[f] = true);

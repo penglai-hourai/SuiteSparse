@@ -21,10 +21,6 @@ void GPUQREngine_UberKernel
     int numTasks                    // The # of items in the work list
 )
 {
-    /* Set the standard launch configuration. */
-    dim3 threads(NUMTHREADS, 1);
-    dim3 grid(numTasks, 1);
-
     /* Launch the kernel */
-    qrKernel<<<grid, threads, 0, kernelStream>>>(gpuWorkQueue, numTasks);    
+    qrKernel<<<numTasks, NUMTHREADS, 0, kernelStream>>>(gpuWorkQueue, numTasks);    
 }

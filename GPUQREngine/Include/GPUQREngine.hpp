@@ -11,6 +11,7 @@
 
 #include "SuiteSparseGPU_Runtime.hpp"
 #include "GPUQREngine_Front.hpp"
+#include "GPUQREngine_Scheduler.hpp"
 #include "GPUQREngine_Stats.hpp"
 
 enum QREngineResultCode
@@ -27,6 +28,8 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,
     Front *userFronts,
     Int numFronts,
+    Int *Post,
+    double **Rblock,
     QREngineStats *stats = NULL
 );
 
@@ -35,6 +38,8 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,
     Front *userFronts,
     Int numFronts,
+    Int *Post,
+    double **Rblock,
     Int *Parent,
     Int *Childp,
     Int *Child,

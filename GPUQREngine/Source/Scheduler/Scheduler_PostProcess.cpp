@@ -97,8 +97,7 @@ bool Scheduler::postProcess
                 // assert(isSparse);
 
                 /* If all the children are ready then we can proceed. */
-                int nc = meta->nc;
-                if(nc == 0)
+                if(meta->nc == 0)
                 {
                     initializeBucketList(f);
                     nextState = FACTORIZE;
@@ -121,7 +120,7 @@ bool Scheduler::postProcess
 //                      // Piggyback the synchronization on the next kernel
 //                      // launch.
 //                      cudaEventCreate(&eventFrontDataReady[f]);
-//                      cudaEventRecord(eventFrontDataReady[f], kernelStreams[(activeSet+1)%NUM_WORKQUEUES]);
+//                      cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet^1]);
 //                  }
 //                  /* We must have created the event on the last kernel
 //                     launch so try to pull R off the GPU. */
@@ -141,7 +140,7 @@ bool Scheduler::postProcess
                 {
                     // Piggyback the synchronization on the next kernel launch.
                     cudaEventCreate(&eventFrontDataReady[f]);
-                    cudaEventRecord(eventFrontDataReady[f], kernelStreams[(activeSet+1)%NUM_WORKQUEUES]);
+                    cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet^1]);
                 }
                 /* We must have created the event already during factorize,
                    so instead try to pull R off the GPU. */
@@ -154,6 +153,10 @@ bool Scheduler::postProcess
                    into the parent, so just cleanup. */
                 if(isDense || meta->isStaged)
                 {
+                    front->parent_active = false;
+                    front->row_idx = 0;
+                    front->col_idx = 0;
+                    front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
                 }
                 /* Else we're sparse and not staged so it means we have memory
@@ -183,6 +186,10 @@ bool Scheduler::postProcess
                 /* Else the parent is the dummy, so cleanup and move to done. */
                 else
                 {
+                    front->parent_active = false;
+                    front->row_idx = 0;
+                    front->col_idx = 0;
+                    front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
                 }
 
@@ -199,29 +206,74 @@ bool Scheduler::postProcess
             /* If we're in CLEANUP then we need to free the front. */
             case CLEANUP:
             {
-                /* If we were able to get the R factor and free the front. */
-                if(pullFrontData(f) && finishFront(f))
+                if (!(front->parent_active))
                 {
-                    /* Update the parent's child count. */
-                    Int pid = front->pids;
-                    if(pid != EMPTY) (&frontList[pid])->sparseMeta.nc--;
+                        /* Update the parent's child count. */
+                        Int pid = front->pids;
+                        if(pid != EMPTY) (&frontList[pid])->sparseMeta.nc--;
 
-                    /* Move to DONE. */
-                    nextState = DONE;
+                        front->parent_active = true;
+                }
+                /* If we were able to get the R factor and free the front. */
+                if(pullFrontData(f))
+                {
+                    Int fm = front->fm;
+                    Int fn = front->fn;
+                    Int fp = front->fp;
+                    Int frank = front->rank;
+                    double *cpuF = front->cpuR;
+#if 1
+                    Int k = 0;
+                    while (front->col_idx < fn && k < TILESIZE * TILESIZE)
+                    {
+                        k++;
+                        *((front->Stack_head)++) = cpuF [fn * front->row_idx + front->col_idx] ;
+                        front->row_idx++;
+                        if (front->row_idx >= frank || front->row_idx > front->col_idx)
+                        {
+                            front->row_idx = 0;
+                            front->col_idx++;
+                        }
+                    }
+                    if (front->col_idx < front->fn) break;
+#else
 
-                    /* Keep track of the # completed. */
-                    numFrontsCompleted++;
+                    for (Int j = 0 ; j < frank ; j++)
+                    {
+                        // copy column j of the front from cpuF to R
+                        for (Int i = 0 ; i <= j ; i++)
+                        {
+                            *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                        }
+                    }
+                    // copy the rectangular part from cpuF to R
+                    for (Int j = frank ; j < fn ; j++)
+                    {
+                        // copy column j of the front from cpuF to R
+                        for (Int i = 0 ; i < frank ; i++)
+                        {
+                            *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                        }
+                    }
+#endif
+                    if(finishFront(f))
+                    {
+                        /* Move to DONE. */
+                        nextState = DONE;
 
-                    /* Revisit the same position again since a front was
-                     * swapped to the current location. */
-                    p--;
+                        /* Keep track of the # completed. */
+                        numFrontsCompleted++;
+
+                        /* Revisit the same position again since a front was
+                         * swapped to the current location. */
+                        p--;
+                    }
                 }
                 break;
             }
 
             /* This is the done state with nothing to do. */
-            case DONE:
-                break;
+            case DONE: break;
         }
 
 #if 0

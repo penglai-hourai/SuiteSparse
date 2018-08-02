@@ -1018,9 +1018,7 @@ inline Long spqr_mult (Long a, Long b, int *ok)
 // To compile SuiteSparseQR with 64-bit BLAS, use -DBLAS64.  See also
 // CHOLMOD/Include/cholmod_blas.h
 
-extern "C" {
 #include "cholmod_blas.h"
-}
 
 #undef CHECK_BLAS_INT
 #undef EQ

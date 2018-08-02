@@ -8,7 +8,9 @@
 #include "spqr.hpp"
 #include "SuiteSparseQR_C.h"
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 // =============================================================================
 // === SuiteSparseQR_C =========================================================
@@ -364,4 +366,7 @@ cholmod_dense *SuiteSparseQR_C_qmult
 #endif
 
 // =============================================================================
+
+#ifdef __cplusplus
 }
+#endif

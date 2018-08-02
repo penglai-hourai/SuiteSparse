@@ -53,6 +53,7 @@ void Scheduler::transferData
     /* Surgically transfer the queue data from the scheduler onto the GPU: */
     Workspace wsQueueSurgical(numTasks[activeSet], sizeof(TaskDescriptor));
     wsQueueSurgical.assign(wsWorkQueue->cpu(), wsWorkQueue->gpu());
-    wsQueueSurgical.transfer(cudaMemcpyHostToDevice, false, memoryStreamH2D);
+    wsQueueSurgical.transfer(cudaMemcpyHostToDevice, false, kernelStreams[activeSet]);
+    //wsQueueSurgical.transfer(cudaMemcpyHostToDevice, false, memoryStreamH2D);
     wsQueueSurgical.assign(NULL, NULL);
 }

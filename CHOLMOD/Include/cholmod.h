@@ -87,9 +87,16 @@ extern "C" {
 
 #include "cholmod_config.h"
 
+#ifdef __cplusplus
+}
+#endif
 
 /* CHOLMOD always includes the Core module. */
 #include "cholmod_core.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef NCHECK
 #include "cholmod_check.h"

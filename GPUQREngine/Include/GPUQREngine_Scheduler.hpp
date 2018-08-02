@@ -26,7 +26,6 @@ size_t ssgpu_maxQueueSize       // return size of scheduler queue
 (
     size_t gpuMemorySize        // size of GPU memory, in bytes
 ) ;
-#define NUM_WORKQUEUES 3
 
 class Scheduler
 {
@@ -46,6 +45,9 @@ private:
     );
 
 public:
+    Int *Post;
+    double **Rblock;
+
     bool memory_ok;                     // Flag for the creating function to
                                         // determine whether we had enough
                                         // memory to initialize the Scheduler.
@@ -67,8 +69,8 @@ public:
     Int numActiveFronts;
 
     Int maxQueueSize;
-    Workspace *workQueues[NUM_WORKQUEUES];
-    Int numTasks[NUM_WORKQUEUES];
+    Workspace *workQueues[2];
+    Int numTasks[2];
     Int minApplyGranularity;            // The minimum number of tiles for which
                                         // we will group apply tasks
 
@@ -86,7 +88,7 @@ public:
     //   kernelStreams : Launch kernels on alternating streams
     //   H2D           : Asynchronous memory transfer stream (Host-to-Device)
     //   D2H           : Asynchronous memory transfer stream (Device-to-Host)
-    cudaStream_t kernelStreams[NUM_WORKQUEUES];
+    cudaStream_t kernelStreams[2];
     cudaStream_t memoryStreamH2D;
     cudaStream_t memoryStreamD2H;
 
@@ -145,7 +147,8 @@ public:
         void
     )
     {
-        activeSet = (activeSet+1)%NUM_WORKQUEUES;
+        if (numTasks[activeSet] > 0)
+        activeSet = activeSet^1;
     }
 
     /* Stats */
