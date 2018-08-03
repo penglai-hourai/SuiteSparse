@@ -3,7 +3,6 @@
 // =============================================================================
 
 #include "SuiteSparseGPU_Runtime.hpp"
-#include <stdio.h>
 
 // -----------------------------------------------------------------------------
 // transfer: synchronous/asynchronous transfer of memory to/from the CPU/GPU

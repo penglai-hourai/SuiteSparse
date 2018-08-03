@@ -41,7 +41,7 @@
 #define PADDING             (1)
 
 #define NUMTHREADS          512
-#define PACKASSEMBLY_SHMEM_MAPINTS     2024
+#define PACKASSEMBLY_SHMEM_MAPINTS    4096 
 
 
 /*** Common Macros ***********************************************************/
