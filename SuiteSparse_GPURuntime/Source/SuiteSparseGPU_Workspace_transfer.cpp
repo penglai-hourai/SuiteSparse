@@ -3,6 +3,7 @@
 // =============================================================================
 
 #include "SuiteSparseGPU_Runtime.hpp"
+#include <stdio.h>
 
 // -----------------------------------------------------------------------------
 // transfer: synchronous/asynchronous transfer of memory to/from the CPU/GPU
@@ -14,6 +15,7 @@ bool Workspace::transfer(cudaMemcpyKind direction, bool synchronous,
     /* Check inputs */
 //  if(!cpuReference || (!gpuReference && !lazyAllocate)) return false;
     if(!cpuReference ||  !gpuReference                  ) return false;
+    if (totalSize == 0) return false;
 
 //  // Handle lazy allocate (for possible future use)
 //  if(direction == cudaMemcpyHostToDevice && lazyAllocate && !gpuReference)

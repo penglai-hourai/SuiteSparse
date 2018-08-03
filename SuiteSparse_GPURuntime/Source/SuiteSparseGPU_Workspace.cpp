@@ -59,8 +59,7 @@ Workspace *Workspace::allocate
 {
     // Cannot use calloc directly since that's a member function,
     // and this is a static member function.
-    Workspace *returner = (Workspace*)
-        Workspace::cpu_calloc (1, sizeof(Workspace), false) ;
+    Workspace *returner = (Workspace*) Workspace::cpu_calloc (1, sizeof(Workspace), false) ;
 
     if (returner)
     {

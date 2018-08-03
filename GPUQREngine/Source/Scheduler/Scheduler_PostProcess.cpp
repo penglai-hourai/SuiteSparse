@@ -117,10 +117,9 @@ bool Scheduler::postProcess
 //                  /* If we haven't created the event yet, create it. */
 //                  if(eventFrontDataReady[f] == NULL)
 //                  {
-//                      // Piggyback the synchronization on the next kernel
-//                      // launch.
+//                      // Piggyback the synchronization on the next kernel launch.
 //                      cudaEventCreate(&eventFrontDataReady[f]);
-//                      cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet^1]);
+//                      cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet]);
 //                  }
 //                  /* We must have created the event on the last kernel
 //                     launch so try to pull R off the GPU. */
@@ -140,7 +139,7 @@ bool Scheduler::postProcess
                 {
                     // Piggyback the synchronization on the next kernel launch.
                     cudaEventCreate(&eventFrontDataReady[f]);
-                    cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet^1]);
+                    cudaEventRecord(eventFrontDataReady[f], kernelStreams[activeSet]);
                 }
                 /* We must have created the event already during factorize,
                    so instead try to pull R off the GPU. */

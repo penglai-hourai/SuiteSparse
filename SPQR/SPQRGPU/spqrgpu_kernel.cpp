@@ -184,8 +184,8 @@ void spqrgpu_kernel
     Workspace *wsMondoS = Workspace::allocate (Sp[m], sizeof(SEntry), false, true, false, true) ; // CPU pagelocked
 
     // malloc wsRimap and wsRjmap on both the CPU and GPU (not pagelocked)
-    Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
-    Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+    Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, true) ; // CPU and GPU
+    Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, true) ; // CPU and GPU
 
     // use shared Long workspace (Iwork) for Fmap and InvPost [ [
     // Note that Iwork (0:nf-1) is already in use for Blob.Cm (size nf)
@@ -302,13 +302,13 @@ void spqrgpu_kernel
     // to set the first FSize[stage] entries in wsMondoF to zero, for each
     // stage.  So malloc the space on the GPU once, but see cudaMemset below.
     // This workspace is not on the CPU.
-    wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, false) ;    // GPU only
+    wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, true) ;    // GPU only
 
     // malloc R for each front on the CPU (not on the GPU)
-    wsMondoR = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, false) ;    // CPU only
+    wsMondoR = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
 
     // malloc S on the GPU (not on the CPU)
-    wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
+    wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, true) ;    // GPU only
 
     if(!fronts || !wsMondoF || !wsMondoR || !wsS)
     {
@@ -616,9 +616,7 @@ void spqrgpu_kernel
                 PR (("CBlock is %d by %d\n", cm, cn)) ;
 
                 // calloc pagelocked memory on the CPU
-                Workspace *wsLimbo =
-                    LimboDirectory[f] = Workspace::allocate (cm * cn,   // CPU
-                    sizeof(double), true, true, false, true);
+                Workspace *wsLimbo = LimboDirectory[f] = Workspace::allocate (cm * cn, sizeof(double), true, true, false, true);   // CPU
 
                 if (wsLimbo == NULL)
                 {
