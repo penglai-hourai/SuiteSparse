@@ -181,11 +181,11 @@ void spqrgpu_kernel
     // -------------------------------------------------------------------------
 
     // malloc wsMondoS on the CPU (pagelocked), not on the GPU
-    Workspace *wsMondoS = Workspace::allocate (Sp[m], sizeof(SEntry), false, true, false, true) ; // CPU pagelocked
+    Workspace *wsMondoS = Workspace::allocate (Sp[m], sizeof(SEntry), false, true, false, false) ; // CPU pagelocked
 
     // malloc wsRimap and wsRjmap on both the CPU and GPU (not pagelocked)
-    Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, true) ; // CPU and GPU
-    Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, true) ; // CPU and GPU
+    Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+    Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
 
     // use shared Long workspace (Iwork) for Fmap and InvPost [ [
     // Note that Iwork (0:nf-1) is already in use for Blob.Cm (size nf)
@@ -302,13 +302,13 @@ void spqrgpu_kernel
     // to set the first FSize[stage] entries in wsMondoF to zero, for each
     // stage.  So malloc the space on the GPU once, but see cudaMemset below.
     // This workspace is not on the CPU.
-    wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, true) ;    // GPU only
+    wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, false) ;    // GPU only
 
     // malloc R for each front on the CPU (not on the GPU)
     wsMondoR = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
 
     // malloc S on the GPU (not on the CPU)
-    wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, true) ;    // GPU only
+    wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
 
     if(!fronts || !wsMondoF || !wsMondoR || !wsS)
     {
@@ -565,7 +565,7 @@ void spqrgpu_kernel
             Long frank = MIN(fm, fp);
             double *cpuF = (&fronts[relp])->cpuR;
 
-#if 0
+#if 1
             // cpuF for frontal matrix f has been factorized on the GPU and
             // copied to the CPU.  It is (frank+cm)-by-fn, stored by row.  The
             // entries in R for this front f are in the first frank rows, in
@@ -582,7 +582,7 @@ void spqrgpu_kernel
                 // copy column j of the front from cpuF to R
                 for (Long i = 0 ; i <= j ; i++)
                 {
-                    (*Stack_head++) = cpuF [fn*i+j] ;
+                    *(Stack_head++) = cpuF [fn*i+j] ;
                 }
             }
             // copy the rectangular part from cpuF to R
@@ -591,7 +591,7 @@ void spqrgpu_kernel
                 // copy column j of the front from cpuF to R
                 for (Long i = 0 ; i < frank ; i++)
                 {
-                    (*Stack_head++) = cpuF [fn*i+j] ;
+                    *(Stack_head++) = cpuF [fn*i+j] ;
                 }
             }
 
@@ -616,7 +616,7 @@ void spqrgpu_kernel
                 PR (("CBlock is %d by %d\n", cm, cn)) ;
 
                 // calloc pagelocked memory on the CPU
-                Workspace *wsLimbo = LimboDirectory[f] = Workspace::allocate (cm * cn, sizeof(double), true, true, false, true);   // CPU
+                Workspace *wsLimbo = LimboDirectory[f] = Workspace::allocate (cm * cn, sizeof(double), true, true, false, false);   // CPU
 
                 if (wsLimbo == NULL)
                 {

@@ -29,10 +29,6 @@ public:
     Int fn;             // # cols
     Int fp;
     Int rank;           // (derived) MIN(fm, fn)
-    bool parent_active;
-    Int row_idx;
-    Int col_idx;
-    double *Stack_head;
 
     // adv layout options
     bool isColMajor;    // default:F

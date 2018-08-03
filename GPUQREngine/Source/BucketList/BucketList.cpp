@@ -66,7 +66,7 @@ BucketList::BucketList
     gpuVT = (double**) SuiteSparse_calloc(numRowTiles, sizeof(double*));
 
     // malloc wsMongoVT on the GPU
-    wsMongoVT = Workspace::allocate (numRowTiles*(TILESIZE+1)*TILESIZE, sizeof(double), false, false, true, true) ; // GPU
+    wsMongoVT = Workspace::allocate (numRowTiles*(TILESIZE+1)*TILESIZE, sizeof(double), false, false, true, false) ; // GPU
 
     /* If we failed to allocate memory, return. */
     if(!head || !idleTileCount || !bundleCount || !next || !prev || !triu

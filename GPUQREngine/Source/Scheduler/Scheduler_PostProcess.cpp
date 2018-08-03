@@ -152,10 +152,6 @@ bool Scheduler::postProcess
                    into the parent, so just cleanup. */
                 if(isDense || meta->isStaged)
                 {
-                    front->parent_active = false;
-                    front->row_idx = 0;
-                    front->col_idx = 0;
-                    front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
                     p--;
                 }
@@ -187,10 +183,6 @@ bool Scheduler::postProcess
                 /* Else the parent is the dummy, so cleanup and move to done. */
                 else
                 {
-                    front->parent_active = false;
-                    front->row_idx = 0;
-                    front->col_idx = 0;
-                    front->Stack_head = Rblock[Post[f]];
                     nextState = CLEANUP;
                     p--;
                 }
@@ -208,46 +200,38 @@ bool Scheduler::postProcess
             /* If we're in CLEANUP then we need to free the front. */
             case CLEANUP:
             {
-                if (!(front->parent_active))
-                {
-                        /* Update the parent's child count. */
-                        Int pid = front->pids;
-                        if(pid != EMPTY) (&frontList[pid])->sparseMeta.nc--;
-
-                        front->parent_active = true;
-                }
                 /* If we were able to get the R factor and free the front. */
-                if(pullFrontData(f))
+                if(pullFrontData(f) && finishFront(f))
                 {
-                    Int fm = front->fm;
-                    Int fn = front->fn;
-                    Int fp = front->fp;
-                    Int frank = MIN (front->fm, front->fp);
-                    double *cpuF = front->cpuR;
+                    /* Update the parent's child count. */
+                    Int pid = front->pids;
+                    if(pid != EMPTY) (&frontList[pid])->sparseMeta.nc--;
+
+                    /* Move to DONE. */
+                    nextState = DONE;
+
+                    /* Keep track of the # completed. */
+                    numFrontsCompleted++;
+
+                    /* Revisit the same position again since a front was
+                     * swapped to the current location. */
+                    p--;
+#if 0
                     if (!(front->isPushOnly())) // not a leftover child
                     {
-#if 1
-                        Int k = 0;
-                        while (front->col_idx < fn && k < TILESIZE * TILESIZE)
-                        {
-                            k++;
-                            *((front->Stack_head)++) = cpuF [fn * front->row_idx + front->col_idx] ;
-                            front->row_idx++;
-                            if (front->row_idx >= frank || front->row_idx > front->col_idx)
-                            {
-                                front->row_idx = 0;
-                                front->col_idx++;
-                            }
-                        }
-                        if (front->col_idx < front->fn) break;
-#else
+                        Int fm = front->fm;
+                        Int fn = front->fn;
+                        Int fp = front->fp;
+                        Int frank = MIN (front->fm, front->fp);
+                        double *cpuF = front->cpuR;
+                        double *Stack_head = Rblock[Post[f]];
 
                         for (Int j = 0 ; j < frank ; j++)
                         {
                             // copy column j of the front from cpuF to R
                             for (Int i = 0 ; i <= j ; i++)
                             {
-                                *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                                *(Stack_head++) = cpuF [fn*i+j] ;
                             }
                         }
                         // copy the rectangular part from cpuF to R
@@ -256,23 +240,11 @@ bool Scheduler::postProcess
                             // copy column j of the front from cpuF to R
                             for (Int i = 0 ; i < frank ; i++)
                             {
-                                *((front->Stack_head)++) = cpuF [fn*i+j] ;
+                                *(Stack_head++) = cpuF [fn*i+j] ;
                             }
                         }
+                    }
 #endif
-                    }
-                    if(finishFront(f))
-                    {
-                        /* Move to DONE. */
-                        nextState = DONE;
-
-                        /* Keep track of the # completed. */
-                        numFrontsCompleted++;
-
-                        /* Revisit the same position again since a front was
-                         * swapped to the current location. */
-                        p--;
-                    }
                 }
                 break;
             }

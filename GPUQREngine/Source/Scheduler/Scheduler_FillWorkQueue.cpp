@@ -354,10 +354,6 @@ void Scheduler::fillTasks
             // If we've built all of the packAssembly tasks, advance to CLEANUP.
             if(iterDone)
             {
-                front->parent_active = false;
-                front->row_idx = 0;
-                front->col_idx = 0;
-                front->Stack_head = Rblock[Post[f]];
                 nextState = CLEANUP;
             }
             break;

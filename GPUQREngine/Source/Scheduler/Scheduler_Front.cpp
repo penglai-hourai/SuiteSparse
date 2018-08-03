@@ -83,15 +83,13 @@ bool Scheduler::pullFrontData
     if(front->isPushOnly()) return true;
 
     /* If we already pulled the R factor, return early. */
-    if(FrontDataPulled[f])
-        return (cudaEventQuery(eventFrontDataPulled[f]) == cudaSuccess);
+    if(FrontDataPulled[f]) return true;
 
     /* If the R factor isn't actually ready yet, return false.
      * This can happen if the kernel responsible for finishing the factorization
      * is running while we're trying to execute this subroutine. */
     // assert(eventFrontDataReady[f] != NULL);
-    if(cudaEventQuery(eventFrontDataReady[f]) != cudaSuccess)
-        return false;
+    if(cudaEventQuery(eventFrontDataReady[f]) != cudaSuccess) return false;
     cudaEventDestroy(eventFrontDataReady[f]);
 
     /* Use an event to signal when the R factor is off the GPU. */
@@ -120,8 +118,7 @@ bool Scheduler::pullFrontData
     cudaEventRecord(eventFrontDataPulled[f], memoryStreamD2H);
 
     /* Save and return that we've initiated the R factor pull. */
-    FrontDataPulled[f] = true;
-    return false;
+    return (FrontDataPulled[f] = true);
 }
 
 // -----------------------------------------------------------------------------

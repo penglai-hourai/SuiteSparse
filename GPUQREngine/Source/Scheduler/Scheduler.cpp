@@ -239,7 +239,7 @@ bool Scheduler::initialize
     for(int q=0; q<2; q++)
     {
         // malloc on both CPU (pagelocked) and GPU
-        workQueues[q] = Workspace::allocate (maxQueueSize, sizeof(TaskDescriptor), false, true, true, true) ; // CPU and GPU
+        workQueues[q] = Workspace::allocate (maxQueueSize, sizeof(TaskDescriptor), false, true, true, false) ; // CPU and GPU
         if(!workQueues[q]) return false;
         numTasks[q] = 0;
     }
