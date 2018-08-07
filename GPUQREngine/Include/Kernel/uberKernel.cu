@@ -25,9 +25,15 @@
 #include "Kernel/Apply/block_apply_2.cu"
 #include "Kernel/Apply/block_apply_1.cu"
 
+#include "Kernel/Apply/block_apply_3_vt.cu"
+#include "Kernel/Apply/block_apply_2_vt.cu"
+#include "Kernel/Apply/block_apply_1_vt.cu"
+
 #ifdef GPUQRENGINE_PIPELINING
 #include "Kernel/Apply/block_apply_3_by_1.cu"
 #include "Kernel/Apply/block_apply_2_by_1.cu"
+#include "Kernel/Apply/block_apply_3_by_1_vt.cu"
+#include "Kernel/Apply/block_apply_2_by_1_vt.cu"
 #endif
 
 /*** Factorize Device Functions **********************************************/

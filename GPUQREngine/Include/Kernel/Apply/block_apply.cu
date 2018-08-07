@@ -93,6 +93,7 @@ __device__ void BLOCK_APPLY ( )
     //--------------------------------------------------------------------------
 
     double *glF = myTask.F ;
+    double (*glVT)[M] = (double (*)[M]) myTask.AuxAddress[0] ;
     int fn = myTask.fn ;
     int fm = myTask.fm ;
 
@@ -100,43 +101,76 @@ __device__ void BLOCK_APPLY ( )
     // load V and T, using all threads
     //--------------------------------------------------------------------------
 
+#ifndef USE_VT
+    // load the first row of T from the VT block, using one warp
+    if (threadIdx.x < M)
     {
-        double (*glVT)[M] = (double (*)[M]) myTask.AuxAddress[0] ;
-        // load the first row of T from the VT block, using one warp
-        if (threadIdx.x < M)
-        {
-            SHV (0, -1, jv) = GLVT (-1, jv) ;
-        }
+        SHV (0, -1, jv) = GLVT (-1, jv) ;
+    }
 
-        // load the first tile of V and T from the VT block
+    // load the first tile of V and T from the VT block
+    for (int ii = 0 ; ii < NVCHUNKS ; ii++)
+    {
+        int i = ii * VCHUNKSIZE + iv ;
+        if (ii < NVCHUNKS-1 || i < M)
+        {
+            SHV (0, i, jv) = GLVT (i, jv) ;
+        }
+    }
+
+    // load subsequent tiles of V from the frontal matrix
+    int j0 = myTask.extra [4] ;
+    for (int t = 1 ; t < ROW_PANELSIZE ; t++)
+    {
+        // For the edge case, only check if the row is inside the front.
+        // The column is always in the front because V always has M columns.
         for (int ii = 0 ; ii < NVCHUNKS ; ii++)
         {
             int i = ii * VCHUNKSIZE + iv ;
             if (ii < NVCHUNKS-1 || i < M)
             {
-                SHV (0, i, jv) = GLVT (i, jv) ;
+                int fi = IFRONT (t,i) ;
+                SHV (t, i, jv) = (fi < fm) ? glF [fi * fn + (j0+jv)] : 0.0 ;
             }
+        }
+    }
+#else
+    // load the first tile of V and T from the VT block
+    for (int ii = 0 ; ii < NVCHUNKS ; ii++)
+    {
+        int i = ii * VCHUNKSIZE + iv ;
+        if (ii < NVCHUNKS-1 || i < M)
+        {
+            SHV (0, i, jv) = 0;
+            for (int k = jv; k <= i; k++)
+                SHV (0, i, jv) += (GLVT (i, k) * GLVT (jv-1, k));
         }
     }
 
     // load subsequent tiles of V from the frontal matrix
+    int j0 = myTask.extra [4] ;
+    for (int t = 1 ; t < ROW_PANELSIZE ; t++)
     {
-        int j0 = myTask.extra [4] ;
-        for (int t = 1 ; t < ROW_PANELSIZE ; t++)
+        // For the edge case, only check if the row is inside the front.
+        // The column is always in the front because V always has M columns.
+        for (int ii = 0 ; ii < NVCHUNKS ; ii++)
         {
-            // For the edge case, only check if the row is inside the front.
-            // The column is always in the front because V always has M columns.
-            for (int ii = 0 ; ii < NVCHUNKS ; ii++)
+            int i = ii * VCHUNKSIZE + iv ;
+            if (ii < NVCHUNKS-1 || i < M)
             {
-                int i = ii * VCHUNKSIZE + iv ;
-                if (ii < NVCHUNKS-1 || i < M)
+                int fi = IFRONT (t,i) ;
+                if (fi < fm)
                 {
-                    int fi = IFRONT (t,i) ;
-                    SHV (t, i, jv) = (fi < fm) ? glF [fi * fn + (j0+jv)] : 0.0 ;
+                    SHV (t, i, jv) = 0;
+                    for (int k = jv; k < M; k++)
+                        SHV (t, i, jv) += (glF [fi * fn + (j0+k)] * GLVT (jv-1, k));
                 }
+                else
+                    SHV (t, i, jv) = 0.0;
             }
         }
     }
+#endif
 
     //--------------------------------------------------------------------------
     // do the block apply:  A = A - V*T'*V'*A
@@ -216,4 +250,5 @@ __device__ void BLOCK_APPLY ( )
 #undef BLOCK_APPLY
 #undef ROW_PANELSIZE
 #undef COL_PANELSIZE
+#undef USE_VT
 #undef M

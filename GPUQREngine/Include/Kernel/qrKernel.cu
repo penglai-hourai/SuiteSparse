@@ -27,11 +27,26 @@ __global__ void qrKernel
         case TASKTYPE_FactorizeVT_3x1e: factorize_3_by_1_tile_vt_edge(); return;
         case TASKTYPE_FactorizeVT_2x1e: factorize_2_by_1_tile_vt_edge(); return;
         case TASKTYPE_FactorizeVT_1x1e: factorize_1_by_1_tile_vt_edge(); return;
-        case TASKTYPE_FactorizeVT_3x1w: factorize_small_front();            return;
+        case TASKTYPE_FactorizeVT_3x1w: factorize_small_front();         return;
 
-        case TASKTYPE_Apply3: block_apply_3(); return;
-        case TASKTYPE_Apply2: block_apply_2(); return;
-        case TASKTYPE_Apply1: block_apply_1(); return;
+        case TASKTYPE_Apply3:
+            if (Queue[blockIdx.x].extra[6] - Queue[blockIdx.x].extra[5] <= APPLY_VT_THRESHOLD)
+                block_apply_3();
+            else
+                block_apply_3_vt();
+            return;
+        case TASKTYPE_Apply2:
+            if (Queue[blockIdx.x].extra[6] - Queue[blockIdx.x].extra[5] <= APPLY_VT_THRESHOLD)
+                block_apply_2();
+            else
+                block_apply_2_vt();
+            return;
+        case TASKTYPE_Apply1:
+            if (Queue[blockIdx.x].extra[6] - Queue[blockIdx.x].extra[5] <= APPLY_VT_THRESHOLD)
+                block_apply_1();
+            else
+                block_apply_1_vt();
+            return;
 
         #ifdef GPUQRENGINE_PIPELINING
         // Apply3_Factorize[3 or 2]: (note fallthrough to next case)

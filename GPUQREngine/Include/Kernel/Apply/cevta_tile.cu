@@ -15,9 +15,11 @@
 #ifdef FIRST_TILE
 #define this_tile 0
 #define TRIL(test) (test)
+#define GLV(t,i,j)  GLVT(i, j)
 #else
 #define this_tile t
 #define TRIL(test) (1)
+#define GLV(t,i,j)  ((IFRONT (t,i) < fm) ? glF [IFRONT (t,i) * fn + (myTask.extra[4]+j)] : 0.0)
 #endif
 
 {
@@ -121,7 +123,11 @@
                     int j = MYCBITTYROW (ii) ;
                     if (TRIL (i >= j))
                     {
+#ifndef USE_VT
                         rrow [ii] = SHV (this_tile, i, j) ;
+#else
+                        rrow [ii] = GLV (this_tile, i, j) ;
+#endif
                     }
                 }
                 #pragma unroll
@@ -150,3 +156,4 @@
 #undef FIRST_TILE
 #undef this_tile
 #undef TRIL
+#undef GLV

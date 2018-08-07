@@ -42,6 +42,7 @@
 
 #define NUMTHREADS          512
 #define PACKASSEMBLY_SHMEM_MAPINTS    4096 
+#define APPLY_VT_THRESHOLD 512
 
 
 /*** Common Macros ***********************************************************/

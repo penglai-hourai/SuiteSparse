@@ -301,6 +301,7 @@
     // make sure all of shC is available to all threads
     __syncthreads ( ) ;
 
+#ifndef USE_VT
     //--------------------------------------------------------------------------
     // C = triu(T)'*C, leaving the result in the C bitty block
     //--------------------------------------------------------------------------
@@ -368,6 +369,7 @@
     // All threads come here.  We need a syncthreads because
     // shC has been written above and must be read below in A=A-V*C.
     __syncthreads ( ) ;
+#endif
 
     //--------------------------------------------------------------------------
     // A = A - V*C
@@ -401,7 +403,9 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
+#ifndef USE_VT
                 if (i >= p)
+#endif
                 {
                     rrow [ii] = shV [1+i][p] ;
                 }
@@ -416,7 +420,9 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
+#ifndef USE_VT
                 if (i >= p)
+#endif
                 {
                     #pragma unroll
                     for (int jj = 0 ; jj < ABITTYCOLS ; jj++)
