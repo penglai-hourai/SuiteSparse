@@ -89,6 +89,9 @@
     // bitty block sizes
     //--------------------------------------------------------------------------
 
+            #define TBITTYROWS      2
+            #define TBITTYCOLS      2
+
     #if (ROW_PANELSIZE == 3)
 
         #if (COL_PANELSIZE == 2)
@@ -197,6 +200,8 @@
     #define K           (ROW_PANELSIZE * M)
     #define N           (COL_PANELSIZE * M)
 
+    #define TTHREADS    ((M * M) / (TBITTYROWS * TBITTYCOLS))
+
     // threads to use for C=T'*(V'*A)
     #define CTHREADS    ((M * N) / (CBITTYROWS * CBITTYCOLS))
 
@@ -206,6 +211,11 @@
     //--------------------------------------------------------------------------
     // bitty blocks for the computation
     //--------------------------------------------------------------------------
+
+    #define it          (threadIdx.x % (M/TBITTYROWS))
+    #define jt          (threadIdx.x / (M/TBITTYROWS))
+    #define MYTBITTYROW(ii) (ii * (M/TBITTYROWS) + it)
+    #define MYTBITTYCOL(jj) (jj * (M/TBITTYCOLS) + jt)
 
     // Each thread owns a bitty block of C for C=T'*V'*A.  The top left entry
     // owned by a thread is C(ic,jc).  Thread 0 does C(0,0), thread 1 does
@@ -303,6 +313,135 @@ __device__ void BLOCK_APPLY ( )
             }
         }
     }
+#if (ROW_PANELSIZE == 1)
+    __syncthreads();
+
+    if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
+    {
+        #pragma unroll
+        for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+        {
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                rbit [ii][jj] = 0 ;
+            }
+        }
+
+        #pragma unroll
+        for (int k = 0 ; k < M ; k++)
+        {
+            #pragma unroll
+            for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+            {
+                int i = MYTBITTYROW (ii) ;
+                if (k <= i)
+                {
+                    rrow [ii] = SHV (0,i,k) ;
+                }
+            }
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                int j = MYTBITTYCOL (jj) ;
+                if (k >= j)
+                {
+                    rcol [jj] = SHT (j,k) ;
+                }
+            }
+            #pragma unroll
+            for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+            {
+                int i = MYTBITTYROW (ii) ;
+                #pragma unroll
+                for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+                {
+                    int j = MYTBITTYCOL (jj) ;
+                    if (k <= i && k >= j)
+                    {
+                        rbit [ii][jj] += rrow [ii] * rcol [jj] ;
+                    }
+                }
+            }
+        }
+
+        #pragma unroll
+        for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+        {
+            int i = MYTBITTYROW (ii) ;
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                int j = MYCBITTYCOL (jj) ;
+                shVT [i+TILESIZE][j] = rbit [ii][jj];
+            }
+        }
+    }
+
+    __syncthreads();
+
+    if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
+    {
+        #pragma unroll
+        for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+        {
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                rbit [ii][jj] = 0 ;
+            }
+        }
+
+        #pragma unroll
+        for (int k = 0 ; k < M ; k++)
+        {
+            #pragma unroll
+            for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+            {
+                int i = MYTBITTYROW (ii) ;
+                if (k <= i)
+                {
+                    rrow [ii] = shVT [i+TILESIZE][k] ;
+                }
+            }
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                int j = MYTBITTYCOL (jj) ;
+                if (k <= j)
+                {
+                    rcol [jj] = SHV (0,j,k) ;
+                }
+            }
+            #pragma unroll
+            for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+            {
+                int i = MYTBITTYROW (ii) ;
+                #pragma unroll
+                for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+                {
+                    int j = MYTBITTYCOL (jj) ;
+                    if (k <= i && k <= j)
+                    {
+                        rbit [ii][jj] += rrow [ii] * rcol [jj] ;
+                    }
+                }
+            }
+        }
+
+        #pragma unroll
+        for (int ii = 0 ; ii < TBITTYROWS ; ii++)
+        {
+            int i = MYTBITTYROW (ii) ;
+            #pragma unroll
+            for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
+            {
+                int j = MYCBITTYCOL (jj) ;
+                shVT [i][j] = rbit [ii][jj];
+            }
+        }
+    }
+#endif
 
     //--------------------------------------------------------------------------
     // do the block apply:  A = A - V*T'*V'*A
@@ -384,19 +523,25 @@ __device__ void BLOCK_APPLY ( )
 #undef ROW_PANELSIZE
 #undef COL_PANELSIZE
 
-#undef USE_VT
-
 #undef M
 #undef N
 #undef K
 
+#undef TBITTYROWS
+#undef TBITTYCOLS
 #undef CBITTYROWS
 #undef CBITTYCOLS
 #undef ABITTYROWS
 #undef ABITTYCOLS
 
+#undef TTHREADS
 #undef CTHREADS
 #undef ATHREADS
+
+#undef it
+#undef jt
+#undef MYTBITTYROW
+#undef MYTBITTYCOL
 
 #undef ic
 #undef jc

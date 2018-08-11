@@ -59,6 +59,7 @@
 
     bool aloader = INSIDE_COL (fjload < fn) ;
 
+#if (ROW_PANELSIZE != 1)
     //--------------------------------------------------------------------------
     // C = V'*A, where V is now in shared, and A is loaded from global
     //--------------------------------------------------------------------------
@@ -131,7 +132,6 @@
     // make sure all of shC is available to all threads
     __syncthreads ( ) ;
 
-#ifndef USE_VT
     //--------------------------------------------------------------------------
     // C = triu(T)'*C, leaving the result in the C bitty block
     //--------------------------------------------------------------------------
@@ -195,11 +195,33 @@
             }
         }
     }
+#else
+    __syncthreads ( ) ;
+
+    if (CTHREADS == NUMTHREADS || threadIdx.x < CTHREADS)
+    {
+        #pragma unroll
+        for (int ii = 0 ; ii < CBITTYROWS ; ii++)
+        {
+            int i = MYCBITTYROW (ii) ;
+            int fi = IFRONT (0, i) ;
+            #pragma unroll
+            for (int jj = 0 ; jj < CBITTYCOLS ; jj++)
+            {
+                int j = MYCBITTYCOL (jj) ;
+                int fj = j1 + MYCBITTYCOL (jj) ;
+                if (INSIDE_ROW (fi < fm) && INSIDE_COL (fj < fn))
+                    shC [i][j] = glF [fi * fn + fj];
+                else
+                    shC [i][j] = 0;
+            }
+        }
+    }
+#endif
 
     // All threads come here.  We need a syncthreads because
     // shC has been written above and must be read below in A=A-V*C.
     __syncthreads ( ) ;
-#endif
 
     //--------------------------------------------------------------------------
     // A = A - V*C
@@ -233,16 +255,14 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
+#if (ROW_PANELSIZE != 1)
                 if (i >= p)
+#endif
                 {
-#ifndef USE_VT
+#if (ROW_PANELSIZE != 1)
                     rrow [ii] = shT [i+1][p] ;
 #else
-                    rrow [ii] = 0;
-                    for (int k = p; k < MIN (i+1, M); k++)
-                    {
-                        rrow [ii] += shT[i+1][k] * shT[p][k];
-                    }
+                    rrow [ii] = shVT [i][p] ;
 #endif
                 }
             }
@@ -256,7 +276,9 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
+#if (ROW_PANELSIZE != 1)
                 if (i >= p)
+#endif
                 {
                     #pragma unroll
                     for (int jj = 0 ; jj < ABITTYCOLS ; jj++)
