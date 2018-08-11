@@ -41,8 +41,7 @@
 #define PADDING             (1)
 
 #define NUMTHREADS          512
-#define PACKASSEMBLY_SHMEM_MAPINTS    4096 
-#define APPLY_VT_THRESHOLD 512
+#define PACKASSEMBLY_SHMEM_MAPINTS    2048
 
 
 /*** Common Macros ***********************************************************/

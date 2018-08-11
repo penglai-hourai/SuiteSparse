@@ -147,7 +147,7 @@
                 int i = MYCBITTYROW (ii) ;
                 if (k <= i)
                 {
-                    rrow [ii] = ST (k,i) ;
+                    rrow [ii] = SHT (k,i) ;
                 }
             }
             #pragma unroll
@@ -233,11 +233,17 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
-#ifndef USE_VT
                 if (i >= p)
-#endif
                 {
-                    rrow [ii] = shV [1+i][p] ;
+#ifndef USE_VT
+                    rrow [ii] = shT [i+1][p] ;
+#else
+                    rrow [ii] = 0;
+                    for (int k = p; k < MIN (i+1, M); k++)
+                    {
+                        rrow [ii] += shT[i+1][k] * shT[p][k];
+                    }
+#endif
                 }
             }
             #pragma unroll
@@ -250,9 +256,7 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
-#ifndef USE_VT
                 if (i >= p)
-#endif
                 {
                     #pragma unroll
                     for (int jj = 0 ; jj < ABITTYCOLS ; jj++)
@@ -284,11 +288,11 @@
                     }
                     #else
                     {
-                        shV[i][MYABITTYCOL(jj)] = glF [fi * fn + fj] - rbit[ii][jj];
+                        shVT[i][MYABITTYCOL(jj)] = glF [fi * fn + fj] - rbit[ii][jj];
                     }
                     else
                     {
-                        shV[i][MYABITTYCOL(jj)] = 0.0;
+                        shVT[i][MYABITTYCOL(jj)] = 0.0;
                     }
                     #endif
                 }
@@ -315,33 +319,6 @@
 
 // The following #define's appear above.  Note that FIRST_TILE is not #undef'd
 // since that is done by cevta_tile.cu.
-#undef CBITTYROWS
-#undef CBITTYCOLS
-#undef ABITTYROWS
-#undef ABITTYCOLS
-
-#undef K
-#undef N
-
-#undef CTHREADS
-#undef ATHREADS
-
-#undef ic
-#undef jc
-#undef MYCBITTYROW
-#undef MYCBITTYCOL
-
-#undef ia
-#undef ja
-#undef MYABITTYROW
-#undef MYABITTYCOL
-
-#undef iaload
-#undef jaload
-#undef ACHUNKSIZE
-#undef NACHUNKS
-
-#undef rbitA
 #undef INSIDE_ROW
 #undef INSIDE_COL
 

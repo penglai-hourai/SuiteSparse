@@ -10,7 +10,8 @@
 #define MAX_ROW_TILES 3
 #define MAX_COL_TILES 2
 
-#define shV shMemory.apply.V
+#define shVT shMemory.apply.V
+#define shT (shMemory.apply.V + (PANELSIZE-ROW_PANELSIZE)*TILESIZE)
 #define shC shMemory.apply.C
 
 // each tile is 32-by-32, which is always M, for all variants
@@ -26,7 +27,7 @@
 // extra column for padding.  It is indexed first by the t-th row tile, and
 // then (i,j) within that t-th tile.  V is lower triangular, and shares its
 // space with the upper triangular T matrix.
-#define SHV(t,i,j)  (shV [1+ (t)*TILESIZE + (i)][j])
+#define SHV(t,i,j)  (shT [(i)+1+(t)*TILESIZE][j])
 
 // Macros for accessing entries in a frontal matrix.  The A matrix and most of
 // the V matrix reside in the frontal matrix as a set of tiles.  The row index
@@ -42,7 +43,7 @@
 #define SHA(i,j)    (shC [i][j])
 
 // T is upper triangular of size M-by-M, and shares its space with V
-#define ST(i,j)     (shV [i][j])
+#define SHT(i,j)     (shT [i][j])
 
 // Each thread loads V(iv,jv) from global, and then iv+chunksize,
 // iv+2*chunksize, etc.  With M = 32 and 384 threads, the chunksize is 12,
