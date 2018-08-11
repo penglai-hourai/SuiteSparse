@@ -86,7 +86,7 @@
 
     // The X=V*C computation in the prior iteration reads shC, but the same
     // space is used to load A from the frontal matrix in this iteration.
-    __syncthreads ( ) ;
+    //__syncthreads ( ) ;
 
     // clear the C bitty block
     #pragma unroll
@@ -198,8 +198,6 @@
         }
     }
 #elif (ROW_PANELSIZE == 1)
-    __syncthreads ( ) ;
-
     if (CTHREADS == NUMTHREADS || threadIdx.x < CTHREADS)
     {
         #pragma unroll
