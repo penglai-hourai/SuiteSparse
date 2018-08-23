@@ -98,7 +98,6 @@ SUITESPARSE_VERSION = 4.5.5
     # with gcc, enable OpenMP directives via -fopenmp
     # This is not supported on Darwin, so this string is cleared, below.
     CFOPENMP ?= -fopenmp
-	CFPTHREADS ?= -pthread
 
     #---------------------------------------------------------------------------
     # compiler
@@ -112,18 +111,18 @@ SUITESPARSE_VERSION = 4.5.5
 
     ifneq ($(AUTOCC),no)
         ifneq ($(shell which icc 2>/dev/null),)
-            # use the Intel icc compiler for C codes, and -fopenmp for OpenMP
+            # use the Intel icc compiler for C codes, and -qopenmp for OpenMP
             CC = icc -D_GNU_SOURCE
             CXX = $(CC)
             CFOPENMP = -qopenmp -I$(MKLROOT)/include
+	    	LDFLAGS += -qopenmp
+            LDLIBS += -lm -lirc
         endif
         ifneq ($(shell which ifort 2>/dev/null),)
             # use the Intel ifort compiler for Fortran codes
             F77 = ifort
         endif
     endif
-
-	CHARMC = charmc
 
     #---------------------------------------------------------------------------
     # code formatting (for Tcov on Linux only)
@@ -217,9 +216,7 @@ SUITESPARSE_VERSION = 4.5.5
         # GPU_CONFIG must include -DSUITESPARSE_CUDA to compile SuiteSparse for the
         # GPU.  You can add additional GPU-related flags to it as well.
         # with 4 cores (default):
-        GPU_CONFIG    = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=32
-        # For example, to compile CHOLMOD for 10 CPU cores when using the GPU:
-        # GPU_CONFIG  = -DSUITESPARSE_CUDA -DCHOLMOD_OMP_NUM_THREADS=10
+        GPU_CONFIG    = -DSUITESPARSE_CUDA# -DCHOLMOD_OMP_NUM_THREADS=32
         CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
         CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so $(CUDA_PATH)/lib64/libnvToolsExt.so
         CUSOLVER_LIB  = $(CUDA_PATH)/lib64/libcusolver.so

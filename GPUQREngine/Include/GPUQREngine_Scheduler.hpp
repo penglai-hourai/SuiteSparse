@@ -45,9 +45,6 @@ private:
     );
 
 public:
-    Int *Post;
-    double **Rblock;
-
     bool memory_ok;                     // Flag for the creating function to
                                         // determine whether we had enough
                                         // memory to initialize the Scheduler.

@@ -216,35 +216,6 @@ bool Scheduler::postProcess
                     /* Revisit the same position again since a front was
                      * swapped to the current location. */
                     p--;
-#if 0
-                    if (!(front->isPushOnly())) // not a leftover child
-                    {
-                        Int fm = front->fm;
-                        Int fn = front->fn;
-                        Int fp = front->fp;
-                        Int frank = MIN (front->fm, front->fp);
-                        double *cpuF = front->cpuR;
-                        double *Stack_head = Rblock[Post[f]];
-
-                        for (Int j = 0 ; j < frank ; j++)
-                        {
-                            // copy column j of the front from cpuF to R
-                            for (Int i = 0 ; i <= j ; i++)
-                            {
-                                *(Stack_head++) = cpuF [fn*i+j] ;
-                            }
-                        }
-                        // copy the rectangular part from cpuF to R
-                        for (Int j = frank ; j < fn ; j++)
-                        {
-                            // copy column j of the front from cpuF to R
-                            for (Int i = 0 ; i < frank ; i++)
-                            {
-                                *(Stack_head++) = cpuF [fn*i+j] ;
-                            }
-                        }
-                    }
-#endif
                 }
                 break;
             }

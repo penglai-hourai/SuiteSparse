@@ -18,8 +18,6 @@ QREngineResultCode GPUQREngine_Internal
     size_t gpuMemorySize,   // The total available GPU memory size in bytes
     Front *fronts,          // The list of fronts to factorize
     Int numFronts,          // The number of fronts to factorize
-    Int *Post,
-    double **Rblock,
     Int *Parent,            // The front-to-parent mapping
     Int *Childp,            // Front-to-child column pointers
     Int *Child,             // Child permutation
@@ -55,9 +53,6 @@ QREngineResultCode GPUQREngine_Internal
         if(!memory_ok) return QRENGINE_OUTOFMEMORY;
         if(!cuda_ok) return QRENGINE_GPUERROR;
     }
-
-    scheduler->Post = Post;
-    scheduler->Rblock = Rblock;
 
     bool completed = false;
     while(!completed)

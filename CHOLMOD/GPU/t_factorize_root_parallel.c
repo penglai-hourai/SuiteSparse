@@ -228,7 +228,7 @@
         {
             Int leaf_idx;
             printf ("threads = %ld, GPUs = %d, threads per GPU = %d\n", Common->numGPU, Common->numGPU_physical, Common->numGPU_parallel);
-#pragma omp parallel for schedule(static) private ( leaf_idx, node, gpuid ) num_threads(Common->numGPU)
+#pragma omp parallel for schedule(static) num_threads(Common->numGPU) private ( leaf_idx, node, gpuid )
             for(leaf_idx = 0; leaf_idx < nleaves; leaf_idx++)
             {
 

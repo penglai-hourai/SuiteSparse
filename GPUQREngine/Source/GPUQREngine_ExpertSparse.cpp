@@ -15,8 +15,6 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,   // The total available GPU memory size in bytes
     Front *userFronts,      // The list of fronts to factorize
     Int numFronts,          // The number of fronts to factorize
-    Int *Post,
-    double **Rblock,
     Int *Parent,            // The front-to-parent mapping
     Int *Childp,            // Front-to-child column pointers
     Int *Child,             // Child permutation
@@ -27,5 +25,5 @@ QREngineResultCode GPUQREngine
                             // via this struct
 )
 {
-    return (GPUQREngine_Internal (gpuMemorySize, userFronts, numFronts, Post, Rblock, Parent, Childp, Child, stats)) ;
+    return (GPUQREngine_Internal (gpuMemorySize, userFronts, numFronts, Parent, Childp, Child, stats)) ;
 }

@@ -35,6 +35,8 @@ my_*.out
 .DS_Store
 .nfs*
 
+SPQR/X.mtx
+
 # ignore these specific programs in the Package/Demo directories
 AMD/Demo/amd_demo
 AMD/Demo/amd_demo2
@@ -194,4 +196,3 @@ RBio/Tcov/*.rb
 
 # Do not ignore this file
 !.gitignore
-

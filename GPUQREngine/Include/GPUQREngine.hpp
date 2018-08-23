@@ -28,8 +28,6 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,
     Front *userFronts,
     Int numFronts,
-    Int *Post,
-    double **Rblock,
     QREngineStats *stats = NULL
 );
 
@@ -38,8 +36,6 @@ QREngineResultCode GPUQREngine
     size_t gpuMemorySize,
     Front *userFronts,
     Int numFronts,
-    Int *Post,
-    double **Rblock,
     Int *Parent,
     Int *Childp,
     Int *Child,

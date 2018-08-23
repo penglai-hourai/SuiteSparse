@@ -83,6 +83,17 @@
 
 //------------------------------------------------------------------------------
 
+#define shT (shMemory.apply.V + (PANELSIZE-ROW_PANELSIZE)*TILESIZE)
+
+// The shared array V is K-by-M (1 to 3 tiles of size M-by-M), with an
+// extra column for padding.  It is indexed first by the t-th row tile, and
+// then (i,j) within that t-th tile.  V is lower triangular, and shares its
+// space with the upper triangular T matrix.
+#define SHV(t,i,j)  (shT [(i)+1+(t)*TILESIZE][j])
+
+// T is upper triangular of size M-by-M, and shares its space with V
+#define SHT(i,j)     (shT [i][j])
+
 #define M TILESIZE
 
     //--------------------------------------------------------------------------
@@ -546,6 +557,10 @@ __device__ void BLOCK_APPLY ( )
 
 #undef ROW_PANELSIZE
 #undef COL_PANELSIZE
+
+#undef shT
+#undef SHT
+#undef SHV
 
 #undef M
 #undef N
