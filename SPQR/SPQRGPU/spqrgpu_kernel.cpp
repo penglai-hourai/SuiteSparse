@@ -35,7 +35,6 @@ void numfronts_in_stage
     Long *Childp,       //      in Child [Childp [f] ... Childp [f+1]-1]
 
     // output, not defined on input
-    Long *p_numFronts,          // number of fronts in stage (a scalar)
     Long *p_leftoverChildren    // number of leftover children (a scalar)
 )
 {
@@ -43,7 +42,6 @@ void numfronts_in_stage
     // plus any children within the stage that must still be assembled
     Long sStart = Stagingp[stage];
     Long sEnd = Stagingp[stage+1];
-    Long numFronts = (sEnd - sStart);
     Long leftoverChildren = 0;
     for(Long p=sStart; p<sEnd; p++) // for each front in the stage
     {
@@ -54,8 +52,6 @@ void numfronts_in_stage
             if(StageMap[c] < stage) leftoverChildren++;
         }
     }
-    //numFronts += leftoverChildren ;
-    *p_numFronts = numFronts ;
     *p_leftoverChildren = leftoverChildren ;
 }
 
@@ -287,9 +283,11 @@ void spqrgpu_kernel
     for(Long stage=0; stage<numStages; stage++)
     {
         // find the memory requirements of this stage
-        Long numFronts = 0 ;
+        Long sStart = Stagingp[stage];
+        Long sEnd = Stagingp[stage+1];
+        Long numFronts = (sEnd - sStart);
         Long leftoverChildren = 0 ;
-        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &numFronts, &leftoverChildren) ;
+        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &leftoverChildren) ;
         wsMondoF_size      = MAX (wsMondoF_size,      FSize [stage]) ;
         wsMondoR_size      = MAX (wsMondoR_size,      RSize [stage]) ;
         wsS_size           = MAX (wsS_size,           SSize [stage]) ;
@@ -428,12 +426,12 @@ void spqrgpu_kernel
 
         PR (("Building stage %ld of %ld\n", stage+1, numStages));
 
-        Long numFronts = 0 ;
-        Long leftoverChildren = 0 ;
-        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &numFronts, &leftoverChildren) ;
-
         Long sStart = Stagingp[stage];
         Long sEnd = Stagingp[stage+1];
+        Long numFronts = (sEnd - sStart);
+        Long leftoverChildren = 0 ;
+        numfronts_in_stage (stage, Stagingp, StageMap, Post, Child, Childp, &leftoverChildren) ;
+
         Long pNextChild = numFronts;
 
         PR (("# fronts in stage has %ld (%ld regular + %ld leftovers).\n", numFronts+leftoverChildren, numFronts, leftoverChildren));
