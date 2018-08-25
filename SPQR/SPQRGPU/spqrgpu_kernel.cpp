@@ -576,7 +576,7 @@ void spqrgpu_kernel
         }
 
         // wait for data to go down to the GPU.
-        cudaStreamSynchronize(memoryStreamH2D);
+        //cudaStreamSynchronize(memoryStreamH2D); // no need to synchronize since pageable memory is used
 
         // now we can free limbo children
         for(Long p=sStart; p<sEnd; p++)
