@@ -84,14 +84,6 @@ SUITESPARSE_VERSION = 4.5.5
     endif
 
     #---------------------------------------------------------------------------
-    # CFLAGS for the C/C++ compiler
-    #---------------------------------------------------------------------------
-
-    # The CF macro is used by SuiteSparse Makefiles as a combination of
-    # CFLAGS, CPPFLAGS, TARGET_ARCH, and system-dependent settings.
-    CF ?= $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(OPTIMIZATION) -fexceptions -fPIC
-
-    #---------------------------------------------------------------------------
     # OpenMP is used in CHOLMOD
     #---------------------------------------------------------------------------
 
@@ -114,8 +106,8 @@ SUITESPARSE_VERSION = 4.5.5
             # use the Intel icc compiler for C codes, and -qopenmp for OpenMP
             CC = icc -D_GNU_SOURCE
             CXX = $(CC)
-            CFOPENMP = -qopenmp -I$(MKLROOT)/include
-	    	LDFLAGS += -qopenmp
+			CFLAGS += -I$(MKLROOT)/include
+            CFOPENMP = -qopenmp
             LDLIBS += -lm -lirc
         endif
         ifneq ($(shell which ifort 2>/dev/null),)
@@ -123,6 +115,14 @@ SUITESPARSE_VERSION = 4.5.5
             F77 = ifort
         endif
     endif
+
+    #---------------------------------------------------------------------------
+    # CFLAGS for the C/C++ compiler
+    #---------------------------------------------------------------------------
+
+    # The CF macro is used by SuiteSparse Makefiles as a combination of
+    # CFLAGS, CPPFLAGS, TARGET_ARCH, and system-dependent settings.
+    CF ?= $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(OPTIMIZATION) -fexceptions -fPIC
 
     #---------------------------------------------------------------------------
     # code formatting (for Tcov on Linux only)
@@ -425,7 +425,7 @@ SUITESPARSE_VERSION = 4.5.5
 # This assumes that LIBRARY and VERSION have already been defined by the
 # Makefile that includes this file.
 
-SO_OPTS = $(LDFLAGS)
+SO_OPTS = $(CFOPENMP) $(LDFLAGS)
 
 ifeq ($(UNAME),Windows)
     # Cygwin Make on Windows (untested)
