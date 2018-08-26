@@ -117,20 +117,21 @@ int main (int argc, char **argv)
     //FILE *info = fopen("gpu_results.txt", "w");
     fprintf(info, "ordering method          = %ld\n", cc->SPQR_istat[7]);       // ordering method
     fprintf(info, "memory usage (bytes)     = %ld\n", cc->memory_usage);        // memory usage (bytes)
-    fprintf(info, "flop count               = %.16e\n", cc->SPQR_flopcount);    // flop count
+    fprintf(info, "flop count               = %le\n", cc->SPQR_flopcount);    // flop count
     fprintf(info, "analyze time             = %lf\n", cc->SPQR_analyze_time);   // analyze time
     fprintf(info, "factorize time           = %lf\n", cc->SPQR_factorize_time); // factorize time
     fprintf(info, "cpu memory (bytes)       = -1\n") ;                          // cpu memory (bytes)
     fprintf(info, "gpu memory (bytes)       = -1\n") ;                          // gpu memory (bytes)
-    fprintf(info, "residual                 = %.16e\n", rnorm);                 // residual
+    fprintf(info, "residual                 = %le\n", rnorm);                 // residual
     fprintf(info, "nnz(A)                   = %ld\n", cholmod_l_nnz (A, cc));   // nnz(A)
     fprintf(info, "nnz(R)                   = %ld\n", cc->SPQR_istat [0]);      // nnz(R)
     fprintf(info, "# of frontal matrices    = %ld\n", cc->SPQR_istat [2]);      // # of frontal matrices
     fprintf(info, "ntasks, for now          = %ld\n", cc->SPQR_istat [3]);      // ntasks, for now
     fprintf(info, "kernel time (ms)         = %lf\n", cc->gpuKernelTime);       // kernel time (ms)
     fprintf(info, "\"actual\" gpu flops     = %ld\n", cc->gpuFlops);            // "actual" gpu flops
-    fprintf(info, "# of kernel launches     = %d\n", cc->gpuNumKernelLaunches); // # of kernel launches
-    fprintf(info, "norm (A'*(Ax-b))         = %.16e\n", atrnorm) ;              // norm (A'*(Ax-b))
+    fprintf(info, "\"actual\" Gflops        = %lf\n", cc->gpuFlops / cc->SPQR_factorize_time / pow(10, 9));
+    fprintf(info, "# of kernel launches     = %ld\n", cc->gpuNumKernelLaunches); // # of kernel launches
+    fprintf(info, "norm (A'*(Ax-b))         = %le\n", atrnorm) ;              // norm (A'*(Ax-b))
 
     fclose(info);
 
