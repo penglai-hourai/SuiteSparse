@@ -43,7 +43,7 @@
 #define CHOLMOD_POTRF_LIMIT  512  			/* required cols for POTRF & TRSM on GPU */
 #define CHOLMOD_GPU_SKIP     0  			/* # of host supernodes to perform before checking for free pinned buffers */
 
-#define IBUFF_LOOPSIZE 2 // must not be greater than either (CHOLMOD_DEVICE_STREAMS / 2) or CHOLMOD_HOST_SUPERNODE_BUFFERS
+#define IBUFF_LOOPSIZE 2 // must not be greater than either CHOLMOD_HOST_SUPERNODE_BUFFERS or CHOLMOD_DEVICE_LX_BUFFERS
 #define MAP_CACHESIZE 1
 
 #define UPDATE_MAX_BATCH_COUNT 32
