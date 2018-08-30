@@ -790,7 +790,7 @@ int CHOLMOD(score_comp) (struct cholmod_descendant_score_t *i, struct cholmod_de
     }
     else if ((*i).d > (*j).d)
     {
-        return (-1) ;
+        return (1) ;
     }
     else
     {
