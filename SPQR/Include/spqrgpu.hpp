@@ -50,6 +50,9 @@ void spqrgpu_computeFrontStaging
                         //      wsS [SOffsets[f]...]
 
     // input/output:
+#ifdef EXCLUDE_ALLOCATION_TIME
+    spqr_symbolic *QRsym,
+#endif
     cholmod_common *cc
 );
 

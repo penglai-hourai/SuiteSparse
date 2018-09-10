@@ -8,6 +8,8 @@
 #ifndef SPQR_INTERNAL_H
 #define SPQR_INTERNAL_H
 
+#define EXCLUDE_ALLOCATION_TIME //not measuring allocation time in total factorization time
+
 // -----------------------------------------------------------------------------
 // include files
 // -----------------------------------------------------------------------------

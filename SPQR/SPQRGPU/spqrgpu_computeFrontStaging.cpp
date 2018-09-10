@@ -10,6 +10,24 @@
 #include "spqr.hpp"
 #include "GPUQREngine_Scheduler.hpp"
 
+#ifdef EXCLUDE_ALLOCATION_TIME
+extern
+void numfronts_in_stage
+(
+    // input, not modified
+    Long stage,         // count the # of fronts in this stage
+    Long *Stagingp,     // fronts are in the list
+                        //      Post [Stagingp [stage]...Stagingp[stage+1]-1]
+    Long *StageMap,     // front f is in stage StageMap [f]
+    Long *Post,         // array of size nf (# of fronts)
+    Long *Child,        // list of children for each front is
+    Long *Childp,       //      in Child [Childp [f] ... Childp [f+1]-1]
+
+    // output, not defined on input
+    Long *p_leftoverChildren    // number of leftover children (a scalar)
+);
+#endif
+
 void spqrgpu_computeFrontStaging
 (
     // inputs, not modified on output
@@ -47,6 +65,9 @@ void spqrgpu_computeFrontStaging
                         //      wsS [SOffsets[f]...]
 
     // input/output:
+#ifdef EXCLUDE_ALLOCATION_TIME
+    spqr_symbolic *QRsym,
+#endif
     cholmod_common *cc
 )
 {
@@ -226,6 +247,44 @@ void spqrgpu_computeFrontStaging
 
     *numStages = stage;
     *feasible = true;
+
+#ifdef EXCLUDE_ALLOCATION_TIME
+    Long wsMondoF_size = 0 ;
+    Long wsMondoR_size = 0 ;
+    Long wsS_size = 0 ;
+    Long maxfronts_in_stage = 0 ;
+
+    for(Long stage_idx = 0; stage_idx < stage; stage_idx++)
+    {
+        // find the memory requirements of this stage_idx
+        Long sStart = Stagingp[stage_idx];
+        Long sEnd = Stagingp[stage_idx+1];
+        Long numFronts = (sEnd - sStart);
+        Long leftoverChildren = 0 ;
+        numfronts_in_stage (stage_idx, Stagingp, StageMap, Post, Child, Childp, &leftoverChildren) ;
+        wsMondoF_size      = MAX (wsMondoF_size,      FSize [stage_idx]) ;
+        wsMondoR_size      = MAX (wsMondoR_size,      RSize [stage_idx]) ;
+        wsS_size           = MAX (wsS_size,           SSize [stage_idx]) ;
+        maxfronts_in_stage = MAX (maxfronts_in_stage, numFronts+leftoverChildren) ;
+    }
+
+    QRsym->wsMondoS = Workspace::allocate (Sp[QRsym->m], sizeof(SEntry), false, true, false, false) ; // CPU pagelocked
+    QRsym->wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+    QRsym->wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+    QRsym->fronts[0] = (Front*) cholmod_l_malloc (maxfronts_in_stage, sizeof(Front), cc) ;
+    if (stage > 1)
+        QRsym->fronts[1] = (Front*) cholmod_l_malloc (maxfronts_in_stage, sizeof(Front), cc) ;
+    else
+        QRsym->fronts[1] = NULL;
+    QRsym->wsMondoF = Workspace::allocate (wsMondoF_size, sizeof(double), false, false, true, false) ;    // GPU only
+    QRsym->wsMondoR[0] = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
+    if (stage > 1)
+        QRsym->wsMondoR[1] = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
+    else
+        QRsym->wsMondoR[1] = NULL;
+    QRsym->wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
+#endif
+
     return;
 }
 #endif

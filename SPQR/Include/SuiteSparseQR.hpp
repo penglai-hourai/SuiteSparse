@@ -53,6 +53,11 @@ struct spqr_gpu
 // of column indices used to represent the supernodal form of R (one Long per
 // non-pivotal column index in the leading row of each block of R).
 
+#ifdef EXCLUDE_ALLOCATION_TIME
+#include "GPUQREngine.hpp"
+#define Long SuiteSparse_long
+#endif
+
 struct spqr_symbolic
 {
 
@@ -198,6 +203,21 @@ struct spqr_symbolic
     // detection is requested, then the GPU is disabled.
 
     spqr_gpu *QRgpu ;
+
+#ifdef EXCLUDE_ALLOCATION_TIME
+    Long wsMondoF_size;
+    Long wsMondoR_size;
+    Long wsS_size;
+    Long maxfronts_in_stage;
+
+    Front *fronts[2];
+    Workspace *wsMondoF;
+    Workspace *wsMondoR[2];
+    Workspace *wsMondoS;
+    Workspace *wsRimap;
+    Workspace *wsRjmap;
+    Workspace *wsS;
+#endif
 
 } ;
 

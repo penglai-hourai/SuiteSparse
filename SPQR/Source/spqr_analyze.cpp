@@ -1104,7 +1104,11 @@ spqr_symbolic *spqr_analyze
         spqrgpu_computeFrontStaging (nf, Parent, Childp, Child, Fm, Cm, Rp,
             Sp, Sleft, Super, Post, RimapSize, RjmapSize,
             &feasible, &numStages, Stagingp, StageMap,
-            FSize, RSize, SSize, FOffsets, ROffsets, SOffsets, cc);
+            FSize, RSize, SSize, FOffsets, ROffsets, SOffsets,
+#ifdef EXCLUDE_ALLOCATION_TIME
+            QRsym,
+#endif
+            cc);
 
         #ifndef NPRINT
         PR (("Is schedule feasible? %s with %ld stages.\n",

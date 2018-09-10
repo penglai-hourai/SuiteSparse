@@ -127,10 +127,10 @@ void spqrgpu_kernel
     spqr_gpu *QRgpu = QRsym->QRgpu;
 
     // assembly metadata
-    Long *RjmapOffsets = QRgpu->RjmapOffsets;
     Long *RimapOffsets = QRgpu->RimapOffsets;
-    Long RjmapSize = MAX(1, QRgpu->RjmapSize);
+    Long *RjmapOffsets = QRgpu->RjmapOffsets;
     Long RimapSize = MAX(1, QRgpu->RimapSize);
+    Long RjmapSize = MAX(1, QRgpu->RjmapSize);
 
     // staging metadata
     Long numStages = QRgpu->numStages;
@@ -176,12 +176,18 @@ void spqrgpu_kernel
     // allocate, construct, and ship S, Rimap, and Rjmap for the entire problem
     // -------------------------------------------------------------------------
 
+#ifdef EXCLUDE_ALLOCATION_TIME
+    Workspace *wsMondoS = QRsym->wsMondoS;
+    Workspace *wsRimap  = QRsym->wsRimap;
+    Workspace *wsRjmap  = QRsym->wsRjmap;
+#else
     // malloc wsMondoS on the CPU (pagelocked), not on the GPU
     Workspace *wsMondoS = Workspace::allocate (Sp[m], sizeof(SEntry), false, true, false, false) ; // CPU pagelocked
 
     // malloc wsRimap and wsRjmap on both the CPU and GPU (not pagelocked)
     Workspace *wsRimap  = Workspace::allocate (RimapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
     Workspace *wsRjmap  = Workspace::allocate (RjmapSize, sizeof(int), false, true, true, false) ; // CPU and GPU
+#endif
 
     // use shared Long workspace (Iwork) for Fmap and InvPost [ [
     // Note that Iwork (0:nf-1) is already in use for Blob.Cm (size nf)
@@ -278,6 +284,14 @@ void spqrgpu_kernel
     // Keep track of where we are in MondoS
     Long SOffset = 0;
 
+#ifdef EXCLUDE_ALLOCATION_TIME
+    fronts[0] = QRsym->fronts[0];
+    fronts[1] = QRsym->fronts[1];
+    wsMondoF = QRsym->wsMondoF;
+    wsMondoR[0] = QRsym->wsMondoR[0];
+    wsMondoR[1] = QRsym->wsMondoR[1];
+    wsS = QRsym->wsS;
+#else
     // -------------------------------------------------------------------------
     // allocate workspace for all stages
     // -------------------------------------------------------------------------
@@ -315,6 +329,7 @@ void spqrgpu_kernel
 
     // malloc S on the GPU (not on the CPU)
     wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
+#endif
 
     if(!fronts[0] || (numStages > 1 && !fronts[1]) || !wsMondoF || !wsMondoR[0] || (numStages > 1 && !wsMondoR[1]) || !wsS)
     {
