@@ -226,9 +226,11 @@ void spqrgpu_kernel
         wsRjmap  = Workspace::destroy(wsRjmap); \
         wsRimap  = Workspace::destroy(wsRimap); \
         fronts[0] = (Front*) cholmod_l_free (maxfronts_in_stage, sizeof(Front), fronts[0], cc) ; \
+        if (numStages > 1) \
         fronts[1] = (Front*) cholmod_l_free (maxfronts_in_stage, sizeof(Front), fronts[1], cc) ; \
         wsMondoF = Workspace::destroy(wsMondoF); \
         wsMondoR[0] = Workspace::destroy(wsMondoR[0]); \
+        if (numStages > 1) \
         wsMondoR[1] = Workspace::destroy(wsMondoR[1]); \
         wsS = Workspace::destroy(wsS);
 
@@ -297,6 +299,7 @@ void spqrgpu_kernel
     // The front listing has fronts in the stage at
     // the beginning with children needing assembly appearing at the end
     fronts[0] = (Front*) cholmod_l_malloc (maxfronts_in_stage, sizeof(Front), cc) ;
+    if (numStages > 1)
     fronts[1] = (Front*) cholmod_l_malloc (maxfronts_in_stage, sizeof(Front), cc) ;
 
     // This allocate is done once for each stage, but we still need
@@ -307,12 +310,13 @@ void spqrgpu_kernel
 
     // malloc R for each front on the CPU (not on the GPU)
     wsMondoR[0] = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
+    if (numStages > 1)
     wsMondoR[1] = Workspace::allocate (wsMondoR_size, sizeof(double), false, true, false, true) ;    // CPU only
 
     // malloc S on the GPU (not on the CPU)
     wsS = Workspace::allocate (wsS_size, sizeof(SEntry), false, false, true, false) ;    // GPU only
 
-    if(!fronts[0] || !fronts[1] || !wsMondoF || !wsMondoR[0] || !wsMondoR[1] || !wsS)
+    if(!fronts[0] || (numStages > 1 && !fronts[1]) || !wsMondoF || !wsMondoR[0] || (numStages > 1 && !wsMondoR[1]) || !wsS)
     {
         ERROR (CHOLMOD_OUT_OF_MEMORY, "out of memory") ;
         FREE_ALL_WORKSPACE ;
