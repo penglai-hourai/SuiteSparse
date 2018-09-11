@@ -627,6 +627,7 @@ template <typename Entry> SuiteSparseQR_factorization <Entry> *spqr_1factor
         QRsym = spqr_analyze (A, SPQR_ORDERING_GIVEN, Q1fill, tol >= 0, keepH, cc) ;
         t1 = SuiteSparse_time ( ) ;
         QRnum = spqr_factorize <Entry> (&A, FALSE, tol, n, QRsym, cc) ;
+        t2 = SuiteSparse_time ( ) ;
     }
     else
     {
@@ -634,9 +635,24 @@ template <typename Entry> SuiteSparseQR_factorization <Entry> *spqr_1factor
         QRsym = spqr_analyze (Y, SPQR_ORDERING_FIXED, NULL, tol >= 0, keepH, cc) ;
         t1 = SuiteSparse_time ( ) ;
         QRnum = spqr_factorize <Entry> (&Y, TRUE, tol, n2, QRsym, cc) ;
+        t2 = SuiteSparse_time ( ) ;
         // Y has been freed
         ASSERT (Y == NULL) ;
     }
+
+#ifdef SUITESPARSE_CUDA
+#ifdef EXCLUDE_ALLOCATION_TIME
+        QRsym->wsMondoS = Workspace::destroy(QRsym->wsMondoS);
+        QRsym->wsRjmap  = Workspace::destroy(QRsym->wsRjmap);
+        QRsym->wsRimap  = Workspace::destroy(QRsym->wsRimap);
+        QRsym->fronts[0] = (Front*) cholmod_l_free (QRsym->maxfronts_in_stage, sizeof(Front), QRsym->fronts[0], cc) ;
+        if (QRsym->fronts[1] != NULL) QRsym->fronts[1] = (Front*) cholmod_l_free (QRsym->maxfronts_in_stage, sizeof(Front), QRsym->fronts[1], cc) ;
+        QRsym->wsMondoF = Workspace::destroy(QRsym->wsMondoF);
+        QRsym->wsMondoR[0] = Workspace::destroy(QRsym->wsMondoR[0]);
+        if (QRsym->wsMondoR[1] != NULL) QRsym->wsMondoR[1] = Workspace::destroy(QRsym->wsMondoR[1]);
+        QRsym->wsS = Workspace::destroy(QRsym->wsS);
+#endif
+#endif
 
     // record the actual ordering used (this will have been changed to GIVEN
     // or FIXED, in spqr_analyze, but change it back to the ordering used by
@@ -739,7 +755,6 @@ template <typename Entry> SuiteSparseQR_factorization <Entry> *spqr_1factor
     cc->SPQR_istat [6] = n1rows ;           // number of singleton rows
     cc->SPQR_tol_used = tol ;               // tol used
 
-    t2 = SuiteSparse_time ( ) ;
     cc->SPQR_analyze_time = t1 - t0 ;   // analyze time, including singletons
     cc->SPQR_factorize_time = t2 - t1 ; // factorize time
 

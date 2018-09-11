@@ -211,6 +211,25 @@ void spqrgpu_kernel
     // check if out of memory
     // -------------------------------------------------------------------------
 
+#ifdef EXCLUDE_ALLOCATION_TIME
+#define FREE_ALL_WORKSPACE \
+        cudaStreamDestroy(memoryStreamH2D); \
+        memoryStreamH2D = NULL ; \
+        Stair = (Long*) cholmod_l_free (stairsize, sizeof(Long), Stair, cc) ; \
+        if (LimboDirectory != NULL) \
+        { \
+            for (Long f2 = 0 ; f2 < nf ; f2++) \
+            { \
+                Workspace *wsLimbo2 = LimboDirectory[f2]; \
+                if (wsLimbo2 != NULL) \
+                { \
+                    wsLimbo2->assign(wsLimbo2->cpu(), NULL); \
+                    LimboDirectory[f2] = Workspace::destroy(wsLimbo2); \
+                } \
+            } \
+        } \
+        LimboDirectory = (Workspace**) cholmod_l_free (nf, sizeof(Workspace*), LimboDirectory, cc);
+#else
 #define FREE_ALL_WORKSPACE \
         cudaStreamDestroy(memoryStreamH2D); \
         memoryStreamH2D = NULL ; \
@@ -241,6 +260,7 @@ void spqrgpu_kernel
         wsS = Workspace::destroy(wsS);
 
         // was: Fmap = (Long*) cholmod_l_free (n, sizeof(Long), Fmap, cc);
+#endif
 
     if (cc->status < CHOLMOD_OK || !Stair || !LimboDirectory || !wsMondoS || !wsRimap || !wsRjmap) // ensures Fmap and InvPost are allocated
     {
@@ -354,15 +374,11 @@ void spqrgpu_kernel
     // iterate over the staging schedule and factorize each stage
     // -------------------------------------------------------------------------
 
-#if 0
     bool limboError = false;
-#endif
 
     for(Long itr = 0; itr <= numStages; itr++)
     {
-#if 0
-        if (limboError) continue;
-#endif
+        if (limboError) break;
 
 #pragma omp parallel sections
         {
@@ -687,18 +703,10 @@ void spqrgpu_kernel
                 // calloc pagelocked memory on the CPU
                 Workspace *wsLimbo = LimboDirectory[f] = Workspace::allocate (cm * cn, sizeof(double), true, true, false, false);   // CPU
 
-#if 0
                 if (wsLimbo == NULL)
                 {
-#if 0
-                    ERROR (CHOLMOD_OUT_OF_MEMORY, "out of memory") ;
-                    FREE_ALL_WORKSPACE ;
-                    return ;
-#else
                     limboError = true;
-#endif
                 }
-#endif
 
                 double *L = CPU_REFERENCE(wsLimbo, double*);
 
@@ -720,14 +728,12 @@ void spqrgpu_kernel
         }
     }
 
-#if 0
     if (limboError)
     {
         ERROR (CHOLMOD_OUT_OF_MEMORY, "out of memory") ;
         FREE_ALL_WORKSPACE ;
         return ;
     }
-#endif
 
     // -------------------------------------------------------------------------
     // cleanup the cuda memory transfer stream and free workspaces
