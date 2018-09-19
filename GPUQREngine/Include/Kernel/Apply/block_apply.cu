@@ -334,7 +334,7 @@ __device__ void BLOCK_APPLY ( )
         }
     }
 
-#if (ROW_PANELSIZE == 2 || ROW_PANELSIZE == 1)
+#if (defined(APPLY_VT) && (ROW_PANELSIZE == 2 || ROW_PANELSIZE == 1))
     __syncthreads();
 
     if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
@@ -387,7 +387,7 @@ __device__ void BLOCK_APPLY ( )
         }
     }
 
-#if (ROW_PANELSIZE == 2)
+#if (defined(APPLY_VT) && (ROW_PANELSIZE == 2))
     __syncthreads();
 #endif
 
@@ -401,10 +401,10 @@ __device__ void BLOCK_APPLY ( )
             for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
             {
                 int j = MYTBITTYCOL (jj) ;
-#if (ROW_PANELSIZE == 2)
+#if (defined(APPLY_VT) && (ROW_PANELSIZE == 2))
                 if (i >= j)
                 shVT [2*TILESIZE-1-i][TILESIZE-1-j] = rbit [ii][jj];
-#elif (ROW_PANELSIZE == 1)
+#elif (defined(APPLY_VT) && (ROW_PANELSIZE == 1))
                 shVT [i+TILESIZE][j] = rbit [ii][jj];
 #endif
             }
@@ -412,7 +412,7 @@ __device__ void BLOCK_APPLY ( )
     }
 #endif
 
-#if (ROW_PANELSIZE == 1)
+#if (defined(APPLY_VT) && (ROW_PANELSIZE == 1))
     __syncthreads();
 
     if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)

@@ -59,7 +59,7 @@
 
     bool aloader = INSIDE_COL (fjload < fn) ;
 
-#if (ROW_PANELSIZE != 1)
+#if (!defined(APPLY_VT) || (ROW_PANELSIZE != 1))
     //--------------------------------------------------------------------------
     // C = V'*A, where V is now in shared, and A is loaded from global
     //--------------------------------------------------------------------------
@@ -130,7 +130,7 @@
     }
 #endif
 
-#if (ROW_PANELSIZE != 2 && ROW_PANELSIZE != 1)
+#if (!defined(APPLY_VT) || (ROW_PANELSIZE != 2 && ROW_PANELSIZE != 1))
     // make sure all of shC is available to all threads
     __syncthreads ( ) ;
 
@@ -197,7 +197,7 @@
             }
         }
     }
-#elif (ROW_PANELSIZE == 1)
+#elif (defined(APPLY_VT) && (ROW_PANELSIZE == 1))
     if (CTHREADS == NUMTHREADS || threadIdx.x < CTHREADS)
     {
         #pragma unroll
@@ -255,13 +255,13 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
-#if (ROW_PANELSIZE != 1)
+#if (!defined(APPLY_VT) || (ROW_PANELSIZE != 1))
                 if (i >= p)
 #endif
                 {
-#if (ROW_PANELSIZE == 2)
+#if (defined(APPLY_VT) && (ROW_PANELSIZE == 2))
                     rrow [ii] = shVT [2*TILESIZE-1-i][TILESIZE-1-p] ;
-#elif (ROW_PANELSIZE == 1)
+#elif (defined(APPLY_VT) && (ROW_PANELSIZE == 1))
                     rrow [ii] = shVT [i][p] ;
 #else
                     rrow [ii] = shT [i+1][p] ;
@@ -278,7 +278,7 @@
             for (int ii = 0 ; ii < ABITTYROWS ; ii++)
             {
                 int i = MYABITTYROW (ii) ;
-#if (ROW_PANELSIZE != 1)
+#if (!defined(APPLY_VT) || (ROW_PANELSIZE != 1))
                 if (i >= p)
 #endif
                 {
