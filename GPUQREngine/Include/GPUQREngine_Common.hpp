@@ -42,7 +42,7 @@
 
 #define NUMTHREADS          384
 #define APPLY_VT_THRESHOLD  256
-#define PACKASSEMBLY_SHMEM_MAPINTS    2048
+#define PACKASSEMBLY_SHMEM_MAPINTS    256
 
 
 /*** Common Macros ***********************************************************/
