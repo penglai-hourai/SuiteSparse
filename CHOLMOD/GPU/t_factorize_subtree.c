@@ -887,10 +887,12 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
      int Map_idx_next[IBUFF_LOOPSIZE];
      Int s_MapCached[IBUFF_LOOPSIZE][MAP_CACHESIZE];
 
-     for (int buff_itr = 0; buff_itr < IBUFF_LOOPSIZE; buff_itr++)
+     int buff_itr;
+     int cache_itr;
+     for (buff_itr = 0; buff_itr < IBUFF_LOOPSIZE; buff_itr++)
      {
          Map_idx_next[buff_itr] = 0;
-         for (int cache_itr = 0; cache_itr < MAP_CACHESIZE; cache_itr++)
+         for (cache_itr = 0; cache_itr < MAP_CACHESIZE; cache_itr++)
          {
              s_MapCached[buff_itr][cache_itr] = EMPTY;
          }
