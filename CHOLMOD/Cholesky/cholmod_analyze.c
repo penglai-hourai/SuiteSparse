@@ -343,8 +343,7 @@ int CHOLMOD(analyze_ordering)
     do_rowcolcounts = (ColCount != NULL) ;
 
     /* permute A according to Perm and fset */
-    ok = permute_matrices (A, ordering, Perm, fset, fsize, do_rowcolcounts,
-	    &A1, &A2, &S, &F, Common) ;
+    ok = permute_matrices (A, ordering, Perm, fset, fsize, do_rowcolcounts, &A1, &A2, &S, &F, Common) ;
 
     /* find etree of S (symmetric upper/lower case) or F (unsym case) */
     /* workspace: symmmetric: Iwork (nrow), unsym: Iwork (nrow+ncol) */
@@ -921,8 +920,7 @@ cholmod_factor *CHOLMOD(analyze_p2)
     {
 	cholmod_sparse *S, *F, *A2, *A1 ;
 
-	permute_matrices (A, L->ordering, Lperm, fset, fsize, TRUE,
-		&A1, &A2, &S, &F, Common) ;
+	permute_matrices (A, L->ordering, Lperm, fset, fsize, TRUE, &A1, &A2, &S, &F, Common) ;
 
 	/* workspace: Flag (nrow), Head (nrow), Iwork (5*nrow) */
 	CHOLMOD(super_symbolic2) (for_whom, S, F, Lparent, L, Common) ;

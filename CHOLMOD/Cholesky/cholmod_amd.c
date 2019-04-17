@@ -169,11 +169,9 @@ int CHOLMOD(amd)
     }
 
 #ifdef LONG
-    amd_l2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
-	    Degree, Wi, Control, Info) ;
+    amd_l2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen, Degree, Wi, Control, Info) ;
 #else
-    amd_2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen,
-	    Degree, Wi, Control, Info) ;
+    amd_2 (n, C->p,  C->i, Len, C->nzmax, cnz, Nv, Next, Perm, Head, Elen, Degree, Wi, Control, Info) ;
 #endif
 
     /* LL' flop count.  Need to subtract n for LL' flop count.  Note that this

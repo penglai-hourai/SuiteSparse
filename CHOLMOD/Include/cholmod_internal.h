@@ -65,7 +65,6 @@
 #endif
 
 #include <stddef.h>
-#include <math.h>
 #include <limits.h>
 #include <float.h>
 #include <stdlib.h>
