@@ -32,8 +32,7 @@ SUITESPARSE_VERSION = 4.5.5
     # Most Makefiles are in SuiteSparse/Pkg/Lib or SuiteSparse/Pkg/Demo, so
     # the top-level of SuiteSparse is in ../.. unless otherwise specified.
     # This is true for all but the SuiteSparse_config package.
-    SUITESPARSE ?= $(local)
-    #SUITESPARSE ?= $(realpath $(CURDIR)/../..)
+    SUITESPARSE ?= $(realpath $(CURDIR)/../..)
 
     #---------------------------------------------------------------------------
     # installation location
