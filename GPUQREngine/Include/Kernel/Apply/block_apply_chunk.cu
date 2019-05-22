@@ -128,7 +128,9 @@
             }
         }
     }
+#endif
 
+#if (ROW_PANELSIZE != 2 && ROW_PANELSIZE != 1)
     // make sure all of shC is available to all threads
     __syncthreads ( ) ;
 
@@ -195,7 +197,7 @@
             }
         }
     }
-#else
+#elif (ROW_PANELSIZE == 1)
     __syncthreads ( ) ;
 
     if (CTHREADS == NUMTHREADS || threadIdx.x < CTHREADS)
@@ -259,10 +261,12 @@
                 if (i >= p)
 #endif
                 {
-#if (ROW_PANELSIZE != 1)
-                    rrow [ii] = shT [i+1][p] ;
-#else
+#if (ROW_PANELSIZE == 2)
+                    rrow [ii] = shVT [2*TILESIZE-1-i][TILESIZE-1-p] ;
+#elif (ROW_PANELSIZE == 1)
                     rrow [ii] = shVT [i][p] ;
+#else
+                    rrow [ii] = shT [i+1][p] ;
 #endif
                 }
             }

@@ -89,9 +89,6 @@
     // bitty block sizes
     //--------------------------------------------------------------------------
 
-            #define TBITTYROWS      2
-            #define TBITTYCOLS      2
-
     #if (ROW_PANELSIZE == 3)
 
         #if (COL_PANELSIZE == 2)
@@ -100,10 +97,12 @@
             // 3-by-2 block apply
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 4
+            #define TBITTYCOLS 2
             // V is 3-by-1, C is 1-by-2, A is 3-by-2 (in # tiles)
             // 256 threads, each does a 4-by-2 block of C = T'*V'*A
-            #define CBITTYROWS      4
-            #define CBITTYCOLS      2
+            #define CBITTYROWS      2
+            #define CBITTYCOLS      4
             // 384 threads, each does a 4-by-4 block of A = A-V*C
             #define ABITTYROWS      4
             #define ABITTYCOLS      4
@@ -114,6 +113,8 @@
             // 3-by-1 block apply
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 4
+            #define TBITTYCOLS 2
             // V is 3-by-1, C is 1-by-1, A is 3-by-1 (in # tiles)
             // 256 threads, each does a 2-by-2 block of C = T'*V'*A
             #define CBITTYROWS      2
@@ -132,10 +133,12 @@
             // block_apply_2_by_2
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 4
+            #define TBITTYCOLS 2
             // V is 2-by-1, C is 1-by-2, A is 2-by-2 (in # tiles)
             // 256 threads, each does a 4-by-2 block of C = T'*V'*A
-            #define CBITTYROWS      4
-            #define CBITTYCOLS      2
+            #define CBITTYROWS      2
+            #define CBITTYCOLS      4
             // 256 threads, each does a 4-by-4 block of A = A-V*C
             #define ABITTYROWS      4
             #define ABITTYCOLS      4
@@ -146,13 +149,15 @@
             // block_apply_2_by_1
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 4
+            #define TBITTYCOLS 2
             // V is 2-by-1, C is 1-by-1, A is 2-by-1 (in # tiles)
             // 256 threads, each does a 2-by-2 block of C = T'*V'*A
             #define CBITTYROWS      2
             #define CBITTYCOLS      2
             // 256 threads, each does a 2-by-4 block of A = A-V*C
-            #define ABITTYROWS      2
-            #define ABITTYCOLS      4
+            #define ABITTYROWS      4
+            #define ABITTYCOLS      2
 
 
         #endif
@@ -165,6 +170,8 @@
             // block_apply_1_by_2
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 2
+            #define TBITTYCOLS 2
             // V is 1-by-1, C is 1-by-2, A is 1-by-2 (in # tiles)
             // 256 threads, each does a 4-by-2 block of C = T'*V'*A
             #define CBITTYROWS      2
@@ -179,6 +186,8 @@
             // block_apply_1_by_1
             //------------------------------------------------------------------
 
+            #define TBITTYROWS 2
+            #define TBITTYCOLS 2
             // V is 1-by-1, C is 1-by-1, A is 1-by-1 (in # tiles)
             // 256 threads, each does a 2-by-2 block of C = T'*V'*A
             #define CBITTYROWS      2
@@ -200,7 +209,7 @@
     #define K           (ROW_PANELSIZE * M)
     #define N           (COL_PANELSIZE * M)
 
-    #define TTHREADS    ((M * M) / (TBITTYROWS * TBITTYCOLS))
+    #define TTHREADS    ((K * M) / (TBITTYROWS * TBITTYCOLS))
 
     // threads to use for C=T'*(V'*A)
     #define CTHREADS    ((M * N) / (CBITTYROWS * CBITTYCOLS))
@@ -212,9 +221,9 @@
     // bitty blocks for the computation
     //--------------------------------------------------------------------------
 
-    #define it          (threadIdx.x % (M/TBITTYROWS))
-    #define jt          (threadIdx.x / (M/TBITTYROWS))
-    #define MYTBITTYROW(ii) (ii * (M/TBITTYROWS) + it)
+    #define it          (threadIdx.x / (M/TBITTYCOLS))
+    #define jt          (threadIdx.x % (M/TBITTYCOLS))
+    #define MYTBITTYROW(ii) (ii * (K/TBITTYROWS) + it)
     #define MYTBITTYCOL(jj) (jj * (M/TBITTYCOLS) + jt)
 
     // Each thread owns a bitty block of C for C=T'*V'*A.  The top left entry
@@ -313,7 +322,8 @@ __device__ void BLOCK_APPLY ( )
             }
         }
     }
-#if (ROW_PANELSIZE == 1)
+
+#if (ROW_PANELSIZE == 2 || ROW_PANELSIZE == 1)
     __syncthreads();
 
     if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
@@ -364,7 +374,14 @@ __device__ void BLOCK_APPLY ( )
                 }
             }
         }
+    }
 
+#if (ROW_PANELSIZE == 2)
+    __syncthreads();
+#endif
+
+    if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
+    {
         #pragma unroll
         for (int ii = 0 ; ii < TBITTYROWS ; ii++)
         {
@@ -372,12 +389,19 @@ __device__ void BLOCK_APPLY ( )
             #pragma unroll
             for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
             {
-                int j = MYCBITTYCOL (jj) ;
+                int j = MYTBITTYCOL (jj) ;
+#if (ROW_PANELSIZE == 2)
+                if (i >= j)
+                shVT [2*TILESIZE-1-i][TILESIZE-1-j] = rbit [ii][jj];
+#elif (ROW_PANELSIZE == 1)
                 shVT [i+TILESIZE][j] = rbit [ii][jj];
+#endif
             }
         }
     }
+#endif
 
+#if (ROW_PANELSIZE == 1)
     __syncthreads();
 
     if (TTHREADS == NUMTHREADS || threadIdx.x < TTHREADS)
@@ -436,7 +460,7 @@ __device__ void BLOCK_APPLY ( )
             #pragma unroll
             for (int jj = 0 ; jj < TBITTYCOLS ; jj++)
             {
-                int j = MYCBITTYCOL (jj) ;
+                int j = MYTBITTYCOL (jj) ;
                 shVT [i][j] = rbit [ii][jj];
             }
         }
