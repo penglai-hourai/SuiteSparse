@@ -271,6 +271,7 @@ int main (int argc, char **argv)
     }
 
     cudaProfilerStop();
+    printf ("factor  cputime:   %12.4f Gflop: %5.4f\n", tf, (tf == 0) ? 0 : (1e-9*cm->fl / tf)) ;
 
     cholmod_l_print_factor (L, "L", cm) ;
 
