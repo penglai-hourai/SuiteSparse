@@ -726,7 +726,7 @@ int CHOLMOD(gpu_allocate)
     /* Create CUDA handles */
     for(k = 0; k < Common->numGPU_physical; k++) {
 
-      cudaSetDevice(k / Common->numGPU_parallel);
+      cudaSetDevice(k);
       /* create cuBlas handle */
       cublasErr = cublasCreate (&(Common->cublasHandle[k])) ;
       if (cublasErr != CUBLAS_STATUS_SUCCESS) {
