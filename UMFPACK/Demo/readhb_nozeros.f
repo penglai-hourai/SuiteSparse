@@ -25,7 +25,7 @@ c       >> A = spconvert (A) ;
 c       >> spy (A)
 
         integer nzmax, nmax
-        parameter (nzmax = 10000000, nmax = 250000)
+        parameter (nzmax = 100000000, nmax = 10000000)
         integer Ptr (nmax), Index (nzmax), n, nz, totcrd, ptrcrd,
      $          indcrd, valcrd, rhscrd, ncol, nrow, nrhs, row, col, p
         character title*72, key*30, type*3, ptrfmt*16,
