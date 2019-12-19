@@ -787,7 +787,7 @@ int main (int argc, char **argv)
     /* ---------------------------------------------------------------------- */
 
     umfpack_toc (t) ;
-    printf ("\numfpack_zl_demo complete.\nTotal time: %5.2f seconds"
-	" (CPU time), %5.2f seconds (wallclock time)\n", t [1], t [0]) ;
+    printf ("\numfpack_zl_demo complete.\nTotal time: %5.4lf seconds"
+	" (CPU time), %5.4lf seconds (wallclock time)\n", t [1], t [0]) ;
     return (0) ;
 }

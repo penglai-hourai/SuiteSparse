@@ -635,7 +635,7 @@ int main (int argc, char **argv)
     umfpack_tic (tamd) ;
     status = amd_order (n, Ap, Ai, Pamd, amd_Control, amd_Info) ;
     umfpack_toc (tamd) ;
-    printf ("AMD ordering time: cpu %10.2f wall %10.2f\n",
+    printf ("AMD ordering time: cpu %10.4lf wall %10.4lf\n",
 	tamd [1], tamd [0]) ;
     if (status != AMD_OK)
     {
