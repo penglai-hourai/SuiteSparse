@@ -1119,39 +1119,39 @@ int TEMPLATE2 (CHOLMOD (gpu_lower_potrf_root))
      */
     if ((j+jb) < n) {
 
-  cublasStatus = cublasSetStream (Common->cublasHandle[gpuid / Common->numGPU_parallel], Common->gpuStream[gpuid][0]) ;
+        cublasStatus = cublasSetStream (Common->cublasHandle[gpuid / Common->numGPU_parallel], Common->gpuStream[gpuid][0]) ;
 
 #ifdef REAL
-      alpha  = 1.0 ;
-      cublasStatus = cublasDtrsm (
-              Common->cublasHandle[gpuid / Common->numGPU_parallel],
-              CUBLAS_SIDE_RIGHT,
-              CUBLAS_FILL_MODE_LOWER,
-              CUBLAS_OP_T,
-              CUBLAS_DIAG_NON_UNIT,
-              (n-j-jb),
-              jb,
-              &alpha,
-              devPtrA + (j + j*gpu_lda),
-              gpu_lda,
-              devPtrA + (j+jb + j*gpu_lda),
-              gpu_lda);
+        alpha  = 1.0 ;
+        cublasStatus = cublasDtrsm (
+                Common->cublasHandle[gpuid / Common->numGPU_parallel],
+                CUBLAS_SIDE_RIGHT,
+                CUBLAS_FILL_MODE_LOWER,
+                CUBLAS_OP_T,
+                CUBLAS_DIAG_NON_UNIT,
+                (n-j-jb),
+                jb,
+                &alpha,
+                devPtrA + (j + j*gpu_lda),
+                gpu_lda,
+                devPtrA + (j+jb + j*gpu_lda),
+                gpu_lda);
 #else
-      cuDoubleComplex calpha  = {1.0,0.0};
+        cuDoubleComplex calpha  = {1.0,0.0};
 
-      cublasStatus = cublasZtrsm (
-              Common->cublasHandle[gpuid / Common->numGPU_parallel],
-              CUBLAS_SIDE_RIGHT,
-              CUBLAS_FILL_MODE_LOWER,
-              CUBLAS_OP_C,
-              CUBLAS_DIAG_NON_UNIT,
-              (n-j-jb),
-              jb,
-              &calpha,
-              (cuDoubleComplex *)devPtrA + (j + j*gpu_lda),
-              gpu_lda,
-              (cuDoubleComplex *)devPtrA + (j+jb + j*gpu_lda),
-              gpu_lda) ;
+        cublasStatus = cublasZtrsm (
+                Common->cublasHandle[gpuid / Common->numGPU_parallel],
+                CUBLAS_SIDE_RIGHT,
+                CUBLAS_FILL_MODE_LOWER,
+                CUBLAS_OP_C,
+                CUBLAS_DIAG_NON_UNIT,
+                (n-j-jb),
+                jb,
+                &calpha,
+                (cuDoubleComplex *)devPtrA + (j + j*gpu_lda),
+                gpu_lda,
+                (cuDoubleComplex *)devPtrA + (j+jb + j*gpu_lda),
+                gpu_lda) ;
 #endif
 
 
