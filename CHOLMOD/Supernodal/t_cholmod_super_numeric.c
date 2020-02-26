@@ -584,16 +584,13 @@ static int TEMPLATE (cholmod_super_numeric)
         subtree_factorize_time = SuiteSparse_time();
 #endif
     /* loop over all devices (GPU,CPU) */
-      int deviceid;
-#pragma omp parallel for num_threads(gb_p->numDevice) private(deviceid)
-      for (deviceid = 0; deviceid < gb_p->numDevice; deviceid++)
-//#pragma omp parallel num_threads(gb_p->numDevice)
+    #pragma omp parallel num_threads(gb_p->numDevice)
     {
       /* local variables */
-      int subtreeid, numSubtreePerDevice, check = 0;
+      int deviceid, subtreeid, numSubtreePerDevice, check = 0;
 
       /* set variables */
-      //deviceid = omp_get_thread_num();				/* set device id*/
+      deviceid = omp_get_thread_num();				/* set device id*/
       numSubtreePerDevice = (int)(lb_p->numSubtreePerDevice[deviceid]);
 
 
@@ -623,22 +620,13 @@ static int TEMPLATE (cholmod_super_numeric)
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
           if (tree_p->supernode_num_levels[subtree] == 0) continue;
-#ifdef TDEBUG
-          //double loop_time;
-#endif
 
           PRINTF("\n\nGPU start -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
 
           TIMER_START(bstart,deviceid);
-#ifdef TDEBUG
-          //loop_time = SuiteSparse_time();
-#endif
           TEMPLATE2 (CHOLMOD(gpu_factorize_subtree))( Common, gb_p, gpu_p, cpu_p, tree_p, prof_p, L, deviceid, subtree, LpxSub);
-#ifdef TDEBUG
-          //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
-#endif
     	  TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nGPU end -\t");
@@ -676,22 +664,13 @@ static int TEMPLATE (cholmod_super_numeric)
 
           /* get current subtree & # supernodes */
           Int subtree 	= lb_p->listSubtreePerDevice[subtreeid + deviceid*gb_p->numSubtree];
-#ifdef TDEBUG
-      double loop_time;
-#endif
 
           PRINTF("\n\nCPU start -\t");
           PRINTFV("device:%d ",deviceid);
           PRINTFV("subtree:%d ",subtree);
 
     	  TIMER_START(bstart,deviceid);
-#ifdef TDEBUG
-        loop_time = SuiteSparse_time();
-#endif
           check = TEMPLATE2 (CHOLMOD(gpu_factorize_cpu_parallel))( Common, L, gb_p, cpu_p, tree_p, prof_p, deviceid, subtree);
-#ifdef TDEBUG
-        //printf ("device %d loop %d subtree %d time = %lf\n", deviceid, subtreeid, subtree, SuiteSparse_time() - loop_time);
-#endif
           TIMER_END(bstart,bend,deviceid);
 
           PRINTF("\n\nCPU end -\t");

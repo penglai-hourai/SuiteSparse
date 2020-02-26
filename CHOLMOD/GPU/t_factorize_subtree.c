@@ -1351,27 +1351,27 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
       /* check if descendants > 0 (which is when level > 0) */
       if(level_descendants[level_descendants_ptrs[subtree]+level]>0) {
 
-        TEMPLATE2 (CHOLMOD(gpu_updateC_batch))( Common,
-						gb_p,
- 						gpu_p,
-						cpu_p,
-						tree_p,
-                        prof_p,
-                        n,
-                        subtree,
-                        level,
-                        node,
-                        desc_count,
-                        syrk_count,
-                        gemm_count,
-                        update_count,
-                        gpuid,
-                        1,
-                        start,
-                        end,
-                        maxDim1,
-                        LpxSub,
-                        L->px);
+          TEMPLATE2 (CHOLMOD(gpu_updateC_batch))( Common,
+                  gb_p,
+                  gpu_p,
+                  cpu_p,
+                  tree_p,
+                  prof_p,
+                  n,
+                  subtree,
+                  level,
+                  node,
+                  desc_count,
+                  syrk_count,
+                  gemm_count,
+                  update_count,
+                  gpuid,
+                  1,
+                  start,
+                  end,
+                  maxDim1,
+                  LpxSub,
+                  L->px);
 
       }
 
@@ -1382,13 +1382,14 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *  Perform batched dpotrf.
        *
        */
-      TEMPLATE2 (CHOLMOD(gpu_lower_potrf_batch))( Common,
-						  gb_p,
-                          gpu_p,
-                          prof_p,
-                          super_count,
-                          potrf_count,
-                          gpuid);
+      TEMPLATE2 (CHOLMOD(gpu_lower_potrf_batch))(
+              Common,
+              gb_p,
+              gpu_p,
+              prof_p,
+              super_count,
+              potrf_count,
+              gpuid);
 
 
       /*
@@ -1397,13 +1398,14 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *  Perform batched dtrsm.
        *
        */
-      TEMPLATE2 (CHOLMOD(gpu_triangular_solve_batch))( Common,
-						       gb_p,
-						       gpu_p,
-                               prof_p,
-                               super_count,
-                               trsm_count,
-                               gpuid);
+      TEMPLATE2 (CHOLMOD(gpu_triangular_solve_batch))(
+              Common,
+              gb_p,
+              gpu_p,
+              prof_p,
+              super_count,
+              trsm_count,
+              gpuid);
 
 
 
@@ -1414,13 +1416,13 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
        *
        */
 
-        TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))(
-                Common,
-                gb_p,
-                gpu_p,
-                super_count,
-                maxnsrownscol,
-                gpuid);
+      TEMPLATE2 (CHOLMOD(gpu_copy_supernode2))(
+              Common,
+              gb_p,
+              gpu_p,
+              super_count,
+              maxnsrownscol,
+              gpuid);
 
 
 
