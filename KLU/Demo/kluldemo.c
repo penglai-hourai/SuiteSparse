@@ -44,6 +44,7 @@ static Long klu_l_backslash    /* return 1 if successful, 0 otherwise */
     klu_l_common *Common    /* default parameters and statistics */
 )
 {
+    double factorTime = 0;
     double anorm = 0, asum ;
     klu_l_symbolic *Symbolic ;
     klu_l_numeric *Numeric ;
@@ -65,7 +66,9 @@ static Long klu_l_backslash    /* return 1 if successful, 0 otherwise */
         /* factorization */
         /* ------------------------------------------------------------------ */
 
+        factorTime = SuiteSparse_time();
         Numeric = klu_l_factor (Ap, Ai, Ax, Symbolic, Common) ;
+        factorTime = SuiteSparse_time() - factorTime;
         if (!Numeric)
         {
             klu_l_free_symbolic (&Symbolic, Common) ;
@@ -132,7 +135,9 @@ static Long klu_l_backslash    /* return 1 if successful, 0 otherwise */
         /* statistics (not required to solve Ax=b) */
         /* ------------------------------------------------------------------ */
 
+        factorTime = SuiteSparse_time();
         Numeric = klu_zl_factor (Ap, Ai, Ax, Symbolic, Common) ;
+        factorTime = SuiteSparse_time() - factorTime;
         if (!Numeric)
         {
             klu_l_free_symbolic (&Symbolic, Common) ;
@@ -193,6 +198,7 @@ static Long klu_l_backslash    /* return 1 if successful, 0 otherwise */
 
         klu_zl_free_numeric (&Numeric, Common) ;
     }
+    printf ("numeric factorization time = %lf\n", factorTime);
 
     /* ---------------------------------------------------------------------- */
     /* free symbolic analysis, and residual */
