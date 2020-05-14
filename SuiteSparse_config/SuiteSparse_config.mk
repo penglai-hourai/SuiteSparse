@@ -217,12 +217,12 @@ SUITESPARSE_VERSION = 4.5.5
         # GPU.  You can add additional GPU-related flags to it as well.
         # with 4 cores (default):
         GPU_CONFIG    = -DSUITESPARSE_CUDA# -DCHOLMOD_OMP_NUM_THREADS=32
-        CUDART_LIB    = $(CUDA_PATH)/lib64/libcudart.so
-        CUBLAS_LIB    = $(CUDA_PATH)/lib64/libcublas.so $(CUDA_PATH)/lib64/libnvToolsExt.so
-        CUSOLVER_LIB  = $(CUDA_PATH)/lib64/libcusolver.so
+        CUDART_LIB    = -lcudart
+        CUBLAS_LIB    = -lcublas -lnvToolsExt
+        CUSOLVER_LIB  = -lcusolver
         CUDA_INC_PATH = $(CUDA_PATH)/include/
         CUDA_INC      = -I$(CUDA_INC_PATH)
-        NVCC          = $(CUDA_PATH)/bin/nvcc
+        NVCC          = nvcc
         NVCCFLAGS     =	-O3 \
 						-Xcompiler -fPIC \
 						-gencode arch=compute_30,code=sm_30 \
