@@ -27,7 +27,7 @@
 #ifdef MKLROOT
 #include "mkl.h"
 #endif
-#include "nvToolsExt.h"
+//#include "nvToolsExt.h"
 #include <pthread.h>
 
 
@@ -567,7 +567,7 @@
 
                         Int tid;
 
-                        nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
+                        //nvtxRangeId_t id2 = nvtxRangeStartA("CPU portion");
 
                         desc_count = 0;
                         syrk_count = 0;
@@ -801,7 +801,7 @@
                             } /* end loop over descendants */
                         }
 
-                        nvtxRangeEnd(id2);
+                        //nvtxRangeEnd(id2);
 
 
                     }

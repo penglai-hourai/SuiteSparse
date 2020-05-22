@@ -85,7 +85,7 @@
 /* nvtx markers */
 #ifdef SUITESPARSE_CUDA
 #ifdef USE_NVTX
-  #include "nvToolsExt.h"
+  //#include "nvToolsExt.h"
 #endif
 #endif
 
