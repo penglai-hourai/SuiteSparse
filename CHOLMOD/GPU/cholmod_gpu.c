@@ -593,7 +593,7 @@ int CHOLMOD(gpu_allocate)
      * Compute the amount of device & host memory available:
      * Always leave 50 MB free for driver use.
      */
-    availableDeviceMemory = fdm + Common->dev_mempool_size - 1024ll*1024ll*50ll;
+    availableDeviceMemory = fdm + Common->dev_mempool_size - 1024ll*1024ll*256ll;
     availableHostMemory = availableDeviceMemory;
 
 
