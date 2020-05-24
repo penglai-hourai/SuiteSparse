@@ -5,7 +5,8 @@
 #ifndef SUITESPARSEGPU_RUNTIME_HPP
 #define SUITESPARSEGPU_RUNTIME_HPP
 
-#include "cuda_runtime.h"
+#include <driver_types.h>
+#include <cuda_runtime.h>
 #include "SuiteSparse_config.h"
 
 #include <stdlib.h>
