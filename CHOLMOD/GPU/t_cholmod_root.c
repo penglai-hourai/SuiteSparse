@@ -23,7 +23,6 @@
 /* includes */
 #include <string.h>
 #include <time.h>
-#include <driver_types.h>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
