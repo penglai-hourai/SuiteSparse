@@ -1123,10 +1123,10 @@ void TEMPLATE2 (CHOLMOD (gpu_factorize_subtree))
     const size_t batch_size_C = sizeof(double) * UPDATE_BATCH_SIZE_C;
     Int max_batch_count;
     max_batch_count = UPDATE_MAX_BATCH_COUNT;
-    if (max_batch_count > gb_p->CSize / (batch_size_C + sizeof(double*)))
-        max_batch_count = gb_p->CSize / (batch_size_C + sizeof(double*));
-    if (max_batch_count > gb_p->LxSizeFactorized / (batch_size_A + sizeof(double*)))
-        max_batch_count = gb_p->LxSizeFactorized / (batch_size_A + sizeof(double*));
+    if (max_batch_count > gb_p->CSize / batch_size_C)
+        max_batch_count = gb_p->CSize / batch_size_C;
+    if (max_batch_count > gb_p->LxSizeFactorized / (batch_size_A + 2 * sizeof(double*)))
+        max_batch_count = gb_p->LxSizeFactorized / (batch_size_A + 2 * sizeof(double*));
 
     for (d_itr = 0; d_itr < update_count_factorized_small; d_itr += max_batch_count)
     {
